@@ -460,11 +460,7 @@
         <additionalLibraryRootsProvider
                 implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibLibraryProvider"/>
 
-        <!-- Add Crystal stdlib as library source root on project open (triggers indexing) -->
-        <postStartupActivity
-                implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibSourceRootConfigurator"/>
-
-        <!-- Debugger -->
+          <!-- Debugger -->
         <xdebugger.breakpointType
                 implementation="io.github.unurgunite.crystal.debugger.CrystalLineBreakpointType"/>
 
