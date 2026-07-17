@@ -27,7 +27,8 @@ abstract class CrystalInstanceVarAccessMixin(node: ASTNode) : ASTWrapperPsiEleme
         return this
     }
 
-    override fun getNameIdentifier(): PsiElement? = node.findChildByType(CrystalTypes.INSTANCE_VAR)?.psi
+    override fun getNameIdentifier(): PsiElement? =
+        node.findChildByType(CrystalTypes.INSTANCE_VAR)?.psi ?: node.findChildByType(CrystalTypes.AT)?.psi
 
     override fun getReference(): PsiReference? = CrystalInstanceVarReference(this)
 

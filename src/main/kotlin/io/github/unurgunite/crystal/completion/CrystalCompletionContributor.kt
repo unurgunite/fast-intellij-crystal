@@ -6,7 +6,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.util.PsiTreeUtil
@@ -117,11 +116,11 @@ class CrystalCompletionContributor : CompletionContributor() {
                         val nsAccess = PsiTreeUtil.getParentOfType(beforeDot, CrystalNamespaceAccess::class.java, false)
                         val staticMethods = if (nsAccess != null) {
                             // Namespace receiver: build full path, filter by qualified enclosing class
-                            val qualifiedName = io.github.unurgunite.crystal.psi.CrystalPsiUtils.buildNamespacePath(nsAccess)
+                            val qualifiedName = CrystalPsiUtils.buildNamespacePath(nsAccess)
                             val allMethods = CrystalCompletionHelper.getStaticMethods(beforeDotText, project)
                             allMethods.filter { method ->
-                                val enclosing = io.github.unurgunite.crystal.psi.CrystalPsiUtils.getEnclosingType(method)
-                                enclosing != null && io.github.unurgunite.crystal.psi.CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName
+                                val enclosing = CrystalPsiUtils.getEnclosingType(method)
+                                enclosing != null && CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName
                             }
                         } else {
                             // Simple constant receiver (e.g. Apfel.tanzen)
@@ -146,8 +145,8 @@ class CrystalCompletionContributor : CompletionContributor() {
                     // Case 2: identifier. (variable.method or @instance_var.method)
                     val cleanedText = beforeDotText.removePrefix("@")
                     if (cleanedText.isNotEmpty() && cleanedText[0].isLowerCase()) {
-                        val inferredType = CrystalTypeInference.inferType(cleanedText, beforeDot, project)
-                        if (inferredType != null) {
+                        val inferredTypes = CrystalTypeInference.inferTypeList(cleanedText, beforeDot, project)
+                        for (inferredType in inferredTypes) {
                             for (lookup in CrystalCompletionHelper.getMethodsAsLookups(inferredType, project)) {
                                 result.addElement(lookup)
                             }
@@ -459,7 +458,7 @@ class CrystalCompletionContributor : CompletionContributor() {
          */
         private fun isInClassBodyNotMethod(position: PsiElement): Boolean {
             // Must be inside a class body
-            val classBody = PsiTreeUtil.getParentOfType(position, CrystalClassBody::class.java)
+            PsiTreeUtil.getParentOfType(position, CrystalClassBody::class.java)
                 ?: return false
 
             // Must NOT be inside a method body

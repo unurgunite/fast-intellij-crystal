@@ -10,11 +10,17 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static io.github.unurgunite.crystal.psi.CrystalTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import io.github.unurgunite.crystal.psi.*;
+import com.intellij.psi.stubs.IStubElementType;
+import io.github.unurgunite.crystal.stubs.CrystalConstantAssignmentStub;
 
-public class CrystalConstantAssignmentImpl extends ASTWrapperPsiElement implements CrystalConstantAssignment {
+public class CrystalConstantAssignmentImpl extends CrystalStubbedConstantAssignmentImpl implements CrystalConstantAssignment {
 
-  public CrystalConstantAssignmentImpl(@NotNull ASTNode node) {
+  public CrystalConstantAssignmentImpl(ASTNode node) {
     super(node);
+  }
+
+  public CrystalConstantAssignmentImpl(CrystalConstantAssignmentStub stub, IStubElementType stubType) {
+    super(stub, stubType);
   }
 
   public void accept(@NotNull CrystalVisitor visitor) {
