@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to the Crystal Language Plugin!
+Thanks for your interest in contributing to the Fast Crystal Plugin!
 This guide covers **how to file good issues** and **how code contributions
 work**.
 

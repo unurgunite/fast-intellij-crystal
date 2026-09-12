@@ -34,7 +34,7 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         id = "io.github.unurgunite.crystal"
-        name = "Crystal Language"
+        name = "Fast Crystal Plugin"
         version = project.version.toString()
         vendor {
             name = "unurgunite"

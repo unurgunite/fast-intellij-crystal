@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>io.github.unurgunite.crystal</id>
-    <name>Crystal Language</name>
+    <name>Fast Crystal Plugin</name>
     <vendor url="https://github.com/unurgunite">unurgunite</vendor>
     <description><![CDATA[
 <p>
