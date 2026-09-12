@@ -22,18 +22,18 @@
 
 | File | Action | Responsibility |
 |---|---|---|
-| `src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt` | Modify | Extend `inferTypeFromExpression` for scalar literals |
-| `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt` | Modify | Extend `resolveType` for collections, control-flow, trivial expressions, operators |
-| `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt` | Create | Unit tests for `CrystalTypeInference` literal inference |
-| `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt` | Modify | Add inspection tests for new expression types |
+| `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt` | Modify | Extend `inferTypeFromExpression` for scalar literals |
+| `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt` | Modify | Extend `resolveType` for collections, control-flow, trivial expressions, operators |
+| `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt` | Create | Unit tests for `CrystalTypeInference` literal inference |
+| `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt` | Modify | Add inspection tests for new expression types |
 
 ---
 
 ### Task 1: Scalar Literal Inference in CrystalTypeInference
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt:96-129`
-- Create: `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt:96-129`
+- Create: `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalAssignment.expression` PSI element
@@ -41,13 +41,13 @@
 
 - [ ] **Step 1: Create test class with failing tests for scalar literals**
 
-Create `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt`:
+Create `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt`:
 
 ```kotlin
-package de.magynhard.crystal
+package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.completion.CrystalTypeInference
+import io.github.unurgunite.crystal.completion.CrystalTypeInference
 
 class CrystalTypeInferenceTest : BasePlatformTestCase() {
 
@@ -117,7 +117,7 @@ class CrystalTypeInferenceTest : BasePlatformTestCase() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
 Expected: All tests FAIL — `inferTypeFromExpression` doesn't handle literals yet.
 
 - [ ] **Step 3: Add scalar literal inference to `inferTypeFromExpression`**
@@ -181,14 +181,14 @@ private fun resolveFloatLiteralType(text: String): String {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
 Expected: All 10 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt \
-        src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt
 git commit -m "feat: add scalar literal type inference to CrystalTypeInference"
 ```
 
@@ -197,8 +197,8 @@ git commit -m "feat: add scalar literal type inference to CrystalTypeInference"
 ### Task 2: Scalar Literal Inference in CrystalExpressionTypeResolver
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt:40-48`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt:40-48`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalExpression` PSI element
@@ -239,7 +239,7 @@ fun testNilLiteralWhereNilableExpectedNoError() {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testStringLiteralWhereStringExpectedNoError" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testStringLiteralWhereStringExpectedNoError" 2>&1 | tail -20`
 Expected: FAIL — `resolveType` doesn't handle `CrystalStringExpression` in all contexts, or literal types not fully resolved.
 
 - [ ] **Step 3: Add `CrystalStringExpression` handling to `resolveType`**
@@ -248,13 +248,13 @@ The existing code at line 52 already handles `CrystalStringExpression`. Verify t
 
 - [ ] **Step 4: Run full inspection test suite**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest" 2>&1 | tail -20`
 Expected: All tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
         src/test/kotlin/de.magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add scalar literal type tests to CrystalExpressionTypeResolver"
 ```
@@ -264,8 +264,8 @@ git commit -m "feat: add scalar literal type tests to CrystalExpressionTypeResol
 ### Task 3: Trivial Expression Types in CrystalExpressionTypeResolver
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt:29-82`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt:29-82`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalRegexExpression`, `CrystalCommandExpression`, `CrystalHeredocLiteral`, `CrystalSymbolStringExpression`, `CrystalSizeofExpression`, `CrystalInstanceSizeofExpression`, `CrystalOffsetofExpression` PSI elements
@@ -317,7 +317,7 @@ fun testSizeofExpressionType() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testRegexLiteralType" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testRegexLiteralType" 2>&1 | tail -20`
 Expected: FAIL — `resolveType` doesn't handle these PSI types.
 
 - [ ] **Step 3: Add trivial expression handling to `resolveType`**
@@ -337,14 +337,14 @@ if (expr is CrystalOffsetofExpression) return ResolvedType("UInt64")
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest" 2>&1 | tail -20`
 Expected: All tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
-        src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add trivial expression type resolution (Regex, heredoc, sizeof)"
 ```
 
@@ -353,9 +353,9 @@ git commit -m "feat: add trivial expression type resolution (Regex, heredoc, siz
 ### Task 4: Collection Literal Inference — Arrays
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalArrayLiteral` PSI element, `CrystalExpressionTypeResolver.resolveType`
@@ -414,7 +414,7 @@ fun testInferArrayLiteralHomogeneous() {
 
 - [ ] **Step 3: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testArrayLiteralHomogeneousNoError" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testArrayLiteralHomogeneousNoError" 2>&1 | tail -20`
 Expected: FAIL.
 
 - [ ] **Step 4: Implement array literal resolution in `CrystalExpressionTypeResolver`**
@@ -471,10 +471,10 @@ Expected: All tests PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
-        src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt \
-        src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt \
-        src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
+        src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add array literal type inference"
 ```
 
@@ -483,8 +483,8 @@ git commit -m "feat: add array literal type inference"
 ### Task 5: Collection Literal Inference — Hash & Tuple
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalHashLiteral`, `CrystalTupleLiteral` PSI elements
@@ -525,7 +525,7 @@ fun testTupleLiteralNoError() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testHashLiteralOfTypeAnnotation" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testHashLiteralOfTypeAnnotation" 2>&1 | tail -20`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement hash literal resolution**
@@ -606,8 +606,8 @@ Expected: All tests PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
-        src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add hash and tuple literal type inference"
 ```
 
@@ -616,9 +616,9 @@ git commit -m "feat: add hash and tuple literal type inference"
 ### Task 6: Control-Flow Union Inference — Ternary & If Expressions
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalIfStatement` PSI element (ternary is parsed as if_expression in Crystal)
@@ -650,7 +650,7 @@ fun testIfExpressionType() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testTernaryExpressionType" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testTernaryExpressionType" 2>&1 | tail -20`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement control-flow expression resolution**
@@ -776,10 +776,10 @@ Expected: All tests PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
-        src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt \
-        src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt \
-        src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
+        src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add control-flow union type inference (ternary, if, case)"
 ```
 
@@ -788,8 +788,8 @@ git commit -m "feat: add control-flow union type inference (ternary, if, case)"
 ### Task 7: Instance Variable & Multi-Assignment Inference
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalAssignment` with `CrystalInstanceVarAccess` child
@@ -815,7 +815,7 @@ fun testInferInstanceVariableFromIntegerAssignment() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalTypeInferenceTest.testInferInstanceVariableFromAssignment" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalTypeInferenceTest.testInferInstanceVariableFromAssignment" 2>&1 | tail -20`
 Expected: FAIL — `inferFromAssignment` checks for `@name` but `inferTypeFromExpression` doesn't handle the `@` prefix properly for literals.
 
 - [ ] **Step 3: Verify and fix instance variable inference**
@@ -824,14 +824,14 @@ The existing code at `CrystalTypeInference.kt:76` already checks `varName != "@$
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalTypeInferenceTest" 2>&1 | tail -20`
 Expected: All tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/completion/CrystalTypeInference.kt \
-        src/test/kotlin/de/magynhard/crystal/CrystalTypeInferenceTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalTypeInference.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/CrystalTypeInferenceTest.kt
 git commit -m "feat: add instance variable type inference from literal assignments"
 ```
 
@@ -840,8 +840,8 @@ git commit -m "feat: add instance variable type inference from literal assignmen
 ### Task 8: Operator Result Type Inference
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt`
-- Modify: `src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt`
 
 **Interfaces:**
 - Consumes: `CrystalExpression` with operator children
@@ -882,7 +882,7 @@ fun testStringConcatType() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.inspections.CrystalTypeCheckInspectionTest.testIntegerAdditionType" 2>&1 | tail -20`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspectionTest.testIntegerAdditionType" 2>&1 | tail -20`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement operator result type resolution**
@@ -945,8 +945,8 @@ Expected: All tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/inspections/CrystalExpressionTypeResolver.kt \
-        src/test/kotlin/de/magynhard/crystal/inspections/CrystalTypeCheckInspectionTest.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/inspections/CrystalExpressionTypeResolver.kt \
+        src/test/kotlin/io/github/unurgunite/crystal/inspections/CrystalTypeCheckInspectionTest.kt
 git commit -m "feat: add operator result type inference (arithmetic, comparison, logical)"
 ```
 

@@ -13,7 +13,7 @@ Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBra
 
 > [!WARNING]
 > Early Beta — This plugin is in active development. Bugs are to be expected.
-> Please [open an issue](https://github.com/magynhard/intellij-crystal/issues/new/choose)
+> Please [open an issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose)
 > and fill out the template carefully (current/expected examples are required)
 > so we can triage effectively.
 
@@ -243,7 +243,7 @@ Direct link: [Crystal Language on JetBrains Marketplace](https://plugins.jetbrai
 ### From Source
 
 ```bash
-git clone https://github.com/magynhard/intellij-crystal.git
+git clone https://github.com/unurgunite/intellij-crystal.git
 cd intellij-crystal
 ./gradlew buildPlugin
 ```
@@ -277,7 +277,7 @@ Stubs                    →  StubIndex (project-wide search, Go to Definition)
 ### Project Structure
 
 ```
-src/main/kotlin/de/magynhard/crystal/
+src/main/kotlin/io/github/unurgunite/crystal/
 ├── lexer/              # JFlex lexer definition + token types
 ├── parser/             # GrammarKit BNF grammar
 ├── psi/                # PSI element types and stub mixins
@@ -313,9 +313,9 @@ Issues and pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING
 before opening an issue — it explains the three issue types and what
 information we need.
 
-- 🐛 [Report a bug](https://github.com/magynhard/intellij-crystal/issues/new/choose) — something doesn't work as expected
-- ✨ [Request a feature](https://github.com/magynhard/intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
-- 🦥 [Report a UX issue](https://github.com/magynhard/intellij-crystal/issues/new/choose) — something works but feels clunky
+- 🐛 [Report a bug](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something doesn't work as expected
+- ✨ [Request a feature](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
+- 🦥 [Report a UX issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something works but feels clunky
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to report issues and contribute.
 

@@ -7,13 +7,13 @@ blank_issues_enabled: false
 
 contact_links:
   - name: "📖 README — setup, requirements, features"
-    url: https://github.com/magynhard/intellij-crystal/blob/main/README.md
+    url: https://github.com/unurgunite/intellij-crystal/blob/main/README.md
     about: |
       Make sure you've installed the Crystal compiler and (optionally) LLDB
       DAP correctly. Many "bugs" are actually setup issues.
 
   - name: "🔧 CHANGELOG — recent fixes and known changes"
-    url: https://github.com/magynhard/intellij-crystal/blob/main/CHANGELOG.md
+    url: https://github.com/unurgunite/intellij-crystal/blob/main/CHANGELOG.md
     about: |
       Check if the behavior you're seeing was already fixed in a recent
       release. Make sure you're on the latest plugin version.

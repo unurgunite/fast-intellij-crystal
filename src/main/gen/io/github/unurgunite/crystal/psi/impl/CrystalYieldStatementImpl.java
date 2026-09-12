@@ -1,0 +1,48 @@
+// This is a generated file. Not intended for manual editing.
+package io.github.unurgunite.crystal.psi.impl;
+
+import java.util.List;
+import org.jetbrains.annotations.*;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.util.PsiTreeUtil;
+import static io.github.unurgunite.crystal.psi.CrystalTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import io.github.unurgunite.crystal.psi.*;
+
+public class CrystalYieldStatementImpl extends ASTWrapperPsiElement implements CrystalYieldStatement {
+
+  public CrystalYieldStatementImpl(@NotNull ASTNode node) {
+    super(node);
+  }
+
+  public void accept(@NotNull CrystalVisitor visitor) {
+    visitor.visitYieldStatement(this);
+  }
+
+  @Override
+  public void accept(@NotNull PsiElementVisitor visitor) {
+    if (visitor instanceof CrystalVisitor) accept((CrystalVisitor)visitor);
+    else super.accept(visitor);
+  }
+
+  @Override
+  @Nullable
+  public CrystalArgumentList getArgumentList() {
+    return PsiTreeUtil.getChildOfType(this, CrystalArgumentList.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalBareArgumentList getBareArgumentList() {
+    return PsiTreeUtil.getChildOfType(this, CrystalBareArgumentList.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalPostfixModifier getPostfixModifier() {
+    return PsiTreeUtil.getChildOfType(this, CrystalPostfixModifier.class);
+  }
+
+}

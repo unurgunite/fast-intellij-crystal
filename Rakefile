@@ -89,5 +89,5 @@ task :release => :bump_version do |t|
   end
 
   abort "GitHub release failed" unless $?.success?
-  puts "Release #{tag} published: https://github.com/magynhard/intellij-crystal/releases/tag/#{tag}"
+  puts "Release #{tag} published: https://github.com/unurgunite/intellij-crystal/releases/tag/#{tag}"
 end

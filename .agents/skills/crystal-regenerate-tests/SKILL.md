@@ -25,7 +25,7 @@ rm -f src/test/testData/parser/TestOne.txt src/test/testData/parser/TestTwo.txt
 
 ### 3. Regenerate by running the specific test
 ```bash
-./gradlew test --tests "de.magynhard.crystal.parser.CrystalParserTest.testName"
+./gradlew test --tests "io.github.unurgunite.crystal.parser.CrystalParserTest.testName"
 ```
 First run generates the `.txt` file (and fails — expected). Re-check for errors:
 ```bash

@@ -33,12 +33,12 @@ dependencies {
 
 intellijPlatform {
     pluginConfiguration {
-        id = "de.magynhard.crystal"
+        id = "io.github.unurgunite.crystal"
         name = "Crystal Language"
         version = project.version.toString()
         vendor {
-            name = "magynhard"
-            url = "https://github.com/magynhard"
+            name = "unurgunite"
+            url = "https://github.com/unurgunite"
         }
         ideaVersion {
             sinceBuild = "261"
@@ -62,15 +62,15 @@ tasks {
     }
 
     generateLexer {
-        sourceFile.set(file("src/main/kotlin/de/magynhard/crystal/lexer/Crystal.flex"))
-        targetOutputDir.set(file("src/main/gen/de/magynhard/crystal/lexer"))
+        sourceFile.set(file("src/main/kotlin/io/github/unurgunite/crystal/lexer/Crystal.flex"))
+        targetOutputDir.set(file("src/main/gen/io/github/unurgunite/crystal/lexer"))
     }
 
     generateParser {
-        sourceFile.set(file("src/main/kotlin/de/magynhard/crystal/parser/Crystal.bnf"))
+        sourceFile.set(file("src/main/kotlin/io/github/unurgunite/crystal/parser/Crystal.bnf"))
         targetRootOutputDir.set(file("src/main/gen"))
-        pathToParser.set("de/magynhard/crystal/parser/CrystalParser.java")
-        pathToPsiRoot.set("de/magynhard/crystal/psi")
+        pathToParser.set("io/github/unurgunite/crystal/parser/CrystalParser.java")
+        pathToPsiRoot.set("io/github/unurgunite/crystal/psi")
     }
 
     compileKotlin {

@@ -21,7 +21,7 @@
 ### Task 1: Fix CrystalReference.resolveLocal() to handle block parameters
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/psi/CrystalReference.kt:80-91`
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/psi/CrystalReference.kt:80-91`
 
 **Interfaces:**
 - Consumes: `CrystalBlock.parameterList` (generated PSI, already exists)
@@ -31,7 +31,7 @@
 
 Add to imports at top of file:
 ```kotlin
-// No new import needed — CrystalBlock is in the same package (de.magynhard.crystal.psi)
+// No new import needed — CrystalBlock is in the same package (io.github.unurgunite.crystal.psi)
 ```
 
 - [ ] **Step 2: Extend resolveLocal() to check block parameters**
@@ -89,7 +89,7 @@ Expected: All existing tests pass
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/psi/CrystalReference.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/psi/CrystalReference.kt
 git commit -m "fix: resolve block parameter references for rename and go-to-definition"
 ```
 
@@ -98,7 +98,7 @@ git commit -m "fix: resolve block parameter references for rename and go-to-defi
 ### Task 2: Add unit tests for block parameter resolution
 
 **Files:**
-- Modify: `src/test/kotlin/de/magynhard/crystal/CrystalRenamePsiNameIdentifierOwnerTest.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/CrystalRenamePsiNameIdentifierOwnerTest.kt`
 
 **Interfaces:**
 - Consumes: Fixed `CrystalReference.resolveLocal()` from Task 1
@@ -202,13 +202,13 @@ fun testRenameBlockParameterCurlyBrace() {
 
 - [ ] **Step 6: Run tests**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalRenamePsiNameIdentifierOwnerTest"`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalRenamePsiNameIdentifierOwnerTest"`
 Expected: All new tests pass
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/test/kotlin/de/magynhard/crystal/CrystalRenamePsiNameIdentifierOwnerTest.kt
+git add src/test/kotlin/io/github/unurgunite/crystal/CrystalRenamePsiNameIdentifierOwnerTest.kt
 git commit -m "test: add rename tests for block parameters"
 ```
 

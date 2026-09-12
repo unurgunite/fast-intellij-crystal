@@ -326,7 +326,7 @@ All three extensions are registered under a single `EmbeddedCrystal` language an
 ```xml
 <fileType
     name="Embedded Crystal"
-    implementationClass="de.magynhard.crystal.ecr.EmbeddedCrystalFileType"
+    implementationClass="io.github.unurgunite.crystal.ecr.EmbeddedCrystalFileType"
     fieldName="INSTANCE"
     language="EmbeddedCrystal"
     extensions="ecr"/>

@@ -9,7 +9,7 @@ work**.
 Spend 2 minutes on these checks — it saves everyone time:
 
 1. **Search existing issues** — your problem may already be reported or
-   discussed. Use the search bar on the [Issues page](https://github.com/magynhard/intellij-crystal/issues).
+   discussed. Use the search bar on the [Issues page](https://github.com/unurgunite/intellij-crystal/issues).
 2. **Update to the latest plugin version** — Settings → Plugins → Check for
    Updates. Many "bugs" are already fixed in the latest release.
 3. **Reproduce with a minimal example** — strip your code down to the
@@ -126,7 +126,7 @@ Pull requests are welcome! Before starting work on a larger change:
 ### Build from source
 
 ```bash
-git clone https://github.com/magynhard/intellij-crystal.git
+git clone https://github.com/unurgunite/intellij-crystal.git
 cd intellij-crystal
 ./gradlew build          # compile + tests
 ./gradlew runIde         # launch a dev IDE with the plugin loaded
