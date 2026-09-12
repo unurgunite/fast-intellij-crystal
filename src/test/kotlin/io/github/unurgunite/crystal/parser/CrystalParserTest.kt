@@ -57,6 +57,14 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         doTest(true)
     }
 
+    fun testTypeReceiverDef() {
+        doTest(true)
+    }
+
+    fun testNestedTypeHashBody() {
+        doTest(true)
+    }
+
     fun testRequireStatement() {
         doTest(true)
     }

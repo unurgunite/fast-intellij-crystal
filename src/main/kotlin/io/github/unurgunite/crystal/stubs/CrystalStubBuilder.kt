@@ -263,22 +263,22 @@ class CrystalStubBuilder : StubBuilder {
 
         return when (keywordType) {
             CrystalTypes.CLASS -> CrystalClassDefinitionStub(
-                parent, CrystalClassDefinitionElementType("CLASS_DEFINITION"), name, null
+                parent, CrystalStubElementTypeHolder.CLASS_DEFINITION, name, null
             )
             CrystalTypes.MODULE -> CrystalModuleDefinitionStub(
-                parent, CrystalModuleDefinitionElementType("MODULE_DEFINITION"), name, null
+                parent, CrystalStubElementTypeHolder.MODULE_DEFINITION, name, null
             )
             CrystalTypes.STRUCT -> CrystalStructDefinitionStub(
-                parent, CrystalStructDefinitionElementType("STRUCT_DEFINITION"), name, null
+                parent, CrystalStubElementTypeHolder.STRUCT_DEFINITION, name, null
             )
             CrystalTypes.ENUM -> CrystalEnumDefinitionStub(
-                parent, CrystalEnumDefinitionElementType("ENUM_DEFINITION"), name, null
+                parent, CrystalStubElementTypeHolder.ENUM_DEFINITION, name, null
             )
             CrystalTypes.DEF -> CrystalMethodDefinitionStub(
-                parent, CrystalMethodDefinitionElementType("METHOD_DEFINITION"), name
+                parent, CrystalStubElementTypeHolder.METHOD_DEFINITION, name
             )
             CrystalTypes.MACRO -> CrystalMacroDefinitionStub(
-                parent, CrystalMacroDefinitionElementType("MACRO_DEFINITION"), name
+                parent, CrystalStubElementTypeHolder.MACRO_DEFINITION, name
             )
             else -> parent
         }

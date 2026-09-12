@@ -185,3 +185,20 @@ New parser regression tests (consolidated): `RecordWithDoBlock`, `MultiValueRetu
 - `do` (11) — `class_getter X : T do`, `yaml.mapping(...) do`, a few `.each do` call sites.
 - `(` (9) — `Hash(...).new` (type-as-receiver), `fun name = external(params)`, `Pointer(...).malloc`, `->(data) do` proc literal.
 - `{{`/`{%` (6/4) — macro interpolation/control in a few contexts.
+
+### Parser performance (fixed 2026-09-12 — was the 95-99% index stall)
+- **Ternary triple-parse (FIXED)** — `expression`/`bare_expression` had three
+  alternatives sharing the `or_expression`/`bare_or_expression` prefix, so PEG
+  parsed every expression node up to 3× (O(3^depth)). A 2.5KB hash-in-`do`-block-in-hash
+  file took 191s; now 94ms. Single-alternative with optional tail. Full index of
+  catalyst (522 `.cr` files) took 709s with 709/710 "very slow" responsiveness
+  samples before; re-measure after.
+- **`def Type.name` PEG shadow (FIXED)** — bare `CONSTANT` alternative matched before
+  `type_path DOT`, so `def Float64.new!(value) : Float64` broke (`float.cr` 1→0 errors).
+- **Residual: single zero-width error at `{` opening a large method-body hash**
+  (catalyst `formatters/json.cr`, also reproducible in isolation with a big
+  hash-in-`do`-block-in-hash shape; small hashes and both halves parse clean).
+  Deterministic, pre-existing on pristine grammar, parse now fast (~200ms).
+  Impact: one error node; surrounding definitions still indexed. Bisect with
+  `crystal tool format --check`-validated balanced fragments only — hand-cut
+  fragments with unbalanced `end`s produce misleading error positions.

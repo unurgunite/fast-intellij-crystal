@@ -350,8 +350,8 @@ method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RP
 }
 
 private method_name ::= IDENTIFIER [macro_interpolation] [BANG|QUESTION] [ASSIGN]
-                      | CONSTANT [macro_interpolation] [BANG|QUESTION] [ASSIGN]
                       | type_path DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
+                      | CONSTANT [macro_interpolation] [BANG|QUESTION] [ASSIGN]
                       | SELF DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation [BANG|QUESTION] [ASSIGN]
@@ -593,9 +593,13 @@ private assign_op ::= ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_
 
 // ==================== Expressions ====================
 
-expression ::= or_expression QUESTION expression COLON expression
-             | or_expression QUESTION
-             | or_expression
+// Single-alternative ternary: the previous three-alternative shape
+// (or_expression QUESTION expression COLON expression | or_expression QUESTION
+// | or_expression) parsed or_expression up to THREE times per expression node
+// (PEG retries the whole prefix on each failed alternative), i.e. O(3^depth)
+// on nested expressions — 191s for a 2.5KB hash-in-do-block-in-hash file.
+// The optional tail parses the prefix exactly once.
+expression ::= or_expression [QUESTION [expression COLON expression]]
 
 private or_expression ::= and_expression (OR_OR NLS and_expression)*
 
@@ -804,9 +808,9 @@ private named_bare_argument ::= IDENTIFIER COLON bare_expression [ASSIGN bare_ex
 
 // Bare expression: same as expression but does not consume blocks or assignments
 // This prevents the bare argument from eating the 'do' that belongs to the outer method call
-private bare_expression ::= bare_or_expression QUESTION expression COLON expression
-                          | bare_or_expression QUESTION
-                          | bare_or_expression
+// Same single-alternative shape as `expression` (see above): the old
+// three-alternative form triple-parsed every bare expression node.
+private bare_expression ::= bare_or_expression [QUESTION [expression COLON expression]]
 
 private bare_or_expression ::= bare_and_expression (OR_OR NLS bare_and_expression)*
 
@@ -846,9 +850,9 @@ private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_refere
 // Bare primary: like primary but no blocks or method calls with bare args (to prevent ambiguity)
 private bare_primary_expression ::= grouped_expression
                                   | type_receiver_expression
-                                  | array_literal
-                                  | hash_literal
-                                  | tuple_literal
+                                 | array_literal
+                                 | hash_literal
+                                 | tuple_literal
                                   | proc_literal
                                   | bare_method_call_expression
                                   | implicit_object_call

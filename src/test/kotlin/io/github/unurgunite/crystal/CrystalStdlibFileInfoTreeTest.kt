@@ -23,7 +23,7 @@ import java.io.File
  */
 class CrystalStdlibFileInfoTreeTest : BasePlatformTestCase() {
 
-    private val STDLIB = "/opt/homebrew/Cellar/crystal/1.20.3/share/crystal/src"
+    private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
 
     override fun setUp() {
         super.setUp()

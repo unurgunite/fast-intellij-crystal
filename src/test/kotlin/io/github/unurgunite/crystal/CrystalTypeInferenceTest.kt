@@ -175,4 +175,24 @@ bet = bohne 22
         val type = CrystalTypeInference.inferType("bet", contextElement!!, project)
         assertEquals("Int32", type)
     }
+
+    fun testSelfReferentialAssignmentTerminates() {
+        // `x = x.to_s`: inferring x re-enters inference on x via the resolver
+        // bridge (resolveType → inferTypeList → assignment → resolveType).
+        // Must terminate (unknown → null), not StackOverflowError.
+        myFixture.configureByText("test.cr", "x = x.to_s")
+        val type = CrystalTypeInference.inferType("x", myFixture.file, project)
+        assertNull(type)
+    }
+
+    fun testMutuallyReferentialAssignmentsTerminate() {
+        // a ↔ b cycle across two assignments: same termination requirement.
+        myFixture.configureByText("test.cr", """
+a = b.to_s
+b = a.to_s
+puts a
+""".trimIndent())
+        val type = CrystalTypeInference.inferType("a", myFixture.file, project)
+        assertNull(type)
+    }
 }

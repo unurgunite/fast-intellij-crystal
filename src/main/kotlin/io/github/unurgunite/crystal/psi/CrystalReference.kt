@@ -18,11 +18,14 @@ import java.util.ArrayDeque
  * 1. Local scope (fast — walks up PSI tree, no I/O) — for variables and parameters
  * 2. StubIndex lookup (fast — in-memory index) — for methods, classes, etc.
  *
- * IMPORTANT: Does NOT use CrystalDefinitionFinder.findDefinitions() because that
- * includes a FileTypeIndex fallback that scans ALL .cr files in the project and
- * walks their PSI trees, causing 90+ second delays on every right-click/hover.
- * Go to Definition via CrystalGotoDeclarationHandler still uses the full
- * CrystalDefinitionFinder with the FileTypeIndex fallback.
+ * IMPORTANT: Does NOT use CrystalDefinitionFinder.findDefinitions() for anything
+ * beyond StubIndex lookups: historically it included a FileTypeIndex fallback
+ * that scanned ALL .cr files in the project and walked their PSI trees,
+ * causing 90+ second delays on every right-click/hover. The fallback is gone
+ * (CrystalDefinitionFinder is StubIndex-only now); this reference never scans
+ * the project, only the bounded stdlib cache below.
+ * Go to Definition via CrystalGotoDeclarationHandler uses CrystalDefinitionFinder
+ * (StubIndex-only) plus the same bounded stdlib cache.
  */
 /**
  * A stable location of a stdlib definition: a path relative to the stdlib root plus a character

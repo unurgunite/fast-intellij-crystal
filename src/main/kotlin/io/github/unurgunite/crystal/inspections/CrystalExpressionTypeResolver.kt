@@ -27,6 +27,25 @@ object CrystalExpressionTypeResolver {
      * Returns null if the type cannot be determined.
      */
     fun resolveType(expr: PsiElement): ResolvedType? {
+        // Guard against infinite mutual recursion with CrystalTypeInference
+        // (resolveType → inferTypeList → inferFromAssignmentList →
+        // inferTypeFromExpressionList → resolveType, e.g. on self-referential
+        // `x = ... x ...`). Without this, BackgroundHighlighter dies with
+        // StackOverflowError on ordinary files (printer.cr). ThreadLocal because
+        // resolution runs on EDT and background threads concurrently.
+        val depth = recursionDepth.get()
+        if (depth > 16) return null
+        recursionDepth.set(depth + 1)
+        try {
+            return resolveTypeInner(expr)
+        } finally {
+            recursionDepth.set(depth)
+        }
+    }
+
+    private val recursionDepth = ThreadLocal.withInitial { 0 }
+
+    private fun resolveTypeInner(expr: PsiElement): ResolvedType? {
         if (expr is CrystalBareArgument) {
             val inner = findExpressionInContainer(expr)
             if (inner != null) return resolveType(inner)

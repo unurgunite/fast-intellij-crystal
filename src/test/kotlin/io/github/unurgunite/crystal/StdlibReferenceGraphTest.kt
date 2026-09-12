@@ -87,6 +87,6 @@ class StdlibReferenceGraphTest : BasePlatformTestCase() {
     }
 
     companion object {
-        private const val STDLIB = "/opt/homebrew/Cellar/crystal/1.20.3/share/crystal/src"
+        private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
     }
 }

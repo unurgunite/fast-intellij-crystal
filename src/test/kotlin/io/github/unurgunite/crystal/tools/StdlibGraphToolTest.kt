@@ -693,7 +693,7 @@ render();
     }
 
     companion object {
-        private const val STDLIB = "/opt/homebrew/Cellar/crystal/1.20.3/share/crystal/src"
+        private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
         private val MACRO_NAMES = setOf(
             "getter", "setter", "property", "delegate", "forward_missing_to",
             "define_new", "define_clone", "define_finalize", "define_initialize"
