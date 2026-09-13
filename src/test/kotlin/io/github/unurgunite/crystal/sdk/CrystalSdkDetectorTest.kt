@@ -4,7 +4,6 @@ import junit.framework.TestCase
 import java.io.File
 
 class CrystalSdkDetectorTest : TestCase() {
-
     fun testDetectReturnsNullOrExecutable() {
         val detected = CrystalSdkDetector.detect()
         if (detected != null) {
@@ -18,7 +17,10 @@ class CrystalSdkDetectorTest : TestCase() {
     }
 
     fun testValidateDirectoryReturnsNull() {
-        val dir = java.nio.file.Files.createTempDirectory("crystal-sdk-test").toFile()
+        val dir =
+            java.nio.file.Files
+                .createTempDirectory("crystal-sdk-test")
+                .toFile()
         try {
             assertNull(CrystalSdkDetector.validate(dir.absolutePath))
         } finally {
@@ -60,5 +62,4 @@ class CrystalSdkDetectorTest : TestCase() {
             script.delete()
         }
     }
-
 }

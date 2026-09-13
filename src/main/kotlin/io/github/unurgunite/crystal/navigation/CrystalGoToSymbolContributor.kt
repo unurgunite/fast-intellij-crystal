@@ -8,14 +8,23 @@ import com.intellij.psi.stubs.StubIndex
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMacroIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 
 class CrystalGoToSymbolContributor : ChooseByNameContributorEx {
-
-    override fun processNames(processor: Processor<in String>, scope: GlobalSearchScope, filter: IdFilter?) {
+    override fun processNames(
+        processor: Processor<in String>,
+        scope: GlobalSearchScope,
+        filter: IdFilter?,
+    ) {
         val project = scope.project ?: return
         val stubIndex = StubIndex.getInstance()
         val seen = HashSet<String>()
@@ -34,7 +43,11 @@ class CrystalGoToSymbolContributor : ChooseByNameContributorEx {
         }
     }
 
-    override fun processElementsWithName(name: String, processor: Processor<in NavigationItem>, parameters: FindSymbolParameters) {
+    override fun processElementsWithName(
+        name: String,
+        processor: Processor<in NavigationItem>,
+        parameters: FindSymbolParameters,
+    ) {
         val project = parameters.project
         val scope = parameters.searchScope
 
@@ -49,11 +62,12 @@ class CrystalGoToSymbolContributor : ChooseByNameContributorEx {
         }
     }
 
-    private fun symbolKindFromElement(element: PsiElement): CrystalSymbolKind = when (element) {
-        is CrystalClassDefinition -> CrystalSymbolKind.CLASS
-        is CrystalModuleDefinition -> CrystalSymbolKind.MODULE
-        is CrystalStructDefinition -> CrystalSymbolKind.STRUCT
-        is CrystalEnumDefinition -> CrystalSymbolKind.ENUM
-        else -> CrystalSymbolKind.CLASS
-    }
+    private fun symbolKindFromElement(element: PsiElement): CrystalSymbolKind =
+        when (element) {
+            is CrystalClassDefinition -> CrystalSymbolKind.CLASS
+            is CrystalModuleDefinition -> CrystalSymbolKind.MODULE
+            is CrystalStructDefinition -> CrystalSymbolKind.STRUCT
+            is CrystalEnumDefinition -> CrystalSymbolKind.ENUM
+            else -> CrystalSymbolKind.CLASS
+        }
 }

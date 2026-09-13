@@ -14,25 +14,35 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
  * .cr files in the project and causes 90+ second delays on every right-click.
  */
 object CrystalDefinitionFinder {
-
     /**
      * Find all definitions (class/module/struct/enum/method/macro) with the given name
      * across the entire project via StubIndex.
      */
-    fun findDefinitions(name: String, project: Project): List<PsiElement> {
+    fun findDefinitions(
+        name: String,
+        project: Project,
+    ): List<PsiElement> {
         val scope = GlobalSearchScope.allScope(project)
         val results = mutableListOf<PsiElement>()
 
-        val types = StubIndex.getElements(
-            CrystalClassIndex.KEY, name, project, scope,
-            CrystalNamedElement::class.java
-        )
+        val types =
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                name,
+                project,
+                scope,
+                CrystalNamedElement::class.java,
+            )
         results.addAll(types)
 
-        val methods = StubIndex.getElements(
-            CrystalMethodIndex.KEY, name, project, scope,
-            CrystalMethodDefinition::class.java
-        )
+        val methods =
+            StubIndex.getElements(
+                CrystalMethodIndex.KEY,
+                name,
+                project,
+                scope,
+                CrystalMethodDefinition::class.java,
+            )
         results.addAll(methods)
 
         return results

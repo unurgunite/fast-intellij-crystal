@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.sdk
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalSettingsConfigurableTest : BasePlatformTestCase() {
-
     private lateinit var configurable: CrystalSettingsConfigurable
 
     override fun setUp() {
@@ -47,7 +46,7 @@ class CrystalSettingsConfigurableTest : BasePlatformTestCase() {
 
     fun testBogusPathDoesNotCrashComponent() {
         CrystalSettings.getInstance(project).loadState(
-            CrystalSettings.State(crystalPath = "/nonexistent-dir-xyz/crystal")
+            CrystalSettings.State(crystalPath = "/nonexistent-dir-xyz/crystal"),
         )
         // Status labels must degrade to "Not available", not throw
         assertNotNull(configurable.createComponent())

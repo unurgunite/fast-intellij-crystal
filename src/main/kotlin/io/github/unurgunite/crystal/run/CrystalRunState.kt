@@ -10,9 +10,8 @@ import java.io.File
 
 class CrystalRunState(
     environment: ExecutionEnvironment,
-    private val configuration: CrystalRunConfiguration
+    private val configuration: CrystalRunConfiguration,
 ) : CommandLineState(environment) {
-
     override fun startProcess(): ProcessHandler {
         val commandLine = buildCommandLine(configuration)
         val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine)
@@ -21,8 +20,8 @@ class CrystalRunState(
     }
 
     companion object {
-        fun buildCommandLine(configuration: CrystalRunConfiguration): GeneralCommandLine {
-            return GeneralCommandLine().apply {
+        fun buildCommandLine(configuration: CrystalRunConfiguration): GeneralCommandLine =
+            GeneralCommandLine().apply {
                 exePath = configuration.crystalPath
                 addParameter(configuration.command.command)
 
@@ -47,6 +46,5 @@ class CrystalRunState(
 
                 withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
             }
-        }
     }
 }

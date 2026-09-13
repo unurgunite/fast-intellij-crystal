@@ -7,7 +7,6 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.jps.model.java.JavaSourceRootType
 
 class CrystalSpecSourceRootConfiguratorTest : BasePlatformTestCase() {
-
     private val configurator = CrystalSpecSourceRootConfigurator()
     private val realFiles = mutableListOf<java.io.File>()
 
@@ -19,8 +18,11 @@ class CrystalSpecSourceRootConfiguratorTest : BasePlatformTestCase() {
             // create/delete events for the real marker files land during a later
             // test class's highlighting ("PSI changes are not allowed during
             // highlighting" — bisected cross-test pollution).
-            com.intellij.openapi.vfs.LocalFileSystem.getInstance().refresh(false)
-            com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            com.intellij.openapi.vfs.LocalFileSystem
+                .getInstance()
+                .refresh(false)
+            com.intellij.testFramework.PlatformTestUtil
+                .dispatchAllEventsInIdeEventQueue()
         } finally {
             super.tearDown()
         }
@@ -31,7 +33,9 @@ class CrystalSpecSourceRootConfiguratorTest : BasePlatformTestCase() {
         assertNotNull("No base path in test project", basePath)
         val base = java.io.File(basePath!!)
         base.mkdirs()
-        val lfs = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+        val lfs =
+            com.intellij.openapi.vfs.LocalFileSystem
+                .getInstance()
         for (name in names) {
             val child = java.io.File(base, name)
             if (name.endsWith("/")) child.mkdirs() else child.writeText("name: probe")
@@ -43,13 +47,12 @@ class CrystalSpecSourceRootConfiguratorTest : BasePlatformTestCase() {
         return base
     }
 
-    private fun testSourceRoots(): List<String> {
-        return ModuleManager.getInstance(project).modules.flatMap { module ->
+    private fun testSourceRoots(): List<String> =
+        ModuleManager.getInstance(project).modules.flatMap { module ->
             ModuleRootManager.getInstance(module).contentEntries.flatMap { entry ->
                 entry.getSourceFolders(JavaSourceRootType.TEST_SOURCE).mapNotNull { it.file?.path }
             }
         }
-    }
 
     fun testNonCrystalProjectUntouched() {
         // No shard.yml on disk → early return, no roots added, no crash
@@ -68,18 +71,21 @@ class CrystalSpecSourceRootConfiguratorTest : BasePlatformTestCase() {
     fun testOwnershipPredicate() {
         assertTrue(
             CrystalSpecSourceRootConfigurator.isUnderContentRoot(
-                "/proj/spec", "/proj"
-            )
+                "/proj/spec",
+                "/proj",
+            ),
         )
         assertFalse(
             CrystalSpecSourceRootConfigurator.isUnderContentRoot(
-                "/other/spec", "/proj"
-            )
+                "/other/spec",
+                "/proj",
+            ),
         )
         assertFalse(
             CrystalSpecSourceRootConfigurator.isUnderContentRoot(
-                "/proj-other/spec", "/proj"
-            )
+                "/proj-other/spec",
+                "/proj",
+            ),
         )
     }
 }

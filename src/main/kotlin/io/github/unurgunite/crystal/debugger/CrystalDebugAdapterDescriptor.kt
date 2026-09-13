@@ -10,20 +10,20 @@ import com.intellij.platform.dap.connection.CommandLineDebugAdapterHandle
 import com.intellij.platform.dap.connection.DebugAdapterHandle
 
 class CrystalDebugAdapterDescriptor(
-    private val project: Project
+    private val project: Project,
 ) : DebugAdapterDescriptor<CrystalDebugAdapterId>() {
-
     override val id: CrystalDebugAdapterId = CrystalDebugAdapterId
 
-    override val breakpointsDescription: DapBreakpointsDescription = DapBreakpointsDescription(
-        CrystalLineBreakpointType::class.java,
-        CrystalExceptionBreakpointType::class.java
-    )
+    override val breakpointsDescription: DapBreakpointsDescription =
+        DapBreakpointsDescription(
+            CrystalLineBreakpointType::class.java,
+            CrystalExceptionBreakpointType::class.java,
+        )
 
     override suspend fun launchDebugAdapter(
         environment: ExecutionEnvironment,
         executionResult: ExecutionResult?,
-        sessionId: String
+        sessionId: String,
     ): DebugAdapterHandle {
         val lldbDapPath = findLldbDap()
         val commandLine = GeneralCommandLine(lldbDapPath)
@@ -43,21 +43,22 @@ class CrystalDebugAdapterDescriptor(
          */
         fun findLldbDapCandidate(): String? {
             val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
-            val candidates = if (isWindows) {
-                listOf(
-                    "C:\\Program Files\\LLVM\\bin\\lldb-dap.exe",
-                    "C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe",
-                    "C:\\Program Files (x86)\\LLVM\\bin\\lldb-dap.exe",
-                    "C:\\Program Files (x86)\\LLVM\\bin\\lldb-vscode.exe"
-                )
-            } else {
-                listOf(
-                    "/usr/bin/lldb-dap",
-                    "/usr/local/bin/lldb-dap",
-                    "/usr/bin/lldb-vscode",
-                    "/usr/local/bin/lldb-vscode"
-                )
-            }
+            val candidates =
+                if (isWindows) {
+                    listOf(
+                        "C:\\Program Files\\LLVM\\bin\\lldb-dap.exe",
+                        "C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe",
+                        "C:\\Program Files (x86)\\LLVM\\bin\\lldb-dap.exe",
+                        "C:\\Program Files (x86)\\LLVM\\bin\\lldb-vscode.exe",
+                    )
+                } else {
+                    listOf(
+                        "/usr/bin/lldb-dap",
+                        "/usr/local/bin/lldb-dap",
+                        "/usr/bin/lldb-vscode",
+                        "/usr/local/bin/lldb-vscode",
+                    )
+                }
             return candidates.firstOrNull { java.io.File(it).canExecute() }
         }
     }

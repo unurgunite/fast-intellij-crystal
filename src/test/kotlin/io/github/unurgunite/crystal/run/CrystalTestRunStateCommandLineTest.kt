@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.run
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalTestRunStateCommandLineTest : BasePlatformTestCase() {
-
     private fun createConfig(): CrystalRunConfiguration {
         val type = CrystalRunConfigurationType()
         val factory = type.configurationFactories.first { it is CrystalSpecFactory }
@@ -18,7 +17,7 @@ class CrystalTestRunStateCommandLineTest : BasePlatformTestCase() {
         assertEquals("/usr/bin/crystal", cmd.exePath)
         assertEquals(
             listOf("spec", "/tmp/spec/math_spec.cr", "-v", "--no-color"),
-            cmd.parametersList.list
+            cmd.parametersList.list,
         )
     }
 
@@ -31,7 +30,10 @@ class CrystalTestRunStateCommandLineTest : BasePlatformTestCase() {
     }
 
     fun testDirectoryCommand() {
-        val dir = kotlin.io.path.createTempDirectory("specdir").toFile()
+        val dir =
+            kotlin.io.path
+                .createTempDirectory("specdir")
+                .toFile()
         try {
             val config = createConfig()
             config.filePath = dir.absolutePath

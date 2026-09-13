@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.sdk
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalSettingsTest : BasePlatformTestCase() {
-
     override fun tearDown() {
         try {
             CrystalSettings.getInstance(project).loadState(CrystalSettings.State())
@@ -14,7 +13,7 @@ class CrystalSettingsTest : BasePlatformTestCase() {
 
     fun testConfiguredPathWinsOverDetector() {
         CrystalSettings.getInstance(project).loadState(
-            CrystalSettings.State(crystalPath = "/custom/crystal")
+            CrystalSettings.State(crystalPath = "/custom/crystal"),
         )
         assertEquals("/custom/crystal", CrystalSettings.getInstance(project).getEffectiveCrystalPath())
     }

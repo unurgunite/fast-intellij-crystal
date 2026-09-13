@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.run
 import junit.framework.TestCase
 
 class CrystalCommandLineTest : TestCase() {
-
     fun testSplitArgsBasic() {
         assertEquals(listOf("--verbose", "--tag", "focus"), CrystalCommandLine.splitArgs("--verbose --tag focus"))
     }
@@ -17,14 +16,14 @@ class CrystalCommandLineTest : TestCase() {
     fun testParseEnvVarsBasic() {
         assertEquals(
             mapOf("FOO" to "bar", "BAZ" to "qux"),
-            CrystalCommandLine.parseEnvVars("FOO=bar\nBAZ=qux")
+            CrystalCommandLine.parseEnvVars("FOO=bar\nBAZ=qux"),
         )
     }
 
     fun testParseEnvVarsTrimsAndKeepsEqualsInValue() {
         assertEquals(
             mapOf("KEY" to "a=b=c"),
-            CrystalCommandLine.parseEnvVars("  KEY = a=b=c  ")
+            CrystalCommandLine.parseEnvVars("  KEY = a=b=c  "),
         )
     }
 

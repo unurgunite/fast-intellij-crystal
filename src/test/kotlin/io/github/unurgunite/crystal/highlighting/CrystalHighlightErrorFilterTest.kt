@@ -4,7 +4,6 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
-
     /**
      * When an invalid single-quote string produces BAD_CHARACTER, the parser
      * also produces a generic "expression or NEWLINE expected" error.
@@ -22,7 +21,7 @@ class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
         assertEquals("Should show exactly one error, not duplicate parser + inspection", 1, errors.size)
         assertTrue(
             "Should show friendly message, not parser error. Got: ${errors.firstOrNull()?.description}",
-            errors.firstOrNull()?.description?.contains("single quotes can only contain one character") == true
+            errors.firstOrNull()?.description?.contains("single quotes can only contain one character") == true,
         )
     }
 
@@ -41,7 +40,7 @@ class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
         assertEquals("Should show exactly one error, not duplicate parser + annotator", 1, errors.size)
         assertTrue(
             "Should show friendly message, not parser error. Got: ${errors.firstOrNull()?.description}",
-            errors.firstOrNull()?.description?.contains("Missing heredoc end delimiter") == true
+            errors.firstOrNull()?.description?.contains("Missing heredoc end delimiter") == true,
         )
     }
 
@@ -49,7 +48,7 @@ class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
      * Normal parser errors that we do NOT handle ourselves should still be shown.
      * NOTE: `def foo(bar,)` is NOT such a case — trailing commas are legal in the
      * grammar (see TrailingCommas golden), so it parses with zero error elements.
-     * `def foo(,)` genuinely fails to parse and must pass through the filter.
+     * `def foo(, )` genuinely fails to parse and must pass through the filter.
      */
     fun testUnhandledParserErrorIsStillShown() {
         myFixture.configureByText("test.cr", "def foo(,)")

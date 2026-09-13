@@ -17,9 +17,13 @@ import java.io.File
  * When multiple tests share the same full name (e.g., two `it "works"` in different
  * describe blocks), each gets its own entry in the list, preserving source order.
  */
-class CrystalSpecFileIndexer(private val filePath: String) {
-
-    data class TestLocation(val file: String, val line: Int)
+class CrystalSpecFileIndexer(
+    private val filePath: String,
+) {
+    data class TestLocation(
+        val file: String,
+        val line: Int,
+    )
 
     fun buildIndex(): Map<String, List<TestLocation>> {
         val result = mutableMapOf<String, MutableList<TestLocation>>()
@@ -31,46 +35,69 @@ class CrystalSpecFileIndexer(private val filePath: String) {
         var i = 0
 
         while (i < lines.size) {
-            val line = lines[i]
-            val trimmed = line.trimStart()
-            val indent = line.length - trimmed.length
-
-            // Skip comment lines
-            if (trimmed.startsWith("#")) {
-                i++
-                continue
-            }
-
-            // Match describe/context blocks (with string or constant/class name)
-            val describeMatch = Regex("""(?:describe|context)\s+(?:"(.+?)"|'(.+?)'|(\w+))""").find(trimmed)
-            if (describeMatch != null) {
-                val name = describeMatch.groupValues[1].ifEmpty {
-                    describeMatch.groupValues[2].ifEmpty { describeMatch.groupValues[3] }
-                }
-                // Pop stack to current indent level
-                while (suiteStack.size > indent / 2) {
-                    suiteStack.removeAt(suiteStack.size - 1)
-                }
-                suiteStack.add(name)
-                i++
-                continue
-            }
-
-            // Match it blocks: it "name" or it("name")
-            val itMatch = Regex("""it\s*\(\s*["'](.+?)["']\s*\)|it\s+["'](.+?)["']""").find(trimmed)
-            if (itMatch != null) {
-                val testName = itMatch.groupValues[1].ifEmpty { itMatch.groupValues[2] }
-                val fullTestName = (suiteStack + testName).joinToString(" ")
-                val location = TestLocation(filePath, i + 1) // 1-based line number
-                result.getOrPut(fullTestName) { mutableListOf() }.add(location)
-                i++
-                continue
-            }
-
-            i++
+            i = processLine(lines[i], i, result, suiteStack)
         }
 
         return result
+    }
+
+    /**
+     * Processes one source line, updating [result] and [suiteStack].
+     * Returns the next line index (always `index + 1` — kept as a return value
+     * so the scanning loop stays jump-free).
+     */
+    private fun processLine(
+        line: String,
+        index: Int,
+        result: MutableMap<String, MutableList<TestLocation>>,
+        suiteStack: MutableList<String>,
+    ): Int {
+        val trimmed = line.trimStart()
+        val indent = line.length - trimmed.length
+
+        // Skip comment lines
+        if (!trimmed.startsWith("#")) {
+            if (processDescribeLine(trimmed, indent, suiteStack)) return index + 1
+            processItLine(trimmed, index, result, suiteStack)
+        }
+        return index + 1
+    }
+
+    /** Handles `describe`/`context` lines; true when the line was a suite opener. */
+    private fun processDescribeLine(
+        trimmed: String,
+        indent: Int,
+        suiteStack: MutableList<String>,
+    ): Boolean {
+        // Match describe/context blocks (with string or constant/class name)
+        val describeMatch =
+            Regex("""(?:describe|context)\s+(?:"(.+?)"|'(.+?)'|(\w+))""").find(trimmed)
+                ?: return false
+        val name =
+            describeMatch.groupValues[1].ifEmpty {
+                describeMatch.groupValues[2].ifEmpty { describeMatch.groupValues[3] }
+            }
+        // Pop stack to current indent level
+        while (suiteStack.size > indent / 2) {
+            suiteStack.removeAt(suiteStack.size - 1)
+        }
+        suiteStack.add(name)
+        return true
+    }
+
+    /** Handles `it` lines, recording the test location. */
+    private fun processItLine(
+        trimmed: String,
+        index: Int,
+        result: MutableMap<String, MutableList<TestLocation>>,
+        suiteStack: List<String>,
+    ) {
+        // Match it blocks: it "name" or it("name")
+        val itMatch = Regex("""it\s*\(\s*["'](.+?)["']\s*\)|it\s+["'](.+?)["']""").find(trimmed) ?: return
+        val testName = itMatch.groupValues[1].ifEmpty { itMatch.groupValues[2] }
+        val fullTestName = (suiteStack + testName).joinToString(" ")
+        val location = TestLocation(filePath, index + 1) // 1-based line number
+        result.getOrPut(fullTestName) { mutableListOf() }.add(location)
     }
 
     companion object {
@@ -79,7 +106,7 @@ class CrystalSpecFileIndexer(private val filePath: String) {
 
         private data class CacheEntry(
             val locations: Map<String, List<TestLocation>>,
-            val lastModified: Long
+            val lastModified: Long,
         )
 
         fun getTestLocations(filePath: String): Map<String, List<TestLocation>> {
@@ -109,9 +136,11 @@ class CrystalSpecFileIndexer(private val filePath: String) {
             // Check if any spec file in the directory has been modified since last index
             if (indexedFiles.contains(cacheKey) && dir.exists() && dir.isDirectory) {
                 val cached = cache[cacheKey]!!
-                val anyModified = dir.walkTopDown()
-                    .filter { it.isFile && it.name.endsWith("_spec.cr") }
-                    .any { it.lastModified() > cached.lastModified }
+                val anyModified =
+                    dir
+                        .walkTopDown()
+                        .filter { it.isFile && it.name.endsWith("_spec.cr") }
+                        .any { it.lastModified() > cached.lastModified }
                 if (!anyModified) {
                     return cached.locations
                 }
@@ -120,7 +149,8 @@ class CrystalSpecFileIndexer(private val filePath: String) {
             val result = mutableMapOf<String, MutableList<TestLocation>>()
             var latestModified = 0L
             if (dir.exists() && dir.isDirectory) {
-                dir.walkTopDown()
+                dir
+                    .walkTopDown()
                     .filter { it.isFile && it.name.endsWith("_spec.cr") }
                     .forEach { specFile ->
                         val specModified = specFile.lastModified()

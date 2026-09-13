@@ -5,7 +5,6 @@ import io.github.unurgunite.crystal.CrystalParserDefinition
 import java.io.File
 
 class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
-
     override fun getTestDataPath(): String = "src/test/testData/parser"
 
     // Pin the recursion limit so golden-file comparisons are deterministic and not
@@ -17,7 +16,9 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
 
     override fun skipSpaces(): Boolean = true
 
-    override fun includeRanges(): Boolean = true    fun testShorthandBlockTypeCast() {
+    override fun includeRanges(): Boolean = true
+
+    fun testShorthandBlockTypeCast() {
         doTest(true)
     }
 
@@ -72,6 +73,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testDescribeBlock() {
         doTest(true)
     }
+
     fun testClassDefinition() {
         doTest(true)
     }
@@ -83,6 +85,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testBareMethodCalls() {
         doTest(true)
     }
+
     fun testSpecFile() {
         doTest(true)
     }
@@ -142,6 +145,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testBareSplat() {
         doTest(true)
     }
+
     fun testNestedStringInterpolation() {
         doTest(true)
     }
@@ -177,6 +181,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testOperatorPrecedence() {
         doTest(true)
     }
+
     fun testPatternMatching() {
         doTest(true)
     }
@@ -236,6 +241,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testShortBlockSyntax() {
         doTest(true)
     }
+
     fun testProcLiterals() {
         doTest(true)
     }
@@ -346,17 +352,20 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         // terminate (grammar-kit recursion bound). Use YAML serialization as a real-world
         // deeply-nested stdlib file.
         val text = File("src/test/testData/parser/YamlSerialization.cr").readText()
-        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val done =
+            java.util.concurrent.atomic
+                .AtomicBoolean(false)
         var error: Throwable? = null
-        val thread = Thread({
-            try {
-                parseFile("YamlSerialization.cr", text)
-                done.set(true)
-            } catch (t: Throwable) {
-                error = t
-                done.set(true)
-            }
-        }, "crystal-parser-recursion-watchdog")
+        val thread =
+            Thread({
+                try {
+                    parseFile("YamlSerialization.cr", text)
+                    done.set(true)
+                } catch (t: Throwable) {
+                    error = t
+                    done.set(true)
+                }
+            }, "crystal-parser-recursion-watchdog")
         thread.isDaemon = true
         thread.start()
         thread.join(20000)
@@ -369,12 +378,14 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testDebugRecordParse() {
         val tree = parseFile("test.cr", "record Config, host : String, port : Int32 = 80\n")
         val errors = mutableListOf<String>()
-        tree.accept(object : com.intellij.psi.PsiRecursiveElementVisitor() {
-            override fun visitErrorElement(element: com.intellij.psi.PsiErrorElement) {
-                errors.add("ERROR at '${element.text}': ${element.errorDescription}")
-                super.visitErrorElement(element)
-            }
-        })
+        tree.accept(
+            object : com.intellij.psi.PsiRecursiveElementVisitor() {
+                override fun visitErrorElement(element: com.intellij.psi.PsiErrorElement) {
+                    errors.add("ERROR at '${element.text}': ${element.errorDescription}")
+                    super.visitErrorElement(element)
+                }
+            },
+        )
         println("=== RECORD TREE ===")
         printTree(tree, "  ")
         println("=== ERRORS: ${errors.size} ===")
@@ -382,7 +393,10 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         assertTrue("Record parse produced errors: $errors", errors.isEmpty())
     }
 
-    private fun printTree(node: com.intellij.psi.PsiElement, indent: String) {
+    private fun printTree(
+        node: com.intellij.psi.PsiElement,
+        indent: String,
+    ) {
         if (node.firstChild == null) {
             println("$indent${node.node.elementType} '${node.text}'")
             return
@@ -430,5 +444,4 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testYamlSerialization() {
         doTest(true)
     }
-
 }

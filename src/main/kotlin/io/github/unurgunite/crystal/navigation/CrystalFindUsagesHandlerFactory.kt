@@ -4,8 +4,8 @@ import com.intellij.find.findUsages.FindUsagesHandler
 import com.intellij.find.findUsages.FindUsagesHandlerFactory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
-import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
@@ -24,12 +24,12 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * leaf inside the definition has no PsiReference.
  */
 class CrystalFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
-
     companion object {
-        private val IDENTIFIER_OR_CONSTANT = TokenSet.create(
-            CrystalTypes.IDENTIFIER,
-            CrystalTypes.CONSTANT
-        )
+        private val IDENTIFIER_OR_CONSTANT =
+            TokenSet.create(
+                CrystalTypes.IDENTIFIER,
+                CrystalTypes.CONSTANT,
+            )
 
         /**
          * Checks if [element] is a `.new` DOT-call identifier (e.g., `Foo.new`).
@@ -40,11 +40,7 @@ class CrystalFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
             if (element.text != "new") return false
 
             // Check if preceded by DOT
-            var prev = element.prevSibling
-            while (prev != null && (prev is com.intellij.psi.PsiWhiteSpace || prev.node?.elementType == CrystalTokenTypes.WHITE_SPACE)) {
-                prev = prev.prevSibling
-            }
-            return prev?.node?.elementType == CrystalTypes.DOT
+            return CrystalPsiUtils.prevMeaningfulSibling(element)?.node?.elementType == CrystalTypes.DOT
         }
 
         /**
@@ -55,39 +51,24 @@ class CrystalFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
         fun resolveNewToInitialize(element: PsiElement): PsiElement? {
             if (!isDotCallNewIdentifier(element)) return null
 
-            // Walk backwards: new → DOT → receiver CONSTANT
-            var prev = element.prevSibling
-            while (prev != null && (prev is com.intellij.psi.PsiWhiteSpace || prev.node?.elementType == CrystalTokenTypes.WHITE_SPACE)) {
-                prev = prev.prevSibling
-            }
-            if (prev?.node?.elementType != CrystalTypes.DOT) return null
-
-            // DOT is the first child of CrystalDotCallAccess, so prevSibling is null.
-            // Cross the composite boundary to find the receiver.
-            var receiver = prev.prevSibling
-            while (receiver != null && (receiver is com.intellij.psi.PsiWhiteSpace || receiver.node?.elementType == CrystalTokenTypes.WHITE_SPACE)) {
-                receiver = receiver.prevSibling
-            }
-            if (receiver == null) {
-                val dotParent = prev.parent
-                if (dotParent is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) {
-                    receiver = dotParent.prevSibling
-                    while (receiver != null && (receiver is com.intellij.psi.PsiWhiteSpace || receiver.node?.elementType == CrystalTokenTypes.WHITE_SPACE)) {
-                        receiver = receiver.prevSibling
-                    }
-                }
-            }
-            if (receiver == null) return null
-
-            // Only resolve for CONSTANT receivers (class names, not variables)
-            val isConstant = receiver.node?.elementType == CrystalTypes.CONSTANT
-            val hasConstantChild = receiver.node?.findChildByType(CrystalTypes.CONSTANT) != null
-            if (!isConstant && !hasConstantChild) return null
+            // Walk backwards: new → DOT → receiver CONSTANT.
+            // DOT is the first child of CrystalDotCallAccess, so prevSibling is null;
+            // cross the composite boundary to find the receiver.
+            val dot = CrystalPsiUtils.prevMeaningfulSibling(element)?.takeIf { it.node?.elementType == CrystalTypes.DOT } ?: return null
+            val receiver = CrystalPsiUtils.receiverBeforeDot(element, dot) ?: return null
+            if (!isConstantReceiver(receiver)) return null
 
             // Use CrystalDotCallReference's resolution logic via the element's own reference
             val dotCallAccess = element.parent
             val ref = dotCallAccess?.reference ?: element.reference
             return ref?.resolve()
+        }
+
+        /** CONSTANT receiver directly or wrapped (e.g. type path) — never a variable. */
+        private fun isConstantReceiver(receiver: PsiElement): Boolean {
+            val isConstant = receiver.node?.elementType == CrystalTypes.CONSTANT
+            val hasConstantChild = receiver.node?.findChildByType(CrystalTypes.CONSTANT) != null
+            return isConstant || hasConstantChild
         }
     }
 
@@ -96,7 +77,10 @@ class CrystalFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
         return isDotCallNewIdentifier(element)
     }
 
-    override fun createFindUsagesHandler(element: PsiElement, forHighlightUsages: Boolean): FindUsagesHandler {
+    override fun createFindUsagesHandler(
+        element: PsiElement,
+        forHighlightUsages: Boolean,
+    ): FindUsagesHandler {
         // For .new DOT-call identifiers, resolve to initialize so Find Usages
         // searches for references to initialize (which includes .new usages via
         // CrystalDotCallReference).

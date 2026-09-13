@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.run
 import junit.framework.TestCase
 
 class CrystalRunConfigurationOptionsTest : TestCase() {
-
     fun testDefaults() {
         val options = CrystalRunConfigurationOptions()
         assertEquals("", options.filePath)

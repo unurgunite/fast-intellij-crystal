@@ -6,13 +6,11 @@ package io.github.unurgunite.crystal.run
  * identically across `crystal run`, `crystal spec` and DAP launch arguments.
  */
 object CrystalCommandLine {
-
     /**
      * Splits a free-form argument string on spaces, dropping blanks.
      * (Quoting is not supported — matches the settings editor contract.)
      */
-    fun splitArgs(arguments: String): List<String> =
-        arguments.split(" ").filter { it.isNotBlank() }
+    fun splitArgs(arguments: String): List<String> = arguments.split(" ").filter { it.isNotBlank() }
 
     /**
      * Parses KEY=VALUE lines into a map. Lines without `=` are ignored.

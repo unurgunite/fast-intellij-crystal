@@ -4,10 +4,12 @@ import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
-
     private val producer = CrystalRunConfigurationProducer()
 
-    private fun configsFromCaret(code: String, path: String): List<CrystalRunConfiguration> {
+    private fun configsFromCaret(
+        code: String,
+        path: String,
+    ): List<CrystalRunConfiguration> {
         val file = myFixture.configureByText(path, code)
         val element = file.findElementAt(myFixture.caretOffset)
         assertNotNull("No element at caret", element)
@@ -16,7 +18,10 @@ class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
             .mapNotNull { it.configurationSettings?.configuration as? CrystalRunConfiguration }
     }
 
-    private fun singleConfigFromCaret(code: String, path: String): CrystalRunConfiguration {
+    private fun singleConfigFromCaret(
+        code: String,
+        path: String,
+    ): CrystalRunConfiguration {
         val configs = configsFromCaret(code, path)
         assertEquals("Expected exactly one config for $path, got $configs", 1, configs.size)
         return configs[0]
@@ -45,10 +50,11 @@ class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun testCaretInsideItRunsSingleLine() {
-        val config = singleConfigFromCaret(
-            "describe \"math\" do\n  it \"adds<caret> numbers\" do\n  end\nend\n",
-            "math_spec.cr"
-        )
+        val config =
+            singleConfigFromCaret(
+                "describe \"math\" do\n  it \"adds<caret> numbers\" do\n  end\nend\n",
+                "math_spec.cr",
+            )
         assertEquals(CrystalCommand.SPEC, config.command)
         assertEquals(2, config.specLine)
         assertEquals("spec: adds numbers", config.name)
@@ -72,13 +78,18 @@ class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun testDirectoryContextRunsAllSpecs() {
-        val dirFile = myFixture.tempDirFixture.getFile("spec")
-            ?: myFixture.tempDirFixture.findOrCreateDir("spec")
-        val dir = com.intellij.psi.PsiManager.getInstance(project).findDirectory(dirFile)
+        val dirFile =
+            myFixture.tempDirFixture.getFile("spec")
+                ?: myFixture.tempDirFixture.findOrCreateDir("spec")
+        val dir =
+            com.intellij.psi.PsiManager
+                .getInstance(project)
+                .findDirectory(dirFile)
         assertNotNull("Should resolve temp spec dir", dir)
         val context = ConfigurationContext(dir!!)
-        val configs = (context.createConfigurationsFromContext() ?: emptyList())
-            .mapNotNull { it.configurationSettings?.configuration as? CrystalRunConfiguration }
+        val configs =
+            (context.createConfigurationsFromContext() ?: emptyList())
+                .mapNotNull { it.configurationSettings?.configuration as? CrystalRunConfiguration }
         assertEquals(1, configs.size)
         assertEquals(CrystalCommand.SPEC, configs[0].command)
         assertEquals(0, configs[0].specLine)

@@ -11,7 +11,6 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
-
     private val handler = CrystalAsmParameterInfoHandler()
 
     /** Records setter calls, serves stubbed getters for parameter-info contexts. */
@@ -20,44 +19,69 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
     ) : InvocationHandler {
         val calls = mutableListOf<Pair<String, Array<out Any?>>>()
 
-        override fun invoke(proxy: Any, method: Method, args: Array<out Any?>?): Any? {
+        override fun invoke(
+            proxy: Any,
+            method: Method,
+            args: Array<out Any?>?,
+        ): Any? {
             val name = method.name
-            if (name.startsWith("set") || name.startsWith("show") || name == "setupUIComponentPresentation") {
+            if (isSetterCall(name)) {
                 calls.add(name to (args ?: emptyArray()))
                 return defaultFor(method.returnType)
             }
-            if (values.containsKey(name)) return values[name]
-            if (name == "toString") return "ContextProxy"
-            if (name == "hashCode") return System.identityHashCode(proxy)
-            if (name == "equals") return proxy === args?.firstOrNull()
-            return defaultFor(method.returnType)
+            return stubbedResult(name, proxy, args, method.returnType)
         }
 
-        private fun defaultFor(type: Class<*>): Any? = when (type) {
-            java.lang.Boolean.TYPE -> false
-            java.lang.Integer.TYPE -> 0
-            java.lang.Long.TYPE -> 0L
-            Void.TYPE -> null
-            else -> null
-        }
+        private fun isSetterCall(name: String): Boolean =
+            name.startsWith("set") || name.startsWith("show") || name == "setupUIComponentPresentation"
+
+        private fun stubbedResult(
+            name: String,
+            proxy: Any,
+            args: Array<out Any?>?,
+            returnType: Class<*>,
+        ): Any? =
+            when {
+                values.containsKey(name) -> values[name]
+                name == "toString" -> "ContextProxy"
+                name == "hashCode" -> System.identityHashCode(proxy)
+                name == "equals" -> proxy === args?.firstOrNull()
+                else -> defaultFor(returnType)
+            }
+
+        private fun defaultFor(type: Class<*>): Any? =
+            when (type) {
+                java.lang.Boolean.TYPE -> false
+                java.lang.Integer.TYPE -> 0
+                java.lang.Long.TYPE -> 0L
+                Void.TYPE -> null
+                else -> null
+            }
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T : Any> context(iface: Class<T>, values: Map<String, Any?>): Pair<T, ContextProxy> {
+    private fun <T : Any> context(
+        iface: Class<T>,
+        values: Map<String, Any?>,
+    ): Pair<T, ContextProxy> {
         val proxy = ContextProxy(values)
-        val instance = Proxy.newProxyInstance(
-            iface.classLoader, arrayOf(iface), proxy
-        ) as T
+        val instance =
+            Proxy.newProxyInstance(
+                iface.classLoader,
+                arrayOf(iface),
+                proxy,
+            ) as T
         return instance to proxy
     }
 
     private fun ownerAtCaret(): CrystalAsmExpression {
         val file = myFixture.file
         val offset = myFixture.editor.caretModel.offset
-        val (context, _) = context(
-            CreateParameterInfoContext::class.java,
-            mapOf("getFile" to file, "getOffset" to offset, "getProject" to project)
-        )
+        val (context, _) =
+            context(
+                CreateParameterInfoContext::class.java,
+                mapOf("getFile" to file, "getOffset" to offset, "getProject" to project),
+            )
         val found = handler.findElementForParameterInfo(context)
         assertNotNull("Handler should find asm expression at caret", found)
         return found!!
@@ -65,14 +89,15 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
 
     private fun sectionAtCaret(): Int {
         val owner = ownerAtCaret()
-        val (context, proxy) = context(
-            UpdateParameterInfoContext::class.java,
-            mapOf(
-                "getFile" to myFixture.file,
-                "getOffset" to myFixture.editor.caretModel.offset,
-                "getProject" to project
+        val (context, proxy) =
+            context(
+                UpdateParameterInfoContext::class.java,
+                mapOf(
+                    "getFile" to myFixture.file,
+                    "getOffset" to myFixture.editor.caretModel.offset,
+                    "getProject" to project,
+                ),
             )
-        )
         handler.updateParameterInfo(owner, context)
         val setCall = proxy.calls.firstOrNull { it.first == "setCurrentParameter" }
         assertNotNull("Handler should call setCurrentParameter", setCall)
@@ -108,10 +133,11 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
         myFixture.configureByText("test.cr", "asm(\"no<caret>p\")")
         val file = myFixture.file
         val offset = myFixture.editor.caretModel.offset
-        val (context, proxy) = context(
-            CreateParameterInfoContext::class.java,
-            mapOf("getFile" to file, "getOffset" to offset, "getProject" to project)
-        )
+        val (context, proxy) =
+            context(
+                CreateParameterInfoContext::class.java,
+                mapOf("getFile" to file, "getOffset" to offset, "getProject" to project),
+            )
         val owner = handler.findElementForParameterInfo(context)
         assertNotNull("Should find asm expression", owner)
         val itemsCall = proxy.calls.firstOrNull { it.first == "setItemsToShow" }
@@ -124,10 +150,11 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
 
     fun testUpdateUIHighlightsCurrentSection() {
         val info = CrystalAsmParameterInfoHandler.AsmInfo()
-        val (context, proxy) = context(
-            ParameterInfoUIContext::class.java,
-            mapOf("getCurrentParameterIndex" to 1, "getDefaultParameterColor" to null)
-        )
+        val (context, proxy) =
+            context(
+                ParameterInfoUIContext::class.java,
+                mapOf("getCurrentParameterIndex" to 1, "getDefaultParameterColor" to null),
+            )
         handler.updateUI(info, context)
         val setup = proxy.calls.firstOrNull { it.first == "setupUIComponentPresentation" }
         assertNotNull("Handler should set up UI presentation", setup)
@@ -146,10 +173,11 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
     }
 
     fun testUpdateUIDisablesOnNullInfo() {
-        val (context, proxy) = context(
-            ParameterInfoUIContext::class.java,
-            mapOf("getCurrentParameterIndex" to 0)
-        )
+        val (context, proxy) =
+            context(
+                ParameterInfoUIContext::class.java,
+                mapOf("getCurrentParameterIndex" to 0),
+            )
         handler.updateUI(null, context)
         val disable = proxy.calls.firstOrNull { it.first == "setUIComponentEnabled" }
         assertNotNull("Handler should disable UI component on null info", disable)

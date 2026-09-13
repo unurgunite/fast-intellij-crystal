@@ -4,7 +4,6 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
 
 class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
-
     private val realFiles = mutableListOf<java.io.File>()
 
     override fun tearDown() {
@@ -16,8 +15,11 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
             // Drain async VFS/index fallout synchronously (see
             // CrystalSpecSourceRootConfiguratorTest: un-drained create/delete
             // events break later highlighting tests).
-            com.intellij.openapi.vfs.LocalFileSystem.getInstance().refresh(false)
-            com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            com.intellij.openapi.vfs.LocalFileSystem
+                .getInstance()
+                .refresh(false)
+            com.intellij.testFramework.PlatformTestUtil
+                .dispatchAllEventsInIdeEventQueue()
         } finally {
             super.tearDown()
         }
@@ -30,7 +32,10 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
      * temp:// which LocalFileSystem cannot see, but the provider deliberately
      * uses model-free LocalFileSystem checks — so the test does too.
      */
-    private fun writeBaseFile(name: String, content: String) {
+    private fun writeBaseFile(
+        name: String,
+        content: String,
+    ) {
         val basePath = project.basePath
         assertNotNull("No base path in test project", basePath)
         val file = java.io.File(basePath!!, name)
@@ -38,7 +43,9 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
         file.parentFile?.mkdirs()
         file.writeText(content)
         realFiles.add(file)
-        com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByPath(file.absolutePath)
+        com.intellij.openapi.vfs.LocalFileSystem
+            .getInstance()
+            .refreshAndFindFileByPath(file.absolutePath)
     }
 
     fun testNonCrystalProjectYieldsNoLibrary() {
@@ -52,18 +59,18 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
         CrystalStdlibLibraryProvider.clearCache()
         writeBaseFile("shard.yml", "name: demo")
         CrystalSettings.getInstance(project).loadState(
-            CrystalSettings.State(crystalPath = "/nonexistent-dir-xyz/crystal")
+            CrystalSettings.State(crystalPath = "/nonexistent-dir-xyz/crystal"),
         )
         assertTrue(
             "Unresolvable stdlib must yield no library, not a crash",
-            provider.getAdditionalProjectLibraries(project).isEmpty()
+            provider.getAdditionalProjectLibraries(project).isEmpty(),
         )
     }
 
     fun testCrystalProjectYieldsStableLibrary() {
         Assume.assumeTrue(
             "Requires installed Crystal binary",
-            CrystalStdlibResolver.resolveStdlibPath(project) != null
+            CrystalStdlibResolver.resolveStdlibPath(project) != null,
         )
         writeBaseFile("shard.yml", "name: demo")
         CrystalStdlibLibraryProvider.clearCache()

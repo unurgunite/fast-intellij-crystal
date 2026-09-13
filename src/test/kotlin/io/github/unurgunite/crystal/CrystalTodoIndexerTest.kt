@@ -10,7 +10,6 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
  * TODO items via the application extension point, which requires a test app.
  */
 class CrystalTodoIndexerTest : BasePlatformTestCase() {
-
     /** Indexes text through the real filter+cap lexer stack, returns occurrence masks. */
     private fun indexedMasks(text: String): List<Int> {
         val ids = IdDataConsumer()
@@ -28,7 +27,7 @@ class CrystalTodoIndexerTest : BasePlatformTestCase() {
         val inComments = UsageSearchContext.IN_COMMENTS.toInt()
         assertTrue(
             "All indexed words must carry the IN_COMMENTS bit, got: $masks",
-            masks.all { it and inComments != 0 }
+            masks.all { it and inComments != 0 },
         )
     }
 

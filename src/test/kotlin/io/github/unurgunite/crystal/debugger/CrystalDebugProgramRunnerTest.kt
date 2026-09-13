@@ -9,7 +9,6 @@ import io.github.unurgunite.crystal.run.CrystalRunConfigurationType
 import io.github.unurgunite.crystal.run.CrystalSpecFactory
 
 class CrystalDebugProgramRunnerTest : BasePlatformTestCase() {
-
     private val runner = CrystalDebugProgramRunner()
 
     private fun crystalConfig(): CrystalRunConfiguration {

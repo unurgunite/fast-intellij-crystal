@@ -4,7 +4,6 @@ import com.intellij.codeInsight.template.TemplateActionContext
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalTemplateContextTypeTest : BasePlatformTestCase() {
-
     private val contextType = CrystalTemplateContextType()
 
     fun testCrystalFileIsInContext() {

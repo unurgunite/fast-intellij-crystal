@@ -7,14 +7,17 @@ import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 
 class CrystalInstanceVarReferencesSearcherTest : BasePlatformTestCase() {
-
     private val searcher = CrystalInstanceVarReferencesSearcher()
 
-    private fun accesses(code: String, varName: String): List<com.intellij.psi.PsiElement> {
+    private fun accesses(
+        code: String,
+        varName: String,
+    ): List<com.intellij.psi.PsiElement> {
         val file = myFixture.configureByText("test.cr", code)
-        return PsiTreeUtil.collectElements(file) {
-            (it is CrystalInstanceVarAccess || it is CrystalClassVarAccess) && it.text == varName
-        }.toList()
+        return PsiTreeUtil
+            .collectElements(file) {
+                (it is CrystalInstanceVarAccess || it is CrystalClassVarAccess) && it.text == varName
+            }.toList()
     }
 
     /**
@@ -23,17 +26,27 @@ class CrystalInstanceVarReferencesSearcherTest : BasePlatformTestCase() {
      */
     private fun searcherRefs(target: com.intellij.psi.PsiElement): List<com.intellij.psi.PsiReference> {
         val refs = mutableListOf<com.intellij.psi.PsiReference>()
-        val params = ReferencesSearch.SearchParameters(
-            target,
-            com.intellij.psi.search.GlobalSearchScope.fileScope(myFixture.file),
-            false
+        val params =
+            ReferencesSearch.SearchParameters(
+                target,
+                com.intellij.psi.search.GlobalSearchScope
+                    .fileScope(myFixture.file),
+                false,
+            )
+        searcher.processQuery(
+            params,
+            com.intellij.util.Processor {
+                refs.add(it)
+                true
+            },
         )
-        searcher.processQuery(params, com.intellij.util.Processor { refs.add(it); true })
         return refs
     }
 
     fun testFindUsagesFindsReadsAndWrites() {
-        val found = accesses("""
+        val found =
+            accesses(
+                """
 class Foo
   def m
     @x = 1
@@ -41,7 +54,9 @@ class Foo
     @x = @x + 1
   end
 end
-        """.trimIndent(), "@x")
+                """.trimIndent(),
+                "@x",
+            )
         assertEquals(4, found.size)
         val usages = searcherRefs(found[0])
         // All accesses except the target itself
@@ -51,7 +66,9 @@ end
     }
 
     fun testFindUsagesIgnoresNestedClass() {
-        val found = accesses("""
+        val found =
+            accesses(
+                """
 class Outer
   def m
     @x = 1
@@ -64,7 +81,9 @@ class Outer
     end
   end
 end
-        """.trimIndent(), "@x")
+                """.trimIndent(),
+                "@x",
+            )
         assertEquals(3, found.size)
         val usages = searcherRefs(found[0])
         assertEquals("Inner's @x must not leak into Outer's usages", 1, usages.size)
@@ -79,7 +98,9 @@ end
     }
 
     fun testFindUsagesClassVariable() {
-        val found = accesses("""
+        val found =
+            accesses(
+                """
 class Foo
   @@count = 0
 
@@ -88,7 +109,9 @@ class Foo
     puts @@count
   end
 end
-        """.trimIndent(), "@@count")
+                """.trimIndent(),
+                "@@count",
+            )
         assertEquals(3, found.size)
         val usages = searcherRefs(found[0])
         assertEquals(2, usages.size)

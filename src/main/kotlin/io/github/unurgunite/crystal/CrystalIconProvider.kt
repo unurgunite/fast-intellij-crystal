@@ -6,8 +6,10 @@ import com.intellij.psi.PsiFile
 import javax.swing.Icon
 
 class CrystalIconProvider : IconProvider() {
-
-    override fun getIcon(element: PsiElement, flags: Int): Icon? {
+    override fun getIcon(
+        element: PsiElement,
+        flags: Int,
+    ): Icon? {
         if (element is PsiFile) {
             val name = element.name
             if (name.endsWith("_spec.cr")) {

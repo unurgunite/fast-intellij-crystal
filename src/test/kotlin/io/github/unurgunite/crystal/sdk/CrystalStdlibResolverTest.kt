@@ -5,7 +5,6 @@ import org.junit.Assume
 import java.io.File
 
 class CrystalStdlibResolverTest : BasePlatformTestCase() {
-
     override fun tearDown() {
         // Restore default settings so a bogus path cannot leak into other tests.
         try {
@@ -32,7 +31,7 @@ class CrystalStdlibResolverTest : BasePlatformTestCase() {
         useCrystalBinary("/nonexistent-dir-xyz/crystal")
         assertNull(
             "Bogus crystal binary must yield null stdlib path",
-            CrystalStdlibResolver.resolveStdlibPath(project)
+            CrystalStdlibResolver.resolveStdlibPath(project),
         )
     }
 
@@ -40,7 +39,7 @@ class CrystalStdlibResolverTest : BasePlatformTestCase() {
         useCrystalBinary("/nonexistent-dir-xyz/crystal")
         assertNull(
             "Bogus crystal binary must yield null version",
-            CrystalStdlibResolver.resolveCrystalVersion(project)
+            CrystalStdlibResolver.resolveCrystalVersion(project),
         )
     }
 

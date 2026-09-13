@@ -23,30 +23,36 @@ import java.io.File
  */
 class CrystalDebugRunState(
     environment: ExecutionEnvironment,
-    private val configuration: CrystalRunConfiguration
-) : CommandLineState(environment), DapLaunchArgumentsProvider {
-
+    private val configuration: CrystalRunConfiguration,
+) : CommandLineState(environment),
+    DapLaunchArgumentsProvider {
     private val outputBinary: File by lazy {
         val baseName = File(configuration.filePath).nameWithoutExtension
-        val binaryName = if (System.getProperty("os.name")?.lowercase()?.contains("win") == true) {
-            "$baseName.exe"
-        } else {
-            baseName
-        }
+        val binaryName =
+            if (System.getProperty("os.name")?.lowercase()?.contains("win") == true) {
+                "$baseName.exe"
+            } else {
+                baseName
+            }
         File(configuration.workingDirectory, "bin/$binaryName")
     }
 
-    override fun isApplicable(executorId: String, profile: RunProfile): Boolean {
-        return profile is CrystalRunConfiguration
-    }
+    override fun isApplicable(
+        executorId: String,
+        profile: RunProfile,
+    ): Boolean = profile is CrystalRunConfiguration
 
-    override fun getLaunchArguments(project: Project, profile: RunProfile): LaunchRequestArguments {
+    override fun getLaunchArguments(
+        project: Project,
+        profile: RunProfile,
+    ): LaunchRequestArguments {
         buildWithDebugInfo()
 
-        val args = mutableMapOf<String, Any>(
-            "program" to outputBinary.absolutePath,
-            "cwd" to configuration.workingDirectory
-        )
+        val args =
+            mutableMapOf<String, Any>(
+                "program" to outputBinary.absolutePath,
+                "cwd" to configuration.workingDirectory,
+            )
 
         if (configuration.arguments.isNotBlank()) {
             args["args"] = CrystalCommandLine.splitArgs(configuration.arguments)
@@ -59,14 +65,15 @@ class CrystalDebugRunState(
 
         val formattersPath = extractFormattersScript()
         val unixPath = formattersPath.replace("\\", "/")
-        args["initCommands"] = listOf(
-            "command script import \"$unixPath\""
-        )
+        args["initCommands"] =
+            listOf(
+                "command script import \"$unixPath\"",
+            )
 
         return LaunchRequestArguments(
             CrystalDebugAdapterId,
             DapStartRequest.Launch,
-            args
+            args,
         )
     }
 
@@ -86,14 +93,15 @@ class CrystalDebugRunState(
      * The `crystal build --debug` argument list, extracted for testability.
      * [buildWithDebugInfo] executes exactly this list.
      */
-    fun buildDebugArgs(): List<String> = listOf(
-        configuration.crystalPath,
-        "build",
-        "--debug",
-        configuration.filePath,
-        "-o",
-        outputBinary.absolutePath
-    )
+    fun buildDebugArgs(): List<String> =
+        listOf(
+            configuration.crystalPath,
+            "build",
+            "--debug",
+            configuration.filePath,
+            "-o",
+            outputBinary.absolutePath,
+        )
 
     private fun buildWithDebugInfo() {
         if (built) return
@@ -105,10 +113,11 @@ class CrystalDebugRunState(
 
         val buildArgs = buildDebugArgs().toMutableList()
 
-        val buildCommand = GeneralCommandLine(buildArgs).apply {
-            workDirectory = File(configuration.workingDirectory)
-            withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
-        }
+        val buildCommand =
+            GeneralCommandLine(buildArgs).apply {
+                workDirectory = File(configuration.workingDirectory)
+                withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+            }
 
         val process = buildCommand.createProcess()
         val exitCode = process.waitFor()
@@ -130,8 +139,9 @@ class CrystalDebugRunState(
         // Always overwrite with the latest version from plugin resources.
         // The file is small (~700 lines) so the write cost is negligible,
         // and it ensures updates to formatters take effect immediately.
-        val resource = javaClass.getResourceAsStream("/debugger/crystal_formatters.py")
-            ?: throw ExecutionException("Crystal debug formatters not found in plugin resources")
+        val resource =
+            javaClass.getResourceAsStream("/debugger/crystal_formatters.py")
+                ?: throw ExecutionException("Crystal debug formatters not found in plugin resources")
         targetFile.writeBytes(resource.readBytes())
 
         return targetFile.absolutePath

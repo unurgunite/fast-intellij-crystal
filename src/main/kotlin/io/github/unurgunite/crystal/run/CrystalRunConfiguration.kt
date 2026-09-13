@@ -1,7 +1,10 @@
 package io.github.unurgunite.crystal.run
 
 import com.intellij.execution.Executor
-import com.intellij.execution.configurations.*
+import com.intellij.execution.configurations.ConfigurationFactory
+import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.execution.configurations.RunConfigurationBase
+import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessHandlerFactory
@@ -16,43 +19,51 @@ class CrystalRunConfiguration(
     project: Project,
     factory: ConfigurationFactory,
     name: String,
-    var command: CrystalCommand = CrystalCommand.RUN
+    var command: CrystalCommand = CrystalCommand.RUN,
 ) : RunConfigurationBase<CrystalRunConfigurationOptions>(project, factory, name) {
-
     var filePath: String
         get() = options.filePath ?: ""
-        set(value) { options.filePath = value }
+        set(value) {
+            options.filePath = value
+        }
 
     var arguments: String
         get() = options.arguments ?: ""
-        set(value) { options.arguments = value }
+        set(value) {
+            options.arguments = value
+        }
 
     var workingDirectory: String
         // Stored default is "" (never null), so treat blank as unset to let the
         // project base path fallback actually work.
         get() = options.workingDirectory?.ifBlank { null } ?: project.basePath ?: ""
-        set(value) { options.workingDirectory = value }
+        set(value) {
+            options.workingDirectory = value
+        }
 
     var environmentVariables: String
         get() = options.environmentVariables ?: ""
-        set(value) { options.environmentVariables = value }
+        set(value) {
+            options.environmentVariables = value
+        }
 
     var crystalPath: String
         get() = options.crystalPath ?: "crystal"
-        set(value) { options.crystalPath = value }
+        set(value) {
+            options.crystalPath = value
+        }
 
     /** Line number for single-test execution (crystal spec file:line). 0 means run all. */
     var specLine: Int = 0
 
-    override fun getOptions(): CrystalRunConfigurationOptions {
-        return super.getOptions() as CrystalRunConfigurationOptions
-    }
+    override fun getOptions(): CrystalRunConfigurationOptions = super.getOptions() as CrystalRunConfigurationOptions
 
-    override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
-        return CrystalRunSettingsEditor(project)
-    }
+    override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> = CrystalRunSettingsEditor(project)
 
-    override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
+    override fun getState(
+        executor: Executor,
+        environment: ExecutionEnvironment,
+    ): RunProfileState {
         // Debug executor → use DAP-based debug run state
         if (executor.id == DefaultDebugExecutor.EXECUTOR_ID) {
             return CrystalDebugRunState(environment, this)
@@ -66,11 +77,12 @@ class CrystalRunConfiguration(
 
     override fun readExternal(element: Element) {
         super.readExternal(element)
-        command = try {
-            CrystalCommand.valueOf(element.getAttributeValue("crystal-command") ?: "RUN")
-        } catch (_: Exception) {
-            CrystalCommand.RUN
-        }
+        command =
+            try {
+                CrystalCommand.valueOf(element.getAttributeValue("crystal-command") ?: "RUN")
+            } catch (_: Exception) {
+                CrystalCommand.RUN
+            }
     }
 
     override fun writeExternal(element: Element) {

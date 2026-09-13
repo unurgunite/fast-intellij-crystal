@@ -13,10 +13,10 @@ import io.github.unurgunite.crystal.navigation.CrystalInstanceVarFinder
  * All occurrences (including the "definition") resolve to the same target,
  * enabling Find Usages to find all of them.
  */
-class CrystalInstanceVarReference(element: PsiElement) :
-    PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
-
-    private val varName: String = element.text  // Full name including @/@@
+class CrystalInstanceVarReference(
+    element: PsiElement,
+) : PsiReferenceBase<PsiElement>(element, TextRange(0, element.textLength), true) {
+    private val varName: String = element.text // Full name including @/@@
 
     override fun resolve(): PsiElement? {
         val allOccurrences = CrystalInstanceVarFinder.findAllUsages(varName, element)
@@ -38,17 +38,19 @@ class CrystalInstanceVarReference(element: PsiElement) :
     }
 
     override fun handleElementRename(newElementName: String): PsiElement {
-        val identNode = element.node.findChildByType(CrystalTypes.INSTANCE_VAR)
-            ?: element.node.findChildByType(CrystalTypes.CLASS_VAR)
-            ?: return element
+        val identNode =
+            element.node.findChildByType(CrystalTypes.INSTANCE_VAR)
+                ?: element.node.findChildByType(CrystalTypes.CLASS_VAR)
+                ?: return element
 
         // Strip any @/@@ prefix the user may have typed, then re-apply from original token type.
         val bareName = newElementName.removePrefix("@").removePrefix("@")
-        val fixedName = when (identNode.elementType) {
-            CrystalTypes.INSTANCE_VAR -> "@$bareName"
-            CrystalTypes.CLASS_VAR -> "@@$bareName"
-            else -> bareName
-        }
+        val fixedName =
+            when (identNode.elementType) {
+                CrystalTypes.INSTANCE_VAR -> "@$bareName"
+                CrystalTypes.CLASS_VAR -> "@@$bareName"
+                else -> bareName
+            }
 
         val newLeaf = createLeafFromText(element.project, fixedName, identNode.elementType) ?: return element
         identNode.treeParent.replaceChild(identNode, newLeaf)
@@ -57,12 +59,11 @@ class CrystalInstanceVarReference(element: PsiElement) :
 
     override fun getVariants(): Array<Any> = emptyArray()
 
-    private fun findEnclosingClass(el: PsiElement): PsiElement? {
-        return PsiTreeUtil.getParentOfType(
+    private fun findEnclosingClass(el: PsiElement): PsiElement? =
+        PsiTreeUtil.getParentOfType(
             el,
             CrystalClassDefinition::class.java,
             CrystalStructDefinition::class.java,
-            CrystalModuleDefinition::class.java
+            CrystalModuleDefinition::class.java,
         )
-    }
 }

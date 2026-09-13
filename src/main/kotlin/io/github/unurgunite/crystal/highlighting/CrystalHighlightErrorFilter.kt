@@ -19,6 +19,11 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * For all other parser errors, the original highlight is preserved.
  */
 class CrystalHighlightErrorFilter : HighlightErrorFilter() {
+    companion object {
+        // How far up the tree to look for a BAD_CHARACTER sibling when deciding
+        // whether a parser error is just fallout from an invalid single-quote string.
+        private const val MAX_CAUSE_WALK_UP_LEVELS = 3
+    }
 
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
         // This filter is registered globally (no language restriction), so the platform
@@ -44,8 +49,8 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
      */
     private fun isCausedByBadCharacter(element: PsiErrorElement): Boolean {
         var current: com.intellij.psi.PsiElement? = element
-        // Traverse up to 3 levels looking for BAD_CHARACTER siblings
-        repeat(3) {
+        // Traverse up to MAX_CAUSE_WALK_UP_LEVELS levels looking for BAD_CHARACTER siblings
+        repeat(MAX_CAUSE_WALK_UP_LEVELS) {
             current = current?.parent ?: return false
             var sibling = current.firstChild
             while (sibling != null) {

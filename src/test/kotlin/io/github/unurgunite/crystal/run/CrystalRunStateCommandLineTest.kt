@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.run
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalRunStateCommandLineTest : BasePlatformTestCase() {
-
     private fun createConfig(command: CrystalCommand): CrystalRunConfiguration {
         val type = CrystalRunConfigurationType()
         val factory = type.configurationFactories.first { it is CrystalSpecFactory }
@@ -26,7 +25,7 @@ class CrystalRunStateCommandLineTest : BasePlatformTestCase() {
         val cmd = CrystalRunState.buildCommandLine(config)
         assertEquals(
             listOf("run", "/tmp/main.cr", "--", "--verbose", "input.txt"),
-            cmd.parametersList.list
+            cmd.parametersList.list,
         )
     }
 

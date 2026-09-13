@@ -18,7 +18,6 @@ import org.jetbrains.jps.model.java.JavaSourceRootType
  * with this activity running on every startup) previously livelocked project indexing.
  */
 class CrystalSpecSourceRootConfigurator : ProjectActivity {
-
     companion object {
         /**
          * Path-based ownership check, extracted for testability: unit-testable without
@@ -27,7 +26,10 @@ class CrystalSpecSourceRootConfigurator : ProjectActivity {
          *
          * Compares on directory boundaries: `/proj-other/spec` is NOT under `/proj`.
          */
-        fun isUnderContentRoot(specPath: String, contentRootPath: String): Boolean {
+        fun isUnderContentRoot(
+            specPath: String,
+            contentRootPath: String,
+        ): Boolean {
             val root = contentRootPath.trimEnd('/')
             return specPath == root || specPath.startsWith("$root/")
         }
@@ -47,29 +49,48 @@ class CrystalSpecSourceRootConfigurator : ProjectActivity {
         }
     }
 
-    private fun configureSpecRoot(project: Project, specDir: VirtualFile) {
+    private fun configureSpecRoot(
+        project: Project,
+        specDir: VirtualFile,
+    ) {
         val modules = ModuleManager.getInstance(project).modules
         if (modules.isEmpty()) return
 
         for (module in modules) {
             ModuleRootModificationUtil.updateModel(module) { model ->
-                for (entry in model.contentEntries) {
-                    val contentRoot = entry.file ?: continue
-                    if (!isUnderContentRoot(specDir.path, contentRoot.path)) continue
-
-                    // Idempotency: skip if spec is already a test source root.
-                    // Compare by PATH (not VirtualFile identity) so the check survives
-                    // restarts and re-indexing and we never re-add the same folder.
-                    val alreadyMarked = entry.sourceFolders.any { folder ->
-                        folder.file?.path == specDir.path &&
-                        folder.rootType == JavaSourceRootType.TEST_SOURCE
-                    }
-                    if (alreadyMarked) return@updateModel
-
-                    entry.addSourceFolder(specDir, JavaSourceRootType.TEST_SOURCE)
-                    return@updateModel
-                }
+                model.contentEntries
+                    .firstOrNull { isOwnedContentEntry(it, specDir) }
+                    ?.let { markTestRoot(it, specDir) }
             }
+        }
+    }
+
+    /**
+     * True when [specDir] lives under this content entry. Compare by PATH (not
+     * VirtualFile identity) so the check survives restarts and re-indexing.
+     */
+    private fun isOwnedContentEntry(
+        entry: com.intellij.openapi.roots.ContentEntry,
+        specDir: VirtualFile,
+    ): Boolean {
+        val contentRoot = entry.file ?: return false
+        return isUnderContentRoot(specDir.path, contentRoot.path)
+    }
+
+    /**
+     * Adds spec as a test source root unless already marked (idempotent).
+     */
+    private fun markTestRoot(
+        entry: com.intellij.openapi.roots.ContentEntry,
+        specDir: VirtualFile,
+    ) {
+        val alreadyMarked =
+            entry.sourceFolders.any { folder ->
+                folder.file?.path == specDir.path &&
+                    folder.rootType == JavaSourceRootType.TEST_SOURCE
+            }
+        if (!alreadyMarked) {
+            entry.addSourceFolder(specDir, JavaSourceRootType.TEST_SOURCE)
         }
     }
 }

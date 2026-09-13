@@ -17,18 +17,18 @@ import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
  * (see CrystalReference.buildStdlibData), so no long read lock is held.
  */
 class CrystalStdlibCacheWarmup : ProjectActivity {
-
     override suspend fun execute(project: Project) {
         if (!isCrystalProject(project)) return
 
         DumbService.getInstance(project).runWhenSmart {
-            val thread = Thread({
-                try {
-                    CrystalReference.warmStdlibCache()
-                } catch (_: Throwable) {
-                    // Best-effort; resolution falls back to a lazy build on first use.
-                }
-            }, "CrystalStdlibCacheWarmup")
+            val thread =
+                Thread({
+                    try {
+                        CrystalReference.warmStdlibCache()
+                    } catch (_: Throwable) {
+                        // Best-effort; resolution falls back to a lazy build on first use.
+                    }
+                }, "CrystalStdlibCacheWarmup")
             thread.priority = Thread.MIN_PRIORITY
             thread.isDaemon = true
             thread.start()
@@ -37,11 +37,16 @@ class CrystalStdlibCacheWarmup : ProjectActivity {
 
     private fun isCrystalProject(project: Project): Boolean {
         val basePath = project.basePath ?: return false
-        val baseDir = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-            .findFileByPath(basePath) ?: return false
+        val baseDir =
+            com.intellij.openapi.vfs.LocalFileSystem
+                .getInstance()
+                .findFileByPath(basePath) ?: return false
         if (baseDir.findChild("shard.yml") != null) return true
-        if (baseDir.children?.any { it.extension == "cr" } == true) return true
-        if (CrystalStdlibResolver.resolveStdlibPath(project) == null) return false
-        return baseDir.children?.any { it.isDirectory && it.name == "src" } == true
+        val children = baseDir.children ?: return false
+        return children.any { it.extension == "cr" } ||
+            (
+                children.any { it.isDirectory && it.name == "src" } &&
+                    CrystalStdlibResolver.resolveStdlibPath(project) != null
+            )
     }
 }

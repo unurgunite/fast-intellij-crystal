@@ -5,7 +5,6 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.psi.CrystalClassDefinition
 
 class CrystalNavigationItemTest : BasePlatformTestCase() {
-
     private fun fooItem(): CrystalNavigationItem {
         val file = myFixture.configureByText("test.cr", "class Foo\nend\n")
         val def = PsiTreeUtil.findChildOfType(file, CrystalClassDefinition::class.java)!!

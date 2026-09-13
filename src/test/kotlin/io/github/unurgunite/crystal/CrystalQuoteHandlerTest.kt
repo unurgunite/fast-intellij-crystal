@@ -4,10 +4,9 @@ import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalQuoteHandlerTest : BasePlatformTestCase() {
-
     private val handler = CrystalQuoteHandler()
 
-    private fun iteratorAt(code: String, caretMarker: String = "<caret>"): com.intellij.openapi.editor.highlighter.HighlighterIterator {
+    private fun iteratorAt(code: String): com.intellij.openapi.editor.highlighter.HighlighterIterator {
         myFixture.configureByText("test.cr", code)
         val offset = myFixture.caretOffset
         val highlighter = (myFixture.editor as EditorEx).highlighter

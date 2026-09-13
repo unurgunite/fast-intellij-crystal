@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.run
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalRunSettingsEditorTest : BasePlatformTestCase() {
-
     private fun createConfig(command: CrystalCommand): CrystalRunConfiguration {
         val type = CrystalRunConfigurationType()
         val factory = type.configurationFactories.first { it is CrystalSpecFactory }

@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.structure
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalStructureViewTest : BasePlatformTestCase() {
-
     private fun rootChildren(code: String): List<String> {
         val file = myFixture.configureByText("test.cr", code)
         val root = CrystalStructureViewElement(file)
@@ -11,7 +10,9 @@ class CrystalStructureViewTest : BasePlatformTestCase() {
     }
 
     fun testTopLevelDefinitionsListed() {
-        val names = rootChildren("""
+        val names =
+            rootChildren(
+                """
 class Foo
 end
 
@@ -22,7 +23,8 @@ def top_method
 end
 
 CONSTANT = 1
-        """.trimIndent())
+                """.trimIndent(),
+            )
         assertTrue("Foo in $names", "Foo" in names)
         assertTrue("Bar in $names", "Bar" in names)
         // Methods render with signature: name(params)
@@ -31,7 +33,10 @@ CONSTANT = 1
     }
 
     fun testClassMembersNested() {
-        val file = myFixture.configureByText("test.cr", """
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
 class Foo
   def bar
   end
@@ -39,7 +44,8 @@ class Foo
   def baz
   end
 end
-        """.trimIndent())
+                """.trimIndent(),
+            )
         val root = CrystalStructureViewElement(file)
         assertEquals(1, root.children.size)
         assertEquals("Foo", root.children[0].presentation.presentableText)
@@ -48,12 +54,16 @@ end
     }
 
     fun testEnumConstantsListed() {
-        val file = myFixture.configureByText("test.cr", """
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
 enum Color
   Red
   Green
 end
-        """.trimIndent())
+                """.trimIndent(),
+            )
         val root = CrystalStructureViewElement(file)
         assertEquals(1, root.children.size)
         val members = root.children[0].children.map { it.presentation.presentableText }

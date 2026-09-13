@@ -3,10 +3,10 @@ package io.github.unurgunite.crystal.project
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -24,9 +24,10 @@ import javax.swing.Icon
 import javax.swing.JComponent
 
 class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalProjectSettings>() {
-
     override fun getName(): String = "Crystal"
+
     override fun getLogo(): Icon = CrystalIcons.FILE
+
     override fun getDescription(): String = "Create a new Crystal project (application or library)"
 
     override fun createPeer(): ProjectGeneratorPeer<CrystalProjectSettings> = CrystalProjectGeneratorPeer()
@@ -45,17 +46,18 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
          * IDE entries missing from a freshly generated `.gitignore`.
          * Returned without the `# IDE` header; empty when nothing is missing.
          */
-        fun missingGitignoreEntries(content: String): String = buildString {
-            if (!content.contains(".idea/")) appendLine(".idea/")
-            if (!content.contains("*.iml")) appendLine("*.iml")
-        }
+        fun missingGitignoreEntries(content: String): String =
+            buildString {
+                if (!content.contains(".idea/")) appendLine(".idea/")
+                if (!content.contains("*.iml")) appendLine("*.iml")
+            }
     }
 
     override fun generateProject(
         project: Project,
         baseDir: VirtualFile,
         settings: CrystalProjectSettings,
-        module: Module
+        module: Module,
     ) {
         val projectType = settings.projectType
         val crystalPath = resolveCrystalPath(settings)
@@ -76,10 +78,11 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
         // Run crystal init on background thread, then refresh VFS
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
-                val process = ProcessBuilder(crystalPath, "init", projectType, projectName)
-                    .directory(java.io.File(basePath).parentFile)
-                    .redirectErrorStream(true)
-                    .start()
+                val process =
+                    ProcessBuilder(crystalPath, "init", projectType, projectName)
+                        .directory(java.io.File(basePath).parentFile)
+                        .redirectErrorStream(true)
+                        .start()
                 process.inputStream.bufferedReader().readText()
                 process.waitFor()
 
@@ -102,7 +105,6 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
 }
 
 class CrystalProjectGeneratorPeer : GeneratorPeerImpl<CrystalProjectSettings>() {
-
     private val settings = CrystalProjectSettings()
     private var appRadio: JBRadioButton? = null
     private var libRadio: JBRadioButton? = null
@@ -115,7 +117,10 @@ class CrystalProjectGeneratorPeer : GeneratorPeerImpl<CrystalProjectSettings>() 
         return settings
     }
 
-    override fun getComponent(myLocationField: TextFieldWithBrowseButton, checkValid: Runnable): JComponent {
+    override fun getComponent(
+        myLocationField: TextFieldWithBrowseButton,
+        checkValid: Runnable,
+    ): JComponent {
         if (panel == null) {
             val app = JBRadioButton("Application", true)
             val lib = JBRadioButton("Library", false)
@@ -126,10 +131,11 @@ class CrystalProjectGeneratorPeer : GeneratorPeerImpl<CrystalProjectSettings>() 
 
             pathField.addBrowseFolderListener(
                 TextBrowseFolderListener(
-                    FileChooserDescriptorFactory.singleFile()
+                    FileChooserDescriptorFactory
+                        .singleFile()
                         .withTitle("Select Crystal Executable")
-                        .withDescription("Path to the Crystal compiler executable")
-                )
+                        .withDescription("Path to the Crystal compiler executable"),
+                ),
             )
 
             val detected = CrystalSdkDetector.detect()
@@ -141,34 +147,35 @@ class CrystalProjectGeneratorPeer : GeneratorPeerImpl<CrystalProjectSettings>() 
             libRadio = lib
             crystalPathField = pathField
 
-            panel = panel {
-                group("Project Type") {
-                    buttonsGroup {
-                        row {
-                            cell(app)
-                            comment("Executable application (crystal init app)")
-                        }
-                        row {
-                            cell(lib)
-                            comment("Reusable library/shard (crystal init lib)")
-                        }
-                    }
-                }
-                group("Crystal SDK") {
-                    row("Crystal path:") {
-                        cell(pathField).align(AlignX.FILL)
-                    }
-                    row("") {
-                        button("Detect") {
-                            val detected2 = CrystalSdkDetector.detect()
-                            if (detected2 != null) {
-                                pathField.text = detected2
+            panel =
+                panel {
+                    group("Project Type") {
+                        buttonsGroup {
+                            row {
+                                cell(app)
+                                comment("Executable application (crystal init app)")
+                            }
+                            row {
+                                cell(lib)
+                                comment("Reusable library/shard (crystal init lib)")
                             }
                         }
-                        comment("Leave empty to auto-detect from PATH.")
+                    }
+                    group("Crystal SDK") {
+                        row("Crystal path:") {
+                            cell(pathField).align(AlignX.FILL)
+                        }
+                        row("") {
+                            button("Detect") {
+                                val detected2 = CrystalSdkDetector.detect()
+                                if (detected2 != null) {
+                                    pathField.text = detected2
+                                }
+                            }
+                            comment("Leave empty to auto-detect from PATH.")
+                        }
                     }
                 }
-            }
         }
         return panel!!
     }

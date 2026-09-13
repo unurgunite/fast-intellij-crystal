@@ -9,10 +9,16 @@ package io.github.unurgunite.crystal.stubs
  */
 object CrystalStubElementTypeHolder {
     @JvmField val CLASS_DEFINITION = CrystalClassDefinitionElementType("CLASS_DEFINITION")
+
     @JvmField val MODULE_DEFINITION = CrystalModuleDefinitionElementType("MODULE_DEFINITION")
+
     @JvmField val STRUCT_DEFINITION = CrystalStructDefinitionElementType("STRUCT_DEFINITION")
+
     @JvmField val ENUM_DEFINITION = CrystalEnumDefinitionElementType("ENUM_DEFINITION")
+
     @JvmField val METHOD_DEFINITION = CrystalMethodDefinitionElementType("METHOD_DEFINITION")
+
     @JvmField val MACRO_DEFINITION = CrystalMacroDefinitionElementType("MACRO_DEFINITION")
+
     @JvmField val CONSTANT_ASSIGNMENT = CrystalConstantAssignmentElementType("CONSTANT_ASSIGNMENT")
 }

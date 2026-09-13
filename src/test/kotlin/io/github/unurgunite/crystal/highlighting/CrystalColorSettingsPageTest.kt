@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.highlighting
 import junit.framework.TestCase
 
 class CrystalColorSettingsPageTest : TestCase() {
-
     private val page = CrystalColorSettingsPage()
 
     fun testIdentity() {

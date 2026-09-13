@@ -5,7 +5,6 @@ import com.intellij.ide.util.treeView.smartTree.Sorter
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalStructureViewModelTest : BasePlatformTestCase() {
-
     private fun model(): CrystalStructureViewModel {
         val file = myFixture.configureByText("test.cr", "class Foo\nend\n")
         return CrystalStructureViewModel(file, myFixture.editor)

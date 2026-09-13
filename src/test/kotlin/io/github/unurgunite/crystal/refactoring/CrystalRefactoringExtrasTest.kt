@@ -5,7 +5,6 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 class CrystalRenameVerifierTest : BasePlatformTestCase() {
-
     private val verifier = CrystalRenameVerifier()
 
     fun testWrongRefactoringIdIsIgnored() {
@@ -30,19 +29,24 @@ class CrystalRenameVerifierTest : BasePlatformTestCase() {
 }
 
 class CrystalRefactoringSupportProviderTest : BasePlatformTestCase() {
-
     private val provider = CrystalRefactoringSupportProvider()
 
     fun testNamedElementsRenameable() {
-        val file = myFixture.configureByText("test.cr", """
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
 class Foo
   def bar
   end
 end
-        """.trimIndent())
-        val classDef = com.intellij.psi.util.PsiTreeUtil.findChildOfType(
-            file, io.github.unurgunite.crystal.psi.CrystalClassDefinition::class.java
-        )!!
+                """.trimIndent(),
+            )
+        val classDef =
+            com.intellij.psi.util.PsiTreeUtil.findChildOfType(
+                file,
+                io.github.unurgunite.crystal.psi.CrystalClassDefinition::class.java,
+            )!!
         assertNotNull(classDef.nameIdentifier)
         assertTrue(provider.isMemberInplaceRenameAvailable(classDef, classDef.nameIdentifier))
     }

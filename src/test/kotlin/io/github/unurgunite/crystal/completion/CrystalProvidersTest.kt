@@ -3,9 +3,7 @@ package io.github.unurgunite.crystal.completion
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalProvidersTest : BasePlatformTestCase() {
-
-    private fun strings(items: List<com.intellij.codeInsight.lookup.LookupElement>): Set<String> =
-        items.map { it.lookupString }.toSet()
+    private fun strings(items: List<com.intellij.codeInsight.lookup.LookupElement>): Set<String> = items.map { it.lookupString }.toSet()
 
     fun testStdlibTypeLookups() {
         val names = strings(CrystalTypeCompletionProvider.getStdlibTypeLookups())
@@ -39,17 +37,21 @@ class CrystalProvidersTest : BasePlatformTestCase() {
         val toString = items.first { it.lookupString == "to_s" }
         assertTrue(
             "to_s should carry its signature, got: ${toString.allLookupStrings}",
-            "to_s(io : IO)" in toString.allLookupStrings
+            "to_s(io : IO)" in toString.allLookupStrings,
         )
     }
 
     fun testTypeLookupsIncludeProjectTypesAndSelf() {
-        val file = myFixture.addFileToProject("types.cr", """
+        val file =
+            myFixture.addFileToProject(
+                "types.cr",
+                """
 class MyProjectType
   def m(x : Int32)
   end
 end
-        """.trimIndent())
+                """.trimIndent(),
+            )
         val position = file.findElementAt(10)!!
         val names = strings(CrystalTypeCompletionProvider.getTypeLookups(position, project))
         assertTrue("Int32 in type lookups", "Int32" in names)
@@ -66,7 +68,9 @@ end
     }
 
     fun testEnclosingTypeLookups() {
-        myFixture.addFileToProject("nested.cr", """
+        myFixture.addFileToProject(
+            "nested.cr",
+            """
 class Foo
   class Sub
   end
@@ -74,19 +78,23 @@ class Foo
   module Mod
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val names = strings(CrystalTypeCompletionProvider.getEnclosingTypeLookups("Foo", project))
         assertTrue("Sub in $names", "Sub" in names)
         assertTrue("Mod in $names", "Mod" in names)
     }
 
     fun testEnclosingTypeLookupsUnknownEnclosing() {
-        myFixture.addFileToProject("nested.cr", """
+        myFixture.addFileToProject(
+            "nested.cr",
+            """
 class Foo
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         assertTrue(
-            CrystalTypeCompletionProvider.getEnclosingTypeLookups("Nope", project).isEmpty()
+            CrystalTypeCompletionProvider.getEnclosingTypeLookups("Nope", project).isEmpty(),
         )
     }
 }

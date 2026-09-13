@@ -1,10 +1,12 @@
 package io.github.unurgunite.crystal.project
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CrystalDirectoryProjectGeneratorTest {
-
     @Test
     fun testProjectSettingsDefaults() {
         val settings = CrystalProjectSettings()
@@ -34,16 +36,17 @@ class CrystalDirectoryProjectGeneratorTest {
         assertEquals(
             "/custom/crystal",
             CrystalDirectoryProjectGenerator.resolveCrystalPath(
-                CrystalProjectSettings(projectType = "app", crystalPath = "/custom/crystal")
-            )
+                CrystalProjectSettings(projectType = "app", crystalPath = "/custom/crystal"),
+            ),
         )
     }
 
     @Test
     fun testResolveCrystalPathFallsBackToDetector() {
-        val resolved = CrystalDirectoryProjectGenerator.resolveCrystalPath(
-            CrystalProjectSettings(projectType = "app", crystalPath = "")
-        )
+        val resolved =
+            CrystalDirectoryProjectGenerator.resolveCrystalPath(
+                CrystalProjectSettings(projectType = "app", crystalPath = ""),
+            )
         assertTrue("Fallback must be non-blank, got: '$resolved'", resolved.isNotBlank())
     }
 
@@ -64,7 +67,7 @@ class CrystalDirectoryProjectGeneratorTest {
     @Test
     fun testMissingGitignoreEntriesNoneMissing() {
         assertTrue(
-            CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.iml\n").isBlank()
+            CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.iml\n").isBlank(),
         )
     }
 }

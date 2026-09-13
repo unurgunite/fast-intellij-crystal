@@ -27,7 +27,6 @@ class CrystalExceptionBreakpointTypeTest : TestCase() {
 }
 
 class CrystalLineBreakpointTypeTest : BasePlatformTestCase() {
-
     private val type = CrystalLineBreakpointType()
 
     fun testCanPutAtCrystalFile() {

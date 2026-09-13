@@ -22,7 +22,6 @@ class CrystalIconsTest : TestCase() {
 }
 
 class CrystalIconProviderTest : BasePlatformTestCase() {
-
     private val provider = CrystalIconProvider()
 
     fun testSpecFileGetsSpecIcon() {

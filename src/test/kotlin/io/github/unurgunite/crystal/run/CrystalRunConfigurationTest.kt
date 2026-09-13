@@ -8,7 +8,6 @@ import io.github.unurgunite.crystal.debugger.CrystalDebugRunState
 import org.jdom.Element
 
 class CrystalRunConfigurationTest : BasePlatformTestCase() {
-
     private fun createConfig(command: CrystalCommand): CrystalRunConfiguration {
         val type = CrystalRunConfigurationType()
         val factory = type.configurationFactories.first { it is CrystalSpecFactory }
@@ -19,7 +18,10 @@ class CrystalRunConfigurationTest : BasePlatformTestCase() {
         val type = CrystalRunConfigurationType()
         val byId = type.configurationFactories.associateBy { it.id }
         assertEquals(CrystalCommand.RUN, (byId["Crystal Run"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command)
-        assertEquals(CrystalCommand.BUILD, (byId["Crystal Build"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command)
+        assertEquals(
+            CrystalCommand.BUILD,
+            (byId["Crystal Build"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command,
+        )
         assertEquals(CrystalCommand.SPEC, (byId["Crystal Spec"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command)
     }
 

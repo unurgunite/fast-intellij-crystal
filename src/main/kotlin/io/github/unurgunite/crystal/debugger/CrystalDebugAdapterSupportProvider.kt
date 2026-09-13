@@ -5,10 +5,8 @@ import com.intellij.platform.dap.DebugAdapterDescriptor
 import com.intellij.platform.dap.DebugAdapterSupportProvider
 
 class CrystalDebugAdapterSupportProvider : DebugAdapterSupportProvider<CrystalDebugAdapterId> {
-
     override val adapterId: CrystalDebugAdapterId get() = CrystalDebugAdapterId
 
-    override fun createDebugAdapterDescriptor(project: Project): DebugAdapterDescriptor<CrystalDebugAdapterId> {
-        return CrystalDebugAdapterDescriptor(project)
-    }
+    override fun createDebugAdapterDescriptor(project: Project): DebugAdapterDescriptor<CrystalDebugAdapterId> =
+        CrystalDebugAdapterDescriptor(project)
 }

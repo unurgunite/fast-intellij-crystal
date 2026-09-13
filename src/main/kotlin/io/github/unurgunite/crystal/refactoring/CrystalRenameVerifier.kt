@@ -14,45 +14,62 @@ import io.github.unurgunite.crystal.sdk.CrystalSettings
 import java.nio.charset.StandardCharsets
 
 class CrystalRenameVerifier : RefactoringEventListener {
-
-    override fun refactoringDone(refactoringId: String, afterData: RefactoringEventData?) {
+    override fun refactoringDone(
+        refactoringId: String,
+        afterData: RefactoringEventData?,
+    ) {
         if (refactoringId != "refactoring.rename") return
 
-        val element = afterData?.getUserData(RefactoringEventData.PSI_ELEMENT_KEY) ?: return
-        val file = element.containingFile ?: return
-        if (file.fileType != CrystalFileType) return
-
-        val project = element.project
-        val basePath = project.basePath ?: return
-        val virtualFile = file.virtualFile ?: return
+        val renameTarget = renameTargetAfter(afterData) ?: return
 
         // Run compiler check in background
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
-            verifyWithCompiler(project, basePath, virtualFile)
+            verifyWithCompiler(renameTarget.first, renameTarget.second, renameTarget.third)
         }
     }
 
-    private fun verifyWithCompiler(project: Project, basePath: String, file: VirtualFile) {
+    /**
+     * Extracts (project, basePath, file) for a completed rename, or null when the
+     * event is not a Crystal file rename worth verifying.
+     */
+    private fun renameTargetAfter(afterData: RefactoringEventData?): Triple<Project, String, VirtualFile>? {
+        val element = afterData?.getUserData(RefactoringEventData.PSI_ELEMENT_KEY) ?: return null
+        val file = element.containingFile?.takeIf { it.fileType == CrystalFileType } ?: return null
+        val basePath = element.project.basePath ?: return null
+        val virtualFile = file.virtualFile ?: return null
+        return Triple(element.project, basePath, virtualFile)
+    }
+
+    private fun verifyWithCompiler(
+        project: Project,
+        basePath: String,
+        file: VirtualFile,
+    ) {
         try {
             val crystalPath = CrystalSettings.getInstance(project).getEffectiveCrystalPath()
-            val commandLine = GeneralCommandLine(crystalPath, "build", "--no-codegen", file.path)
-                .withCharset(StandardCharsets.UTF_8)
-                .withWorkDirectory(basePath)
+            val commandLine =
+                GeneralCommandLine(crystalPath, "build", "--no-codegen", file.path)
+                    .withCharset(StandardCharsets.UTF_8)
+                    .withWorkDirectory(basePath)
 
             val handler = CapturingProcessHandler(commandLine)
             val output = handler.runProcess(15000)
 
             if (output.exitCode != 0) {
-                val errorMsg = output.stderr.lines().take(5).joinToString("\n")
+                val errorMsg =
+                    output.stderr
+                        .lines()
+                        .take(5)
+                        .joinToString("\n")
                 com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                    NotificationGroupManager.getInstance()
+                    NotificationGroupManager
+                        .getInstance()
                         .getNotificationGroup("Crystal Rename Verification")
                         .createNotification(
                             "Rename may have introduced errors",
                             errorMsg,
-                            NotificationType.WARNING
-                        )
-                        .notify(project)
+                            NotificationType.WARNING,
+                        ).notify(project)
                 }
             }
         } catch (_: Exception) {
@@ -60,7 +77,15 @@ class CrystalRenameVerifier : RefactoringEventListener {
         }
     }
 
-    override fun conflictsDetected(refactoringId: String, conflictsData: RefactoringEventData) {}
+    override fun conflictsDetected(
+        refactoringId: String,
+        conflictsData: RefactoringEventData,
+    ) {}
+
     override fun undoRefactoring(refactoringId: String) {}
-    override fun refactoringStarted(refactoringId: String, beforeData: RefactoringEventData?) {}
+
+    override fun refactoringStarted(
+        refactoringId: String,
+        beforeData: RefactoringEventData?,
+    ) {}
 }

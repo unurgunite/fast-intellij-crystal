@@ -3,9 +3,11 @@ package io.github.unurgunite.crystal.inspections
 import junit.framework.TestCase
 
 class CrystalTypeCompatibilityTest : TestCase() {
-
-    private fun compat(arg: String, param: String, literal: Boolean = false) =
-        CrystalTypeCompatibility.isCompatible(arg, param, literal)
+    private fun compat(
+        arg: String,
+        param: String,
+        literal: Boolean = false,
+    ) = CrystalTypeCompatibility.isCompatible(arg, param, literal)
 
     fun testExactMatch() {
         assertTrue(compat("Int32", "Int32"))

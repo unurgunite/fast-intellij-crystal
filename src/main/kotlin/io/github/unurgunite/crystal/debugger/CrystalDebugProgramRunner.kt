@@ -16,38 +16,46 @@ import com.intellij.xdebugger.XDebuggerManager
 import io.github.unurgunite.crystal.run.CrystalRunConfiguration
 
 class CrystalDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
-
     companion object {
-        private val EP_NAME = ExtensionPointName.create<DebugAdapterSupportProvider<*>>(
-            "com.intellij.platform.dap.debugAdapterSupportProvider"
-        )
+        private val EP_NAME =
+            ExtensionPointName.create<DebugAdapterSupportProvider<*>>(
+                "com.intellij.platform.dap.debugAdapterSupportProvider",
+            )
     }
 
     override fun getRunnerId(): String = "CrystalDebugRunner"
 
-    override fun canRun(executorId: String, profile: RunProfile): Boolean {
-        return executorId == DefaultDebugExecutor.EXECUTOR_ID
-            && profile is CrystalRunConfiguration
-    }
+    override fun canRun(
+        executorId: String,
+        profile: RunProfile,
+    ): Boolean =
+        executorId == DefaultDebugExecutor.EXECUTOR_ID &&
+            profile is CrystalRunConfiguration
 
-    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? {
+    override fun doExecute(
+        state: RunProfileState,
+        environment: ExecutionEnvironment,
+    ): RunContentDescriptor? {
         val dapState = state as CrystalDebugRunState
 
         ensureProviderRegistered(environment)
 
         val launchArgs = dapState.getLaunchArguments(environment.project, environment.runProfile)
 
-        val starter = DapProcessStarter(
-            environment,
-            environment.executor,
-            state,
-            launchArgs.adapterId,
-            launchArgs.request,
-            launchArgs.arguments
-        )
+        val starter =
+            DapProcessStarter(
+                environment,
+                environment.executor,
+                state,
+                launchArgs.adapterId,
+                launchArgs.request,
+                launchArgs.arguments,
+            )
 
-        val session = XDebuggerManager.getInstance(environment.project)
-            .startSession(environment, starter)
+        val session =
+            XDebuggerManager
+                .getInstance(environment.project)
+                .startSession(environment, starter)
 
         return session.runContentDescriptor
     }

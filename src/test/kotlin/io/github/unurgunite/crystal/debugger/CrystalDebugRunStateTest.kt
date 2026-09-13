@@ -7,7 +7,6 @@ import io.github.unurgunite.crystal.run.CrystalRunConfigurationType
 import io.github.unurgunite.crystal.run.CrystalSpecFactory
 
 class CrystalDebugRunStateTest : BasePlatformTestCase() {
-
     private fun createConfig(): CrystalRunConfiguration {
         val type = CrystalRunConfigurationType()
         val factory = type.configurationFactories.first { it is CrystalSpecFactory }
@@ -15,9 +14,13 @@ class CrystalDebugRunStateTest : BasePlatformTestCase() {
     }
 
     private fun debugState(config: CrystalRunConfiguration): CrystalDebugRunState {
-        val executor = com.intellij.execution.executors.DefaultDebugExecutor.getDebugExecutorInstance()
-        val env = com.intellij.execution.runners.ExecutionEnvironmentBuilder
-            .create(executor, config).build()
+        val executor =
+            com.intellij.execution.executors.DefaultDebugExecutor
+                .getDebugExecutorInstance()
+        val env =
+            com.intellij.execution.runners.ExecutionEnvironmentBuilder
+                .create(executor, config)
+                .build()
         return CrystalDebugRunState(env, config)
     }
 
@@ -30,12 +33,14 @@ class CrystalDebugRunStateTest : BasePlatformTestCase() {
                 object : com.intellij.execution.configurations.RunProfile {
                     override fun getState(
                         executor: com.intellij.execution.Executor,
-                        environment: com.intellij.execution.runners.ExecutionEnvironment
+                        environment: com.intellij.execution.runners.ExecutionEnvironment,
                     ) = null
+
                     override fun getName() = "foreign"
+
                     override fun getIcon() = null
-                }
-            )
+                },
+            ),
         )
     }
 
@@ -47,7 +52,7 @@ class CrystalDebugRunStateTest : BasePlatformTestCase() {
         val args = debugState(config).buildDebugArgs()
         assertEquals(
             listOf("/usr/bin/crystal", "build", "--debug", "/tmp/main.cr", "-o", args.last()),
-            args
+            args,
         )
         assertTrue("Binary should land under bin/, got: ${args.last()}", args.last().endsWith("bin/main"))
     }

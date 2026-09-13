@@ -1,0 +1,307 @@
+package io.github.unurgunite.crystal.psi
+
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileVisitor
+import java.util.ArrayDeque
+
+/**
+ * Bounded (stdlib-only) text scan, used as a fallback for bare lowercase method names
+ * and constants that have no home-file convention. Built lazily once per project.
+ * Stores stable (relPath, offset) locations — never PsiElements — so it can never go
+ * stale and never triggers a multi-second reparse of the whole stdlib. A text scan of
+ * ~2154 files runs in well under a second, versus the 70s the old PSI-walk required.
+ *
+ * Split out of `CrystalReference` (whose companion exceeded the function budget).
+ */
+internal object CrystalStdlibTextScan {
+    /** Bounded stdlib text-symbol table (name → stable [SymbolLoc]). */
+    internal data class StdlibData(
+        val symbols: Map<String, SymbolLoc>,
+    )
+
+    private val globalStdlibCaches = java.util.concurrent.ConcurrentHashMap<Project, Pair<VirtualFile, StdlibData>>()
+
+    fun globalStdlibData(
+        project: Project,
+        root: VirtualFile,
+    ): StdlibData {
+        globalStdlibCaches[project]?.let { (cachedRoot, cached) ->
+            if (cachedRoot == root) return cached
+        }
+        val data = buildStdlibData(root)
+        globalStdlibCaches[project] = root to data
+        return data
+    }
+
+    private fun buildStdlibData(root: VirtualFile): StdlibData {
+        val symbols = HashMap<String, SymbolLoc>()
+        // Names whose canonical-file definition (file base name == symbol name) is
+        // already stored. Lets us upgrade a first-seen arbitrary definition to the
+        // canonical one when we later encounter it during the VFS walk.
+        val hasCanonical = HashSet<String>()
+        VfsUtilCore.visitChildrenRecursively(
+            root,
+            object : VirtualFileVisitor<Any>() {
+                override fun visitFile(file: VirtualFile): Boolean {
+                    if (file.isDirectory) return true
+                    if (file.extension != "cr") return true
+                    val relPath =
+                        VfsUtilCore
+                            .getRelativePath(file, root) ?: return true
+                    scanFileText(file, relPath, symbols, hasCanonical)
+                    return true
+                }
+            },
+        )
+        return StdlibData(symbols)
+    }
+
+    /**
+     * Text-based symbol discovery for a single stdlib file. Finds top-level
+     * `alias`, `class`/`struct`/`module`/`enum`/`lib`/`annotation`, SCREAMING_SNAKE constant,
+     * and `def`/`macro` definitions by regex over the raw text, tracking the enclosing
+     * namespace via a stack so namespaced keys (`Foo::Bar`, `Foo#baz`) are produced. This
+     * covers symbols the grammar failed to parse into nodes because of an unrelated parse
+     * error elsewhere in the same file — without ever parsing PSI.
+     */
+    fun scanFileText(
+        file: VirtualFile,
+        relPath: String,
+        symbols: MutableMap<String, SymbolLoc>,
+        hasCanonical: MutableSet<String>,
+    ) {
+        val text =
+            try {
+                String(file.contentsToByteArray(), Charsets.UTF_8)
+            } catch (_: Throwable) {
+                return
+            }
+        val state = ScanState(relPath, symbols, hasCanonical)
+        var pos = 0
+        for (raw in text.lines()) {
+            val lineStart = pos
+            pos += raw.length + 1 // +1 for the newline separator
+            if (!handleLine(raw, lineStart, state)) {
+                balanceOtherLine(raw, state)
+            }
+        }
+    }
+
+    /** One line: type/alias/const/def/macro-generator shapes first, generic balancing last. */
+    private fun handleLine(
+        raw: String,
+        lineStart: Int,
+        state: ScanState,
+    ): Boolean =
+        handleTypeLine(raw, lineStart, state) ||
+            handleAliasLine(raw, lineStart, state) ||
+            handleConstLine(raw, lineStart, state) ||
+            handleDefLine(raw, lineStart, state) ||
+            handleGenLine(raw, lineStart, state)
+}
+
+/** Mutable per-file scan state: namespace stack plus block-kind stack. */
+private class ScanState(
+    val relPath: String,
+    val symbols: MutableMap<String, SymbolLoc>,
+    val hasCanonical: MutableSet<String>,
+) {
+    // Qualified-namespace stack: each entry is the FULL qualified name of the enclosing
+    // type (e.g. "File", "File::Info"), so a nested definition keys as
+    // "<qualified>::<name>" and a nested member as "<qualified>#<method>".
+    val stack = ArrayDeque<String>()
+
+    // Parallel stack tracking WHY each frame was opened: "type" for a class/struct/
+    // module/enum/lib/annotation, "other" for a method/block (`def`, `if`, `do`, `{`…).
+    // Only a "type" close pops the NAMESPACE stack — a method body's `end` must NOT
+    // pop the enclosing class, or every method after the first would lose its namespace
+    // (this previously dropped `String#upcase`, `Array#size`, … from the symbol table).
+    val openKinds = ArrayDeque<String>()
+
+    fun popOpen() {
+        if (openKinds.isNotEmpty()) {
+            val k = openKinds.removeLast()
+            if (k == "type" && stack.isNotEmpty()) stack.removeLast()
+        }
+    }
+
+    fun closeCount(raw: String): Int = endRe.findAll(raw).count() + raw.count { it == '}' }
+}
+
+/** Type / annotation / lib definition — opens a NAMESPACE frame. */
+private fun handleTypeLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = typeRe.find(raw) ?: return false
+    val full = m.groupValues[1]
+    val name = full.substringAfterLast("::")
+    // Offset of the (last-segment) name identifier: group 1's start — NOT the
+    // whole-match start (which is the leading whitespace) — plus the prefix length.
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first + (full.length - name.length)
+    val enclosing = state.stack.lastOrNull()
+    val qualified = if (enclosing != null) "$enclosing::$full" else full
+    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = true)
+    state.stack.addLast(qualified)
+    state.openKinds.addLast("type")
+    // Same-line `end`/`}` closes this frame immediately (e.g. `struct Foo; end`).
+    repeat(state.closeCount(raw)) { state.popOpen() }
+    return true
+}
+
+/** alias Name (= ...). */
+private fun handleAliasLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = aliasRe.find(raw) ?: return false
+    val full = m.groupValues[1]
+    val name = full.substringAfterLast("::")
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first + (full.length - name.length)
+    val enclosing = state.stack.lastOrNull()
+    val qualified = if (enclosing != null) "$enclosing::$name" else name
+    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = false)
+    return true
+}
+
+/** SCREAMING_SNAKE constant assignment. */
+private fun handleConstLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = constRe.find(raw) ?: return false
+    val name = m.groupValues[1]
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first
+    val enclosing = state.stack.lastOrNull()
+    val qualified = if (enclosing != null) "$enclosing::$name" else name
+    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = false)
+    return true
+}
+
+/** def / macro method definitions (column-0 or indented). */
+private fun handleDefLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = defRe.find(raw) ?: return false
+    val sig = m.groupValues[1]
+    val (recv, mname) = parseDefSig(sig)
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first + (sig.length - mname.length)
+    val ns = recv ?: state.stack.lastOrNull()
+    // For bare top-level builtins (no enclosing namespace) force the simple key
+    // so e.g. `raise` jumps to raise.cr, not a private `def raise` elsewhere.
+    addMethodSymbol(state.symbols, state.relPath, offset, ns, mname)
+    // A method body owns its own `end`/`}`; push an "other" frame (and balance
+    // a same-line close) so the enclosing type's namespace frame survives it.
+    state.openKinds.addLast("other")
+    repeat(state.closeCount(raw)) { state.popOpen() }
+    return true
+}
+
+/**
+ * `getter` / `setter` / `property` macros generate method definitions
+ * (e.g. `getter size : Int32` → `def size` + `def size=`). These are pervasive
+ * in the stdlib (Array#size, Hash#keys, …) and would otherwise be invisible to
+ * the symbol table. Expand them into the generated reader/writer names so
+ * receiver-typed lookups resolve. `getter`/`property` → reader `name`;
+ * `setter`/`property` → writer `name=`. The offset points at the generated
+ * name token (not the macro line start) so materialize lands on the identifier.
+ */
+private fun handleGenLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = genRe.find(raw) ?: return false
+    val kind = m.groupValues[1]
+    val names =
+        m.groupValues[2].split(',').mapNotNull { tok ->
+            Regex("""\s*([a-zA-Z_]\w*[!?]?)""").find(tok)?.groupValues?.get(1)
+        }
+    val ns = state.stack.lastOrNull()
+    for (nm in names) {
+        val idx = raw.indexOf(nm)
+        val off = if (idx >= 0) lineStart + idx else lineStart
+        if (kind != "setter") addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+        if (kind != "getter") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+    }
+    return true
+}
+
+/** Any other line: balance block opens (`def`/control-flow keywords, `{`) against closes (`end`, `}`). */
+private fun balanceOtherLine(
+    raw: String,
+    state: ScanState,
+) {
+    val opens = blockKwRe.findAll(raw).count() + raw.count { it == '{' }
+    val closes = state.closeCount(raw)
+    repeat(opens) { state.openKinds.addLast("other") }
+    repeat(closes) { state.popOpen() }
+}
+
+/** Split a `def` signature into (receiver, methodName). `self.foo` → (null, foo);
+ *  `Foo.bar` → (Foo, bar); bare `foo` → (null, foo). */
+private fun parseDefSig(sig: String): Pair<String?, String> {
+    if (sig.startsWith("self.")) return null to sig.substring("self.".length)
+    val dot = sig.lastIndexOf('.')
+    if (dot > 0) return sig.substring(0, dot) to sig.substring(dot + 1)
+    return null to sig
+}
+
+private fun addSymbol(
+    symbols: MutableMap<String, SymbolLoc>,
+    hasCanonical: MutableSet<String>,
+    relPath: String,
+    offset: Int,
+    name: String,
+    qualified: String,
+    isType: Boolean,
+) {
+    val loc = SymbolLoc(relPath, offset)
+    symbols.putIfAbsent(qualified, loc)
+    // Canonical: file base name matches the symbol (e.g. String -> string.cr), so
+    // Ctrl+Click lands on the primary definition, not an arbitrary reopening.
+    val canonical =
+        isType &&
+            java.io
+                .File(relPath)
+                .nameWithoutExtension
+                .equals(name, ignoreCase = true)
+    if (!symbols.containsKey(name) || (canonical && !hasCanonical.contains(name))) {
+        symbols[name] = loc
+        if (canonical) hasCanonical.add(name)
+    }
+}
+
+// Register a `Class#method` (and bare `method` for top-level defs) symbol-table entry.
+// Used by both `def`/`macro` lines and expanded `getter`/`setter`/`property` macros.
+private fun addMethodSymbol(
+    symbols: MutableMap<String, SymbolLoc>,
+    relPath: String,
+    offset: Int,
+    ns: String?,
+    mname: String,
+) {
+    val loc = SymbolLoc(relPath, offset)
+    val key = if (ns != null) "$ns#$mname" else mname
+    if (ns == null) symbols.putIfAbsent(mname, loc)
+    symbols.putIfAbsent(key, loc)
+}
+
+private val blockKwRe = Regex("""\b(def|macro|if|unless|while|until|case|begin|do)\b""")
+private val endRe = Regex("""\bend\b""")
+private val typeRe = Regex("""^\s*(?:(?:abstract|final|private)\s+)*(?:class|struct|module|enum|lib|annotation)\s+([A-Z][\w:]*)""")
+private val aliasRe = Regex("""^\s*alias\s+([A-Z]\w*(?:::[A-Z]\w*)*)""")
+private val constRe = Regex("""^\s*([A-Z][A-Z0-9_]*)\s*=""")
+private val defRe = Regex("""^\s*(?:def|macro)\s+((?:self\.)?(?:[A-Z][\w:]*)?\.?[a-zA-Z_]\w*[!?]?|\[[\]=]?|<=>)""")
+private val genRe = Regex("""^\s*(getter|setter|property)\b\s*(.+)$""")

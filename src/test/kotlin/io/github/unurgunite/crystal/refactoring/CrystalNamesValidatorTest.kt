@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.refactoring
 import junit.framework.TestCase
 
 class CrystalNamesValidatorTest : TestCase() {
-
     private val validator = CrystalNamesValidator()
 
     fun testKeywords() {
@@ -25,7 +24,24 @@ class CrystalNamesValidatorTest : TestCase() {
     }
 
     fun testInvalidIdentifiers() {
-        for (name in listOf("", "1foo", "foo bar", "foo-bar", "?", "!", "=", "foo??", "foo?!", "a?b", "a=b", "@", "@@", "@1", "@foo?", "@@foo!")) {
+        for (name in listOf(
+            "",
+            "1foo",
+            "foo bar",
+            "foo-bar",
+            "?",
+            "!",
+            "=",
+            "foo??",
+            "foo?!",
+            "a?b",
+            "a=b",
+            "@",
+            "@@",
+            "@1",
+            "@foo?",
+            "@@foo!",
+        )) {
             assertFalse("'$name' should not be an identifier", validator.isIdentifier(name, null))
         }
     }

@@ -5,8 +5,8 @@ import com.intellij.execution.ExecutionResult
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.ProcessHandlerFactory
 import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessHandlerFactory
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ProgramRunner
@@ -22,9 +22,8 @@ import java.nio.file.Files
  */
 class CrystalTestRunState(
     environment: ExecutionEnvironment,
-    private val configuration: CrystalRunConfiguration
+    private val configuration: CrystalRunConfiguration,
 ) : CommandLineState(environment) {
-
     private var junitOutputFile: File? = null
 
     override fun startProcess(): ProcessHandler {
@@ -34,30 +33,35 @@ class CrystalTestRunState(
         return handler
     }
 
-    override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
+    override fun execute(
+        executor: Executor,
+        runner: ProgramRunner<*>,
+    ): ExecutionResult {
         junitOutputFile = Files.createTempFile("crystal_junit", ".xml").toFile()
         val processHandler = startProcess()
 
         // Clear cache to ensure fresh indexing after file modifications
         CrystalSpecFileIndexer.clearCache()
 
-        val testLocations = if (configuration.filePath.isNotBlank()) {
-            val file = java.io.File(configuration.filePath)
-            if (file.isDirectory) {
-                CrystalSpecFileIndexer.getTestLocationsForDirectory(configuration.filePath)
+        val testLocations =
+            if (configuration.filePath.isNotBlank()) {
+                val file = java.io.File(configuration.filePath)
+                if (file.isDirectory) {
+                    CrystalSpecFileIndexer.getTestLocationsForDirectory(configuration.filePath)
+                } else {
+                    CrystalSpecFileIndexer.getTestLocations(configuration.filePath)
+                }
             } else {
-                CrystalSpecFileIndexer.getTestLocations(configuration.filePath)
+                emptyMap()
             }
-        } else {
-            emptyMap()
-        }
 
         val properties = CrystalTestConsoleProperties(configuration, executor, testLocations, junitOutputFile!!)
-        val console = SMTestRunnerConnectionUtil.createAndAttachConsole(
-            "CrystalSpec",
-            processHandler,
-            properties
-        )
+        val console =
+            SMTestRunnerConnectionUtil.createAndAttachConsole(
+                "CrystalSpec",
+                processHandler,
+                properties,
+            )
         return DefaultExecutionResult(console, processHandler)
     }
 
@@ -68,9 +72,9 @@ class CrystalTestRunState(
          */
         fun buildCommandLine(
             configuration: CrystalRunConfiguration,
-            junitOutputFile: File?
-        ): GeneralCommandLine {
-            return GeneralCommandLine().apply {
+            junitOutputFile: File?,
+        ): GeneralCommandLine =
+            GeneralCommandLine().apply {
                 exePath = configuration.crystalPath
                 addParameter("spec")
 
@@ -105,6 +109,5 @@ class CrystalTestRunState(
 
                 withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
             }
-        }
     }
 }

@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.navigation
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalInstanceVarFinderTest : BasePlatformTestCase() {
-
     private fun contextAtCaret(): com.intellij.psi.PsiElement {
         val file = myFixture.file
         val element = file.findElementAt(myFixture.editor.caretModel.offset)
@@ -12,14 +11,17 @@ class CrystalInstanceVarFinderTest : BasePlatformTestCase() {
     }
 
     fun testAssignmentFallback() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Foo
   def m
     @x = 1
     puts @x<caret>
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = CrystalInstanceVarFinder.findDefinitionTargets("@x", contextAtCaret())
         assertEquals(1, targets.size)
@@ -27,21 +29,26 @@ end
     }
 
     fun testFindAllUsagesCountsReadsAndWrites() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Foo
   def m
     @x = 1
     puts @x<caret>
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val usages = CrystalInstanceVarFinder.findAllUsages("@x", contextAtCaret())
         assertEquals("Write + read = 2 usages", 2, usages.size)
     }
 
     fun testGetterMacroBeatsAssignment() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Foo
   getter name
 
@@ -50,18 +57,21 @@ class Foo
     puts @name<caret>
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = CrystalInstanceVarFinder.findDefinitionTargets("@name", contextAtCaret())
         assertFalse("Should resolve somewhere", targets.isEmpty())
         assertTrue(
             "Getter macro should win over assignment, got: ${targets[0].text}",
-            targets[0].text.startsWith("getter")
+            targets[0].text.startsWith("getter"),
         )
     }
 
     fun testPropertyDeclarationBeatsAssignment() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Foo
   @size : Int32
 
@@ -70,18 +80,21 @@ class Foo
     puts @size<caret>
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = CrystalInstanceVarFinder.findDefinitionTargets("@size", contextAtCaret())
         assertFalse("Should resolve somewhere", targets.isEmpty())
         assertTrue(
             "Property declaration should win, got: ${targets[0].text}",
-            targets[0].text.contains("@size") && targets[0].text.contains("Int32")
+            targets[0].text.contains("@size") && targets[0].text.contains("Int32"),
         )
     }
 
     fun testNestedClassIsolation() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Outer
   def m
     @x = 1
@@ -94,14 +107,15 @@ class Outer
     end
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = CrystalInstanceVarFinder.findDefinitionTargets("@x", contextAtCaret())
         assertEquals(1, targets.size)
         assertEquals("@x", targets[0].text)
         assertTrue(
             "Should resolve to Inner's assignment, got: ${targets[0].parent.text}",
-            targets[0].parent.text.contains("= 2")
+            targets[0].parent.text.contains("= 2"),
         )
     }
 
@@ -113,7 +127,9 @@ end
     }
 
     fun testClassVariable() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
 class Foo
   @@count = 0
 
@@ -121,7 +137,8 @@ class Foo
     puts @@count<caret>
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = CrystalInstanceVarFinder.findDefinitionTargets("@@count", contextAtCaret())
         assertEquals(1, targets.size)

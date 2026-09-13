@@ -22,25 +22,27 @@ import java.io.File
  *    `materialize` landed on whitespace and qualified navigation (`File::Info`) failed.
  */
 class CrystalStdlibFileInfoTreeTest : BasePlatformTestCase() {
-
-    private val STDLIB get() = io.github.unurgunite.crystal.StdlibTestPaths.STDLIB
+    private val stdlib get() = io.github.unurgunite.crystal.StdlibTestPaths.STDLIB
 
     override fun setUp() {
         super.setUp()
-        VfsRootAccess.allowRootAccess(testRootDisposable, STDLIB)
+        VfsRootAccess.allowRootAccess(testRootDisposable, stdlib)
         // shard.yml so the AdditionalLibraryRootsProvider loads the stdlib as a library.
         File(project.basePath!!).mkdirs()
         File(project.basePath!!, "shard.yml").writeText("name: test\nversion: 0.1.0\n")
     }
 
     fun testFileInfoCrTreeParsesCleanly() {
-        val vfile = LocalFileSystem.getInstance().findFileByPath("$STDLIB/file/info.cr")!!
-        val psi = com.intellij.psi.PsiManager.getInstance(project).findFile(vfile)!!
+        val vfile = LocalFileSystem.getInstance().findFileByPath("$stdlib/file/info.cr")!!
+        val psi =
+            com.intellij.psi.PsiManager
+                .getInstance(project)
+                .findFile(vfile)!!
         val errors = PsiTreeUtil.collectElementsOfType(psi, PsiErrorElement::class.java)
         assertTrue(
             "file/info.cr should parse with no PsiErrorElement (tree fully built), found: " +
                 errors.joinToString { it.errorDescription },
-            errors.isEmpty()
+            errors.isEmpty(),
         )
         val text = psi.text
         assertTrue("enum Type present", text.contains("enum Type"))

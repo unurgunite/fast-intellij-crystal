@@ -13,38 +13,62 @@ import com.intellij.psi.PsiFile
  * - Triggers auto-completion popup when typing `::` (namespace access).
  */
 class CrystalTypedHandler : TypedHandlerDelegate() {
-
-    override fun checkAutoPopup(charTyped: Char, project: Project, editor: Editor, file: PsiFile): Result {
+    override fun checkAutoPopup(
+        charTyped: Char,
+        project: Project,
+        editor: Editor,
+        file: PsiFile,
+    ): Result {
         if (file.fileType != CrystalFileType) return Result.CONTINUE
 
         val offset = editor.caretModel.offset
 
-        // Trigger auto-popup when typing '::' (namespace access)
-        if (charTyped == ':') {
-            if (offset < 2) return Result.CONTINUE
-            if (editor.document.getText(TextRange.create(offset - 1, offset)) != ":") return Result.CONTINUE
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-            return Result.STOP
+        return when (charTyped) {
+            ':' -> handleColonTyped(project, editor, offset)
+            '@' -> handleAtTyped(project, editor, offset)
+            else -> Result.CONTINUE
         }
-
-        // Trigger auto-popup when typing '@' (instance/class variable sigil)
-        if (charTyped == '@') {
-            if (offset < 1) return Result.CONTINUE
-            val document = editor.document
-            // Don't trigger inside string literals (reuse existing isInsideString logic)
-            if (isInsideString(document.text, offset - 1)) return Result.CONTINUE
-            // Don't trigger for annotation context '@[' — let the annotation provider handle it
-            if (offset < document.textLength && document.charsSequence[offset] == '[') return Result.CONTINUE
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-            return Result.STOP
-        }
-
-        return Result.CONTINUE
     }
 
-    override fun charTyped(c: Char, project: Project, editor: Editor, file: PsiFile): Result {
-        if (c != '{') return Result.CONTINUE
-        if (file.fileType != CrystalFileType) return Result.CONTINUE
+    /**
+     * Trigger auto-popup when typing '::' (namespace access): the second colon
+     * must directly follow the first one.
+     */
+    private fun handleColonTyped(
+        project: Project,
+        editor: Editor,
+        offset: Int,
+    ): Result {
+        if (offset < 2) return Result.CONTINUE
+        if (editor.document.getText(TextRange.create(offset - 1, offset)) != ":") return Result.CONTINUE
+        AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        return Result.STOP
+    }
+
+    /**
+     * Trigger auto-popup when typing '@' (instance/class variable sigil), unless
+     * inside a string literal or starting an annotation (`@[`).
+     */
+    private fun handleAtTyped(
+        project: Project,
+        editor: Editor,
+        offset: Int,
+    ): Result {
+        if (offset < 1) return Result.CONTINUE
+        val document = editor.document
+        if (isInsideString(document.text, offset - 1)) return Result.CONTINUE
+        if (offset < document.textLength && document.charsSequence[offset] == '[') return Result.CONTINUE
+        AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        return Result.STOP
+    }
+
+    override fun charTyped(
+        c: Char,
+        project: Project,
+        editor: Editor,
+        file: PsiFile,
+    ): Result {
+        if (c != '{' || file.fileType != CrystalFileType) return Result.CONTINUE
 
         val offset = editor.caretModel.offset
         if (offset < 2) return Result.CONTINUE
@@ -52,14 +76,12 @@ class CrystalTypedHandler : TypedHandlerDelegate() {
         val document = editor.document
         val text = document.text
 
-        // Check that the character before `{` is `#`
-        if (text[offset - 2] != '#') return Result.CONTINUE
-
-        // Check we're inside a string by scanning backwards for an unmatched opening `"`
-        if (!isInsideString(text, offset - 2)) return Result.CONTINUE
-
-        // Don't insert if there's already a `}` right after the cursor
-        if (offset < text.length && text[offset] == '}') return Result.CONTINUE
+        // The character before `{` must be `#`, inside a string, with no `}` already after.
+        val readyToClose =
+            text[offset - 2] == '#' &&
+                isInsideString(text, offset - 2) &&
+                !(offset < text.length && text[offset] == '}')
+        if (!readyToClose) return Result.CONTINUE
 
         document.insertString(offset, "}")
         return Result.STOP
@@ -69,7 +91,10 @@ class CrystalTypedHandler : TypedHandlerDelegate() {
      * Determines if the given position is inside a double-quoted string.
      * Scans backwards counting unescaped `"` characters.
      */
-    private fun isInsideString(text: String, position: Int): Boolean {
+    private fun isInsideString(
+        text: String,
+        position: Int,
+    ): Boolean {
         var quoteCount = 0
         var i = position - 1
         while (i >= 0) {

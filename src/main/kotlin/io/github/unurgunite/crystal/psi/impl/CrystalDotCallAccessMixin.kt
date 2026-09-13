@@ -19,9 +19,10 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * expression (e.g. `Apfel` in `Apfel.tanzen`) is the prevSibling in the flattened
  * `postfix_expression` sequence; the reference walks prevSibling to find it.
  */
-abstract class CrystalDotCallAccessMixin(node: ASTNode) :
-    ASTWrapperPsiElement(node), CrystalDotCallAccess {
-
+abstract class CrystalDotCallAccessMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    CrystalDotCallAccess {
     override fun getReference(): PsiReference? {
         // The method-name token is the child immediately after the DOT. It may be an
         // IDENTIFIER (`tanzen`), a CONSTANT, or a keyword used as a method name
@@ -29,8 +30,11 @@ abstract class CrystalDotCallAccessMixin(node: ASTNode) :
         val dot = node.findChildByType(CrystalTypes.DOT) ?: return null
         var nameNode = dot.treeNext
         while (nameNode != null &&
-            (nameNode.elementType == com.intellij.psi.TokenType.WHITE_SPACE ||
-                nameNode.elementType == CrystalTypes.NEWLINE)) {
+            (
+                nameNode.elementType == com.intellij.psi.TokenType.WHITE_SPACE ||
+                    nameNode.elementType == CrystalTypes.NEWLINE
+            )
+        ) {
             nameNode = nameNode.treeNext
         }
         if (nameNode == null) return null
@@ -43,6 +47,5 @@ abstract class CrystalDotCallAccessMixin(node: ASTNode) :
         return CrystalDotCallReference(this, methodName, startOffset, nameNode.textLength)
     }
 
-    override fun getReferences(): Array<PsiReference> =
-        reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
+    override fun getReferences(): Array<PsiReference> = reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
 }

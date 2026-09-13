@@ -5,7 +5,6 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import junit.framework.TestCase
 
 class CrystalSingleQuoteStringInspectionTest : BasePlatformTestCase() {
-
     private fun highlights(code: String): List<String> {
         myFixture.configureByText("test.cr", code)
         myFixture.enableInspections(CrystalSingleQuoteStringInspection::class.java)
@@ -27,11 +26,9 @@ class CrystalSingleQuoteStringInspectionTest : BasePlatformTestCase() {
 }
 
 class CrystalSyntaxHighlighterTest : TestCase() {
-
     private val highlighter = CrystalSyntaxHighlighter()
 
-    private fun keys(type: com.intellij.psi.tree.IElementType) =
-        highlighter.getTokenHighlights(type).toList()
+    private fun keys(type: com.intellij.psi.tree.IElementType) = highlighter.getTokenHighlights(type).toList()
 
     fun testCoreMappings() {
         assertEquals(listOf(CrystalSyntaxHighlighter.KEYWORD), keys(CrystalTypes.DEF))
@@ -55,11 +52,11 @@ class CrystalSyntaxHighlighterTest : TestCase() {
     fun testInterpolationAndMacroDelimiters() {
         assertEquals(
             listOf(CrystalSyntaxHighlighter.INTERPOLATION),
-            keys(CrystalTypes.STRING_INTERPOLATION_BEGIN)
+            keys(CrystalTypes.STRING_INTERPOLATION_BEGIN),
         )
         assertEquals(
             listOf(CrystalSyntaxHighlighter.INTERPOLATION),
-            keys(CrystalTypes.MACRO_CONTROL_BEGIN)
+            keys(CrystalTypes.MACRO_CONTROL_BEGIN),
         )
     }
 
@@ -70,17 +67,17 @@ class CrystalSyntaxHighlighterTest : TestCase() {
         // verifyPlugin's buildSearchableOptions depending on class-load order.
         // Companion vals compile to getters (no fields), so iterate those.
         val companion = CrystalSyntaxHighlighter.Companion
-        val keys = companion.javaClass.methods
-            .filter {
-                it.name.startsWith("get") && it.parameterCount == 0 &&
-                    it.returnType == com.intellij.openapi.editor.colors.TextAttributesKey::class.java
-            }
-            .map { it.invoke(companion) as com.intellij.openapi.editor.colors.TextAttributesKey }
+        val keys =
+            companion.javaClass.methods
+                .filter {
+                    it.name.startsWith("get") && it.parameterCount == 0 &&
+                        it.returnType == com.intellij.openapi.editor.colors.TextAttributesKey::class.java
+                }.map { it.invoke(companion) as com.intellij.openapi.editor.colors.TextAttributesKey }
         assertFalse("Expected highlighter keys, found none", keys.isEmpty())
         for (key in keys) {
             assertTrue(
                 "Key '${key.externalName}' must live in the CRYSTAL_ namespace",
-                key.externalName.startsWith("CRYSTAL_")
+                key.externalName.startsWith("CRYSTAL_"),
             )
         }
     }
@@ -92,7 +89,7 @@ class CrystalSyntaxHighlighterTest : TestCase() {
             CrystalSyntaxHighlighter.REGEXP_QUANTIFIER,
             CrystalSyntaxHighlighter.REGEXP_UNION,
             CrystalSyntaxHighlighter.REGEXP_PARENTHS,
-            CrystalSyntaxHighlighter.REGEXP_META
+            CrystalSyntaxHighlighter.REGEXP_META,
         )) {
             assertTrue(key.externalName.startsWith("CRYSTAL_REGEXP."))
         }
@@ -100,18 +97,20 @@ class CrystalSyntaxHighlighterTest : TestCase() {
 }
 
 class CrystalRegExpLanguageHostTest : BasePlatformTestCase() {
-
     private val host = CrystalRegExpLanguageHost()
 
     private fun firstElementOf(pattern: String): org.intellij.lang.regexp.psi.RegExpElement {
-        val file = com.intellij.psi.PsiFileFactory.getInstance(project)
-            .createFileFromText(
-                org.intellij.lang.regexp.RegExpLanguage.INSTANCE,
-                pattern
-            )
+        val file =
+            com.intellij.psi.PsiFileFactory
+                .getInstance(project)
+                .createFileFromText(
+                    org.intellij.lang.regexp.RegExpLanguage.INSTANCE,
+                    pattern,
+                )
         val found: org.intellij.lang.regexp.psi.RegExpElement? =
             com.intellij.psi.util.PsiTreeUtil.findChildOfType(
-                file, org.intellij.lang.regexp.psi.RegExpElement::class.java
+                file,
+                org.intellij.lang.regexp.psi.RegExpElement::class.java,
             )
         assertNotNull("No RegExp element parsed from '$pattern'", found)
         return found!!
@@ -135,9 +134,9 @@ class CrystalRegExpLanguageHostTest : BasePlatformTestCase() {
             com.intellij.psi.util.PsiTreeUtil.findChildOfType(
                 com.intellij.psi.PsiFileFactory.getInstance(project).createFileFromText(
                     org.intellij.lang.regexp.RegExpLanguage.INSTANCE,
-                    "(?<year>\\d+)"
+                    "(?<year>\\d+)",
                 ),
-                org.intellij.lang.regexp.psi.RegExpGroup::class.java
+                org.intellij.lang.regexp.psi.RegExpGroup::class.java,
             )
         assertNotNull("No group parsed", group)
         assertTrue(host.supportsNamedGroupSyntax(group!!))

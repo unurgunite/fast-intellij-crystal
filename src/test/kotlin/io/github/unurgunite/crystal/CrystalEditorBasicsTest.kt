@@ -5,7 +5,6 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import junit.framework.TestCase
 
 class CrystalFoldingBuilderTest : BasePlatformTestCase() {
-
     private fun openDocument(code: String): com.intellij.openapi.editor.Document {
         val file = myFixture.configureByText("test.cr", code)
         return myFixture.getDocument(file)
@@ -14,7 +13,8 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
     private fun foldRanges(code: String): List<String> {
         val document = openDocument(code)
         val file = myFixture.file
-        return CrystalFoldingBuilder().buildFoldRegions(file, document, false)
+        return CrystalFoldingBuilder()
+            .buildFoldRegions(file, document, false)
             .map { document.getText(it.range!!) }
     }
 
@@ -47,8 +47,10 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
         val ranges = foldRanges("if x > 1\n  puts x\nend\n")
         assertEquals(1, ranges.size)
         // Fold starts after the condition line (at the newline), not at `if`
-        assertTrue("Fold range should start at end of condition line, got: '${ranges[0].take(10)}'",
-            ranges[0].startsWith("\n"))
+        assertTrue(
+            "Fold range should start at end of condition line, got: '${ranges[0].take(10)}'",
+            ranges[0].startsWith("\n"),
+        )
     }
 
     fun testMultilineArrayAndHashFold() {
@@ -74,8 +76,10 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
         val builder = CrystalFoldingBuilder()
         val document = openDocument("class Foo\n  def bar\n    1\n  end\nend\n")
         val file = myFixture.file
-        val placeholders = CrystalFoldingBuilder().buildFoldRegions(file, document, false)
-            .associate { it.element?.elementType to builder.getPlaceholderText(it.element!!) }
+        val placeholders =
+            CrystalFoldingBuilder()
+                .buildFoldRegions(file, document, false)
+                .associate { it.element?.elementType to builder.getPlaceholderText(it.element!!) }
         assertEquals(" ... end", placeholders[CrystalTypes.DEF])
         assertEquals(" ... end", placeholders[CrystalTypes.CLASS])
         assertFalse(builder.isCollapsedByDefault(file.node.firstChildNode))
@@ -110,11 +114,20 @@ class CrystalBraceMatcherTest : TestCase() {
         // Every opening structural keyword that folds must also match braces
         val lefts = CrystalBraceMatcher().pairs.map { it.leftBraceType }.toSet()
         for (keyword in listOf(
-            CrystalTypes.DEF, CrystalTypes.CLASS, CrystalTypes.MODULE,
-            CrystalTypes.STRUCT, CrystalTypes.ENUM, CrystalTypes.IF,
-            CrystalTypes.UNLESS, CrystalTypes.WHILE, CrystalTypes.DO,
-            CrystalTypes.BEGIN, CrystalTypes.CASE, CrystalTypes.MACRO,
-            CrystalTypes.LIB, CrystalTypes.ANNOTATION
+            CrystalTypes.DEF,
+            CrystalTypes.CLASS,
+            CrystalTypes.MODULE,
+            CrystalTypes.STRUCT,
+            CrystalTypes.ENUM,
+            CrystalTypes.IF,
+            CrystalTypes.UNLESS,
+            CrystalTypes.WHILE,
+            CrystalTypes.DO,
+            CrystalTypes.BEGIN,
+            CrystalTypes.CASE,
+            CrystalTypes.MACRO,
+            CrystalTypes.LIB,
+            CrystalTypes.ANNOTATION,
         )) {
             assertTrue("$keyword should have a brace pair", keyword in lefts)
         }

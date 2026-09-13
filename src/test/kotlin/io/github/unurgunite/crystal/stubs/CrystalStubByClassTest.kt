@@ -13,28 +13,37 @@ class CrystalStubByClassTest : BasePlatformTestCase() {
 
     private fun methodsOf(className: String): List<CrystalMethodDefinition> {
         val scope = GlobalSearchScope.allScope(project)
-        return StubIndex.getElements(
-            CrystalMethodByClassIndex.KEY, className, project, scope,
-            CrystalMethodDefinition::class.java
-        ).toList()
+        return StubIndex
+            .getElements(
+                CrystalMethodByClassIndex.KEY,
+                className,
+                project,
+                scope,
+                CrystalMethodDefinition::class.java,
+            ).toList()
     }
 
     fun testMethodByClassIndexForSimpleFile() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 class StubWidget
   def widget_alpha
   end
   def widget_beta(x : Int32)
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val names = methodsOf("StubWidget").mapNotNull { it.name }.toSet()
         assertEquals("StubWidget should expose exactly widget_alpha and widget_beta", setOf("widget_alpha", "widget_beta"), names)
     }
 
     fun testMethodByClassIndexIsScopedPerClass() {
-        myFixture.addFileToProject("two.cr", """
+        myFixture.addFileToProject(
+            "two.cr",
+            """
 class StubWidget
   def widget_a_method
   end
@@ -44,34 +53,40 @@ class StubWidgetB
   def widget_b_method
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         assertEquals(
             setOf("widget_a_method"),
-            methodsOf("StubWidget").mapNotNull { it.name }.toSet()
+            methodsOf("StubWidget").mapNotNull { it.name }.toSet(),
         )
         assertEquals(
             setOf("widget_b_method"),
-            methodsOf("StubWidgetB").mapNotNull { it.name }.toSet()
+            methodsOf("StubWidgetB").mapNotNull { it.name }.toSet(),
         )
     }
 
     fun testMethodByClassIndexMissesUnknownClass() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 class StubWidget
   def widget_alpha
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         assertTrue(
             "Unknown class must yield no methods",
-            methodsOf("NoSuchClass").isEmpty()
+            methodsOf("NoSuchClass").isEmpty(),
         )
     }
 
     fun testMethodIndexHasBareMethods() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 def widget_top_level
 end
 
@@ -79,90 +94,137 @@ class StubWidget
   def widget_alpha
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
-        val widget_alpha = StubIndex.getElements(
-            CrystalMethodIndex.KEY, "widget_alpha", project, scope,
-            CrystalMethodDefinition::class.java
-        )
-        assertEquals(1, widget_alpha.size)
-        val topLevel = StubIndex.getElements(
-            CrystalMethodIndex.KEY, "widget_top_level", project, scope,
-            CrystalMethodDefinition::class.java
-        )
+        val widgetAlpha =
+            StubIndex.getElements(
+                CrystalMethodIndex.KEY,
+                "widget_alpha",
+                project,
+                scope,
+                CrystalMethodDefinition::class.java,
+            )
+        assertEquals(1, widgetAlpha.size)
+        val topLevel =
+            StubIndex.getElements(
+                CrystalMethodIndex.KEY,
+                "widget_top_level",
+                project,
+                scope,
+                CrystalMethodDefinition::class.java,
+            )
         assertEquals(1, topLevel.size)
     }
 
     fun testClassIndexFindsClass() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 class StubWidget
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
-        val found = StubIndex.getElements(
-            CrystalClassIndex.KEY, "StubWidget", project, scope,
-            CrystalNamedElement::class.java
-        )
+        val found =
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                "StubWidget",
+                project,
+                scope,
+                CrystalNamedElement::class.java,
+            )
         assertEquals(1, found.size)
         assertEquals("StubWidget", found.first().name)
     }
 
-    fun testClassByEnclosingIndexFindsNestedType() {        myFixture.addFileToProject("test.cr", """
+    fun testClassByEnclosingIndexFindsNestedType() {
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 class StubWidget
   class StubWidgetInner
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
-        val nested = StubIndex.getElements(
-            CrystalClassByEnclosingIndex.KEY, "StubWidget", project, scope,
-            CrystalNamedElement::class.java
-        ).mapNotNull { it.name }.toSet()
+        val nested =
+            StubIndex
+                .getElements(
+                    CrystalClassByEnclosingIndex.KEY,
+                    "StubWidget",
+                    project,
+                    scope,
+                    CrystalNamedElement::class.java,
+                ).mapNotNull { it.name }
+                .toSet()
         assertTrue("Sub should be listed as nested in StubWidget, got: $nested", "StubWidgetInner" in nested)
     }
 
     fun testMacroIndexFindsMacro() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 macro stub_widget_macro_xyz
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
-        val found = StubIndex.getElements(
-            CrystalMacroIndex.KEY, "stub_widget_macro_xyz", project, scope,
-            CrystalMacroDefinition::class.java
-        )
+        val found =
+            StubIndex.getElements(
+                CrystalMacroIndex.KEY,
+                "stub_widget_macro_xyz",
+                project,
+                scope,
+                CrystalMacroDefinition::class.java,
+            )
         assertEquals(1, found.size)
         assertEquals("stub_widget_macro_xyz", found.first().name)
     }
 
     fun testConstantIndexFindsConstant() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 STUB_WIDGET_CONST_XYZ = 0o644
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
-        val found = StubIndex.getElements(
-            CrystalConstantIndex.KEY, "STUB_WIDGET_CONST_XYZ", project, scope,
-            CrystalConstantAssignment::class.java
-        )
+        val found =
+            StubIndex.getElements(
+                CrystalConstantIndex.KEY,
+                "STUB_WIDGET_CONST_XYZ",
+                project,
+                scope,
+                CrystalConstantAssignment::class.java,
+            )
         assertEquals(1, found.size)
     }
 
     fun testConstantIndexMissesUnknown() {
-        myFixture.addFileToProject("test.cr", """
+        myFixture.addFileToProject(
+            "test.cr",
+            """
 STUB_WIDGET_OTHER = 1
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val scope = GlobalSearchScope.allScope(project)
         assertTrue(
-            StubIndex.getElements(
-                CrystalConstantIndex.KEY, "NO_SUCH_STUB_CONST_XYZ", project, scope,
-                CrystalConstantAssignment::class.java
-            ).isEmpty()
+            StubIndex
+                .getElements(
+                    CrystalConstantIndex.KEY,
+                    "NO_SUCH_STUB_CONST_XYZ",
+                    project,
+                    scope,
+                    CrystalConstantAssignment::class.java,
+                ).isEmpty(),
         )
     }
 }

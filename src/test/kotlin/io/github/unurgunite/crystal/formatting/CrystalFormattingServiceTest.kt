@@ -4,7 +4,6 @@ import junit.framework.TestCase
 import org.junit.Assume
 
 class CrystalFormattingServiceTest : TestCase() {
-
     private val service = CrystalFormattingService()
 
     fun testParseFormatErrorWithValidSyntaxError() {
@@ -64,8 +63,11 @@ class CrystalFormattingServiceTest : TestCase() {
         for (candidate in listOf("/opt/homebrew/bin/crystal", "/usr/bin/crystal", "/usr/local/bin/crystal")) {
             if (java.io.File(candidate).canExecute()) return candidate
         }
-        return System.getenv("PATH")?.split(":")
+        return System
+            .getenv("PATH")
+            ?.split(":")
             ?.map { java.io.File(it, "crystal") }
-            ?.firstOrNull { it.canExecute() }?.absolutePath
+            ?.firstOrNull { it.canExecute() }
+            ?.absolutePath
     }
 }

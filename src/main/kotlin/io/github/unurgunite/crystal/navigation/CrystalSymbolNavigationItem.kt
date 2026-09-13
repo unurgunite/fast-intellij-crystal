@@ -2,10 +2,12 @@ package io.github.unurgunite.crystal.navigation
 
 import com.intellij.icons.AllIcons
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.psi.*
 import javax.swing.Icon
 
-enum class CrystalSymbolKind(val icon: Icon, val label: String) {
+enum class CrystalSymbolKind(
+    val icon: Icon,
+    val label: String,
+) {
     CLASS(AllIcons.Nodes.Class, "class"),
     MODULE(AllIcons.Nodes.Module, "module"),
     STRUCT(AllIcons.Nodes.Record, "struct"),
@@ -15,11 +17,11 @@ enum class CrystalSymbolKind(val icon: Icon, val label: String) {
     LIB(AllIcons.Nodes.PpLib, "lib"),
     ANNOTATION(AllIcons.Nodes.Annotationtype, "annotation"),
     CONSTANT(AllIcons.Nodes.Constant, "constant"),
-    ALIAS(AllIcons.Nodes.Type, "alias")
+    ALIAS(AllIcons.Nodes.Type, "alias"),
 }
 
 data class CrystalSymbol(
     val name: String,
     val kind: CrystalSymbolKind,
-    val element: PsiElement
+    val element: PsiElement,
 )

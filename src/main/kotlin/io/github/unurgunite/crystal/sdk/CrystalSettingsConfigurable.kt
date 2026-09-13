@@ -4,12 +4,11 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.AlignX
@@ -17,8 +16,9 @@ import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
 import javax.swing.JLabel
 
-class CrystalSettingsConfigurable(private val project: Project) : Configurable {
-
+class CrystalSettingsConfigurable(
+    private val project: Project,
+) : Configurable {
     private lateinit var crystalPathField: TextFieldWithBrowseButton
     private var versionLabel: JLabel = JBLabel("")
     private var stdlibStatusLabel: JLabel = JBLabel("")
@@ -31,11 +31,12 @@ class CrystalSettingsConfigurable(private val project: Project) : Configurable {
         crystalPathField = TextFieldWithBrowseButton()
         crystalPathField.addBrowseFolderListener(
             TextBrowseFolderListener(
-                FileChooserDescriptorFactory.singleFile()
+                FileChooserDescriptorFactory
+                    .singleFile()
                     .withTitle("Select Crystal Executable")
                     .withDescription("Path to the Crystal compiler executable"),
-                project
-            )
+                project,
+            ),
         )
 
         return panel {
@@ -124,43 +125,49 @@ class CrystalSettingsConfigurable(private val project: Project) : Configurable {
         val stdlibRoot = CrystalStdlibResolver.resolveStdlibPath(project) ?: return
         val version = CrystalStdlibResolver.resolveCrystalVersion(project) ?: "unknown"
 
-        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Re-indexing Crystal Stdlib", true) {
-            override fun run(indicator: com.intellij.openapi.progress.ProgressIndicator) {
-                indicator.isIndeterminate = true
+        ProgressManager.getInstance().run(
+            object : Task.Backgroundable(project, "Re-indexing Crystal Stdlib", true) {
+                override fun run(indicator: com.intellij.openapi.progress.ProgressIndicator) {
+                    indicator.isIndeterminate = true
 
-                // Force re-index each stdlib file individually.
-                // Necessary because StubUpdatingIndex caches by content hash —
-                // if file content hasn't changed, old stubs are reused even
-                // though BNF grammar (and thus stub structure) may have changed.
-                indicator.text = "Re-indexing Crystal Stdlib files ($version)..."
-                val stdlibFiles = collectCrystalFiles(stdlibRoot, indicator)
-                var processed = 0
-                for (file in stdlibFiles) {
-                    if (indicator.isCanceled) break
-                    indicator.text = "Re-indexing (${++processed}/${stdlibFiles.size}): ${file.name}"
-                    com.intellij.util.indexing.FileBasedIndex.getInstance().requestReindex(file)
+                    // Force re-index each stdlib file individually.
+                    // Necessary because StubUpdatingIndex caches by content hash —
+                    // if file content hasn't changed, old stubs are reused even
+                    // though BNF grammar (and thus stub structure) may have changed.
+                    indicator.text = "Re-indexing Crystal Stdlib files ($version)..."
+                    val stdlibFiles = collectCrystalFiles(stdlibRoot, indicator)
+                    var processed = 0
+                    for (file in stdlibFiles) {
+                        if (indicator.isCanceled) break
+                        indicator.text = "Re-indexing (${++processed}/${stdlibFiles.size}): ${file.name}"
+                        com.intellij.util.indexing.FileBasedIndex
+                            .getInstance()
+                            .requestReindex(file)
+                    }
                 }
-            }
 
-            override fun onSuccess() {
-                updateStdlibStatus()
-                ApplicationManager.getApplication().invokeLater {
-                    NotificationGroupManager.getInstance()
-                        .getNotificationGroup("Crystal Reindex")
-                        .createNotification(
-                            "Crystal Stdlib index cleared",
-                            "The old index was removed and is now rebuilding in the background (Crystal $version). Completion and navigation will become available as files are indexed.",
-                            NotificationType.INFORMATION
-                        )
-                        .notify(project)
+                override fun onSuccess() {
+                    updateStdlibStatus()
+                    ApplicationManager.getApplication().invokeLater {
+                        NotificationGroupManager
+                            .getInstance()
+                            .getNotificationGroup("Crystal Reindex")
+                            .createNotification(
+                                "Crystal Stdlib index cleared",
+                                "The old index was removed and is now rebuilding in the background " +
+                                    "(Crystal $version). Completion and navigation will become " +
+                                    "available as files are indexed.",
+                                NotificationType.INFORMATION,
+                            ).notify(project)
+                    }
                 }
-            }
-        })
+            },
+        )
     }
 
     private fun collectCrystalFiles(
         root: com.intellij.openapi.vfs.VirtualFile,
-        indicator: com.intellij.openapi.progress.ProgressIndicator
+        indicator: com.intellij.openapi.progress.ProgressIndicator,
     ): List<com.intellij.openapi.vfs.VirtualFile> {
         val result = mutableListOf<com.intellij.openapi.vfs.VirtualFile>()
         val stack = ArrayDeque<com.intellij.openapi.vfs.VirtualFile>()

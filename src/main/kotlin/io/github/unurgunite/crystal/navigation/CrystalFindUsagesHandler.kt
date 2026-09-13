@@ -25,12 +25,13 @@ import io.github.unurgunite.crystal.stubs.CrystalClassIndex
  * Finds all PsiReferences pointing to the definition element and converts them
  * to UsageInfo for the Find Usages dialog and Rename processor.
  */
-class CrystalFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element) {
-
+class CrystalFindUsagesHandler(
+    element: PsiElement,
+) : FindUsagesHandler(element) {
     override fun processElementUsages(
         element: PsiElement,
         processor: Processor<in UsageInfo>,
-        options: FindUsagesOptions
+        options: FindUsagesOptions,
     ): Boolean {
         var result = true
         ReadAction.runBlocking<RuntimeException> {
@@ -53,14 +54,19 @@ class CrystalFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
                 val project = element.project
                 val scope = GlobalSearchScope.projectScope(project)
                 val targetElement = element
-                val enclosingClassName = CrystalCompletionHelper.getEnclosingClassName(element)
-                    ?: return@runBlocking
+                val enclosingClassName =
+                    CrystalCompletionHelper.getEnclosingClassName(element)
+                        ?: return@runBlocking
 
                 // Find the class definition via CrystalClassIndex
-                val classElements = StubIndex.getElements(
-                    CrystalClassIndex.KEY, enclosingClassName, project, scope,
-                    CrystalNamedElement::class.java
-                )
+                val classElements =
+                    StubIndex.getElements(
+                        CrystalClassIndex.KEY,
+                        enclosingClassName,
+                        project,
+                        scope,
+                        CrystalNamedElement::class.java,
+                    )
                 if (classElements.isEmpty()) return@runBlocking
 
                 val classDefinition = classElements.first()
@@ -71,9 +77,11 @@ class CrystalFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
                     val nextSibling = findNextNonWhitespace(refElement)
                     if (nextSibling is CrystalDotCallAccess) {
                         // Check that the dot-call is "new" and resolves to our initialize
-                        val methodName = nextSibling.node?.findChildByType(
-                            io.github.unurgunite.crystal.psi.CrystalTypes.IDENTIFIER
-                        )?.text
+                        val methodName =
+                            nextSibling.node
+                                ?.findChildByType(
+                                    io.github.unurgunite.crystal.psi.CrystalTypes.IDENTIFIER,
+                                )?.text
                         if (methodName == "new") {
                             val dotRef = nextSibling.reference
                             val resolved = dotRef?.resolve()
@@ -97,19 +105,21 @@ class CrystalFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
      */
     private fun findNextNonWhitespace(element: PsiElement): PsiElement? {
         var sibling = element.nextSibling
-        while (sibling != null && (sibling is PsiWhiteSpace
-                    || sibling.node?.elementType.toString() == "WHITE_SPACE"
-                    || sibling.node?.elementType.toString() == "NLS")) {
+        while (sibling != null && isWhitespaceOrNewline(sibling)) {
             sibling = sibling.nextSibling
         }
         return sibling
     }
 
+    private fun isWhitespaceOrNewline(element: PsiElement): Boolean {
+        if (element is PsiWhiteSpace) return true
+        val elementType = element.node?.elementType?.toString()
+        return elementType == "WHITE_SPACE" || elementType == "NLS"
+    }
+
     override fun getFindUsagesDialog(
         isSingleFile: Boolean,
         toShowInNewTab: Boolean,
-        mustOpenInNewTab: Boolean
-    ): AbstractFindUsagesDialog {
-        return super.getFindUsagesDialog(isSingleFile, toShowInNewTab, mustOpenInNewTab)
-    }
+        mustOpenInNewTab: Boolean,
+    ): AbstractFindUsagesDialog = super.getFindUsagesDialog(isSingleFile, toShowInNewTab, mustOpenInNewTab)
 }

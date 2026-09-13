@@ -7,35 +7,42 @@ import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 
 class CrystalGoToContributorsTest : BasePlatformTestCase() {
-
     private val classContributor = CrystalGoToClassContributor()
     private val symbolContributor = CrystalGoToSymbolContributor()
 
     private fun collectNames(contributor: com.intellij.navigation.ChooseByNameContributorEx): Set<String> {
         val names = mutableSetOf<String>()
         contributor.processNames(
-            Processor { names.add(it); true },
+            Processor {
+                names.add(it)
+                true
+            },
             GlobalSearchScope.allScope(project),
-            null
+            null,
         )
         return names
     }
 
     private fun collectElements(
         contributor: com.intellij.navigation.ChooseByNameContributorEx,
-        name: String
+        name: String,
     ): List<NavigationItem> {
         val items = mutableListOf<NavigationItem>()
         contributor.processElementsWithName(
             name,
-            Processor { items.add(it); true },
-            FindSymbolParameters(name, name, GlobalSearchScope.allScope(project))
+            Processor {
+                items.add(it)
+                true
+            },
+            FindSymbolParameters(name, name, GlobalSearchScope.allScope(project)),
         )
         return items
     }
 
     fun testClassContributorCollectsAllTypeKinds() {
-        myFixture.addFileToProject("types.cr", """
+        myFixture.addFileToProject(
+            "types.cr",
+            """
 class Foo
 end
 
@@ -48,7 +55,8 @@ end
 enum Qux
   A
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val names = collectNames(classContributor)
         assertTrue("Foo in $names", "Foo" in names)
@@ -58,10 +66,13 @@ end
     }
 
     fun testClassContributorResolvesElement() {
-        myFixture.addFileToProject("types.cr", """
+        myFixture.addFileToProject(
+            "types.cr",
+            """
 class Foo
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val items = collectElements(classContributor, "Foo")
         assertEquals(1, items.size)
@@ -69,16 +80,21 @@ end
     }
 
     fun testClassContributorMissesUnknown() {
-        myFixture.addFileToProject("types.cr", """
+        myFixture.addFileToProject(
+            "types.cr",
+            """
 class Foo
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         assertTrue(collectElements(classContributor, "Nope").isEmpty())
     }
 
     fun testSymbolContributorIncludesMethodsAndMacros() {
-        myFixture.addFileToProject("code.cr", """
+        myFixture.addFileToProject(
+            "code.cr",
+            """
 class Foo
   def some_method
   end
@@ -86,7 +102,8 @@ end
 
 macro helper_macro
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val names = collectNames(symbolContributor)
         assertTrue("Foo in $names", "Foo" in names)
@@ -95,12 +112,15 @@ end
     }
 
     fun testSymbolContributorResolvesMethod() {
-        myFixture.addFileToProject("code.cr", """
+        myFixture.addFileToProject(
+            "code.cr",
+            """
 class Foo
   def some_method
   end
 end
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val items = collectElements(symbolContributor, "some_method")
         assertEquals(1, items.size)
