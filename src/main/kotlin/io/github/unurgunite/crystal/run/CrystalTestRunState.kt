@@ -28,7 +28,7 @@ class CrystalTestRunState(
     private var junitOutputFile: File? = null
 
     override fun startProcess(): ProcessHandler {
-        val commandLine = buildCommandLine()
+        val commandLine = buildCommandLine(configuration, junitOutputFile)
         val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
@@ -61,42 +61,50 @@ class CrystalTestRunState(
         return DefaultExecutionResult(console, processHandler)
     }
 
-    private fun buildCommandLine(): GeneralCommandLine {
-        return GeneralCommandLine().apply {
-            exePath = configuration.crystalPath
-            addParameter("spec")
+    companion object {
+        /**
+         * Builds `crystal spec -v --no-color [--junit_output f] [file[:line]]`.
+         * Extracted for testability (mirrors [CrystalRunState.buildCommandLine]).
+         */
+        fun buildCommandLine(
+            configuration: CrystalRunConfiguration,
+            junitOutputFile: File?
+        ): GeneralCommandLine {
+            return GeneralCommandLine().apply {
+                exePath = configuration.crystalPath
+                addParameter("spec")
 
-            if (configuration.filePath.isNotBlank()) {
-                val file = java.io.File(configuration.filePath)
-                if (file.isDirectory) {
-                    addParameter(configuration.filePath)
-                } else if (configuration.specLine > 0) {
-                    addParameter("${configuration.filePath}:${configuration.specLine}")
-                } else {
-                    addParameter(configuration.filePath)
+                if (configuration.filePath.isNotBlank()) {
+                    val file = java.io.File(configuration.filePath)
+                    if (file.isDirectory) {
+                        addParameter(configuration.filePath)
+                    } else if (configuration.specLine > 0) {
+                        addParameter("${configuration.filePath}:${configuration.specLine}")
+                    } else {
+                        addParameter(configuration.filePath)
+                    }
                 }
+
+                addParameter("-v")
+                addParameter("--no-color")
+
+                if (junitOutputFile != null) {
+                    addParameter("--junit_output")
+                    addParameter(junitOutputFile.absolutePath)
+                }
+
+                if (configuration.arguments.isNotBlank()) {
+                    addParameters(CrystalCommandLine.splitArgs(configuration.arguments))
+                }
+
+                workDirectory = File(configuration.workingDirectory)
+
+                for ((key, value) in CrystalCommandLine.parseEnvVars(configuration.environmentVariables)) {
+                    environment.put(key, value)
+                }
+
+                withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
             }
-
-            addParameter("-v")
-            addParameter("--no-color")
-
-            val junitFile = junitOutputFile
-            if (junitFile != null) {
-                addParameter("--junit_output")
-                addParameter(junitFile.absolutePath)
-            }
-
-            if (configuration.arguments.isNotBlank()) {
-                addParameters(CrystalCommandLine.splitArgs(configuration.arguments))
-            }
-
-            workDirectory = File(configuration.workingDirectory)
-
-            for ((key, value) in CrystalCommandLine.parseEnvVars(configuration.environmentVariables)) {
-                environment.put(key, value)
-            }
-
-            withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
         }
     }
 }

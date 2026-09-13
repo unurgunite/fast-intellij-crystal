@@ -31,27 +31,34 @@ class CrystalDebugAdapterDescriptor(
     }
 
     private fun findLldbDap(): String {
-        val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
-        val candidates = if (isWindows) {
-            listOf(
-                "C:\\Program Files\\LLVM\\bin\\lldb-dap.exe",
-                "C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe",
-                "C:\\Program Files (x86)\\LLVM\\bin\\lldb-dap.exe",
-                "C:\\Program Files (x86)\\LLVM\\bin\\lldb-vscode.exe"
-            )
-        } else {
-            listOf(
-                "/usr/bin/lldb-dap",
-                "/usr/local/bin/lldb-dap",
-                "/usr/bin/lldb-vscode",
-                "/usr/local/bin/lldb-vscode"
-            )
-        }
-        for (candidate in candidates) {
-            if (java.io.File(candidate).canExecute()) {
-                return candidate
+        val lldbDap = findLldbDapCandidate()
+        return lldbDap ?: if (System.getProperty("os.name")?.lowercase()?.contains("win") == true) "lldb-dap.exe" else "lldb-dap"
+    }
+
+    companion object {
+        /**
+         * First executable lldb-dap/lldb-vscode candidate, or null when none is
+         * installed. Extracted for testability; PATH lookup is deliberately NOT
+         * attempted (fixed candidates only, matching production behavior).
+         */
+        fun findLldbDapCandidate(): String? {
+            val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
+            val candidates = if (isWindows) {
+                listOf(
+                    "C:\\Program Files\\LLVM\\bin\\lldb-dap.exe",
+                    "C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe",
+                    "C:\\Program Files (x86)\\LLVM\\bin\\lldb-dap.exe",
+                    "C:\\Program Files (x86)\\LLVM\\bin\\lldb-vscode.exe"
+                )
+            } else {
+                listOf(
+                    "/usr/bin/lldb-dap",
+                    "/usr/local/bin/lldb-dap",
+                    "/usr/bin/lldb-vscode",
+                    "/usr/local/bin/lldb-vscode"
+                )
             }
+            return candidates.firstOrNull { java.io.File(it).canExecute() }
         }
-        return if (isWindows) "lldb-dap.exe" else "lldb-dap"
     }
 }

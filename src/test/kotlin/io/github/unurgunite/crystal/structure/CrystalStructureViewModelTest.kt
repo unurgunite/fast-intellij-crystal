@@ -27,4 +27,13 @@ class CrystalStructureViewModelTest : BasePlatformTestCase() {
         val names = root.children.map { it.presentation.presentableText }
         assertTrue("Foo in $names", "Foo" in names)
     }
+
+    fun testFactoryBuildsForCrystalFileOnly() {
+        val factory = CrystalStructureViewFactory()
+        val crystalFile = myFixture.configureByText("test.cr", "class Foo\nend\n")
+        assertNotNull("Factory must serve Crystal files", factory.getStructureViewBuilder(crystalFile))
+
+        val foreignFile = myFixture.configureByText("notes.txt", "hello\n")
+        assertNull("Factory must refuse non-Crystal files", factory.getStructureViewBuilder(foreignFile))
+    }
 }

@@ -38,25 +38,11 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
                     val project = request.context.project
                     val crystalPath = CrystalSettings.getInstance(project).getEffectiveCrystalPath()
 
-                    val commandLine = GeneralCommandLine(crystalPath, "tool", "format", "-")
-                        .withCharset(StandardCharsets.UTF_8)
-                        .withWorkDirectory(ioFile.parent)
-
-                    val handler = CapturingProcessHandler(commandLine)
-                    processHandler = handler
-
-                    val input = request.documentText
-                    handler.processInput.use { stream ->
-                        stream.write(input.toByteArray(StandardCharsets.UTF_8))
-                    }
-
-                    val output = handler.runProcess(5000)
-
-                    if (output.exitCode == 0) {
-                        request.onTextReady(output.stdout)
+                    val formatted = formatStdin(crystalPath, request.documentText, ioFile.parent)
+                    if (formatted != null) {
+                        request.onTextReady(formatted)
                     } else {
-                        val errorMessage = parseFormatError(output.stderr, ioFile.name)
-                        request.onError("Crystal Format Error", errorMessage)
+                        request.onError("Crystal Format Error", lastFormatError ?: "Unknown error")
                     }
                 } catch (e: Exception) {
                     request.onError("Crystal Format Error", e.message ?: "Unknown error")
@@ -67,6 +53,39 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
                 processHandler?.destroyProcess()
                 return true
             }
+        }
+    }
+
+    /**
+     * Runs `crystal tool format -` over stdin text. Returns the formatted text on
+     * success, or null on failure (details in [lastFormatError]). Extracted for
+     * testability — the formatting task above only wires it to the IDE request.
+     */
+    internal var lastFormatError: String? = null
+        private set
+
+    internal fun formatStdin(crystalPath: String, text: String, workDir: String): String? {
+        lastFormatError = null
+        return try {
+            val commandLine = GeneralCommandLine(crystalPath, "tool", "format", "-")
+                .withCharset(StandardCharsets.UTF_8)
+                .withWorkDirectory(workDir)
+
+            val handler = CapturingProcessHandler(commandLine)
+            handler.processInput.use { stream ->
+                stream.write(text.toByteArray(StandardCharsets.UTF_8))
+            }
+
+            val output = handler.runProcess(5000)
+            if (output.exitCode == 0) {
+                output.stdout
+            } else {
+                lastFormatError = parseFormatError(output.stderr, "STDIN")
+                null
+            }
+        } catch (e: Exception) {
+            lastFormatError = e.message ?: "Unknown error"
+            null
         }
     }
 

@@ -6,18 +6,20 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Added
 
-- **Test coverage marathon (+261 tests, 717 → 978)** — every previously untested subsystem now has
+- **Test coverage marathon (+276 tests, 717 → 993)** — every previously untested subsystem now has
   fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder and references
   searcher, all four completion providers, run-configuration producer/factories/options round-trip,
   `CrystalRunState` command-line building, DAP debug args and runner routing, folding builder,
   structure view, brace matcher, commenter, code-block support, single-quote inspection, syntax
   highlighter mappings and factory, RegExp host, type-compatibility matrix, SDK detector, stdlib
   resolver/library provider, settings persistence, rename guards, navigation items, file type/icons,
-  spec-test locator and line markers. Weak tests with zero assertions were rewritten with real
-  assertions.
+  spec-test locator and line markers, definition finder, structure-view factory, spec command-line
+  building, lldb-dap candidate lookup, and real `crystal tool format` round-trips. Weak tests with
+  zero assertions were rewritten with real assertions.
 - **Shared `CrystalCommandLine` helper** — argument splitting and `KEY=VALUE` env parsing used by
   run, spec and debug states, extracted from three duplicated inline implementations (no behavior
-  change).
+  change). `CrystalTestRunState.buildCommandLine`, `CrystalDebugAdapterDescriptor.findLldbDapCandidate`
+  and `CrystalFormattingService.formatStdin` extracted the same way for testability.
 
 ### Fixed
 

@@ -58,4 +58,19 @@ class CrystalDebugAdapterSupportProviderTest : BasePlatformTestCase() {
         assertEquals("crystal-lldb", CrystalDebugAdapterSupportProvider().adapterId.type)
         assertEquals(DefaultDebugExecutor.EXECUTOR_ID, com.intellij.execution.executors.DefaultDebugExecutor.EXECUTOR_ID)
     }
+
+    fun testDescriptorBreakpoints() {
+        val descriptor = CrystalDebugAdapterSupportProvider().createDebugAdapterDescriptor(project)
+        val breakpoints = descriptor.breakpointsDescription
+        assertNotNull(breakpoints)
+    }
+
+    fun testLldbDapCandidateIsExecutableOrNull() {
+        // No PATH lookup by design (fixed candidates only): result is either an
+        // executable file or null (→ "lldb-dap" fallback at launch time).
+        val candidate = CrystalDebugAdapterDescriptor.findLldbDapCandidate()
+        if (candidate != null) {
+            assertTrue(java.io.File(candidate).canExecute())
+        }
+    }
 }
