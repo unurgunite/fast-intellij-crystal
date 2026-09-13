@@ -19,6 +19,20 @@ import org.jetbrains.jps.model.java.JavaSourceRootType
  */
 class CrystalSpecSourceRootConfigurator : ProjectActivity {
 
+    companion object {
+        /**
+         * Path-based ownership check, extracted for testability: unit-testable without
+         * touching the module model (mutating content roots in tests leaks async
+         * reindex work into later test classes and breaks their highlighting).
+         *
+         * Compares on directory boundaries: `/proj-other/spec` is NOT under `/proj`.
+         */
+        fun isUnderContentRoot(specPath: String, contentRootPath: String): Boolean {
+            val root = contentRootPath.trimEnd('/')
+            return specPath == root || specPath.startsWith("$root/")
+        }
+    }
+
     override suspend fun execute(project: Project) {
         val basePath = project.basePath ?: return
 
@@ -41,7 +55,7 @@ class CrystalSpecSourceRootConfigurator : ProjectActivity {
             ModuleRootModificationUtil.updateModel(module) { model ->
                 for (entry in model.contentEntries) {
                     val contentRoot = entry.file ?: continue
-                    if (!specDir.path.startsWith(contentRoot.path)) continue
+                    if (!isUnderContentRoot(specDir.path, contentRoot.path)) continue
 
                     // Idempotency: skip if spec is already a test source root.
                     // Compare by PATH (not VirtualFile identity) so the check survives

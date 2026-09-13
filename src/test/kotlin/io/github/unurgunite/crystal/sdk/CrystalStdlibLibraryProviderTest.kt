@@ -13,6 +13,11 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
             realFiles.clear()
             CrystalStdlibLibraryProvider.clearCache()
             CrystalSettings.getInstance(project).loadState(CrystalSettings.State())
+            // Drain async VFS/index fallout synchronously (see
+            // CrystalSpecSourceRootConfiguratorTest: un-drained create/delete
+            // events break later highlighting tests).
+            com.intellij.openapi.vfs.LocalFileSystem.getInstance().refresh(false)
+            com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
         } finally {
             super.tearDown()
         }

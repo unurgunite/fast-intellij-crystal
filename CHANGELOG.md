@@ -6,7 +6,7 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Added
 
-- **Test coverage marathon (+226 tests, 717 → 943)** — every previously untested subsystem now has
+- **Test coverage marathon (+261 tests, 717 → 978)** — every previously untested subsystem now has
   fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder and references
   searcher, all four completion providers, run-configuration producer/factories/options round-trip,
   `CrystalRunState` command-line building, DAP debug args and runner routing, folding builder,
@@ -31,6 +31,9 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 - **`CrystalNamesValidator` accepted invalid names** — setter `=` suffix was rejected while interior
   `?`/`!` (e.g. `a?b`, `@foo?`) was accepted. Now a single trailing `?`/`!`/`=` is allowed, interior
   markers are not.
+- **`isUnderContentRoot` compares on directory boundaries** — `/proj-other/spec` is no longer
+  misdetected as living under the `/proj` content root (plain `startsWith` matched the prefix),
+  which would have made the spec-root configurator register a folder outside the module.
 - **`CrystalInstanceVarFinder` missed assignments and property declarations** — `@x = 1` parses as
   `ASSIGNMENT > INSTANCE_VAR_ACCESS` (the leaf check never fired) and `@size : Int32` parses as
   `PROPERTY_DECLARATION > INSTANCE_VAR_ACCESS` (the direct-token lookup missed). Both now recognized,

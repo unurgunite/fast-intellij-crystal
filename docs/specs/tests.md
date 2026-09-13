@@ -74,3 +74,39 @@ No test doubles — use the real `IdDataConsumer` and assert on result masks
 matching via constructed entries does not work. The filter lexer needs the test
 app (BasePlatformTestCase), not a pure unit test, because TODO counting touches
 the extension point.
+
+## Never `waitForSmartMode()` on the EDT test thread
+
+It deadlocks (hung a suite run past the 30-minute timeout). For
+dumb-mode-deferred logic (`runWhenSmart`), test the early-return paths through
+the public entry and the deferred step directly (reflection if private).
+
+## Never mutate the module model in tests
+
+`ModuleRootModificationUtil.addContentRoot` / `updateModel` in a test leaks
+async reindex work into later test classes in the same JVM: 59 highlighting
+failures with "PSI changes are not allowed during highlighting" (bisected to
+`CrystalSpecSourceRootConfiguratorTest`, which was then rewritten to extract a
+pure predicate instead). Module-model-mutating positive tests are banned;
+extract pure predicates (`isUnderContentRoot`) and test those.
+
+## Real-file tests must quiesce in tearDown
+
+Tests that create/delete real files (for `LocalFileSystem`-based code) leave
+async VFS/index events that break later highlighting tests in the same JVM —
+same 59-failure signature as above. After deleting the files, drain
+synchronously before `super.tearDown()`:
+
+```kotlin
+com.intellij.openapi.vfs.LocalFileSystem.getInstance().refresh(false)
+com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+```
+
+Verified by full-suite runs with timestamp checks proving the victims ran
+after the file-touching tests.
+
+## Refresh created VFS paths individually
+
+After creating real files for `LocalFileSystem`-based code, call
+`refreshAndFindFileByPath` on each created path. Refreshing only the parent
+dir does not reliably surface new children to `findFileByPath`.
