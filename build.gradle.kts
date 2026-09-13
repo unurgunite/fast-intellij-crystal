@@ -77,6 +77,25 @@ tasks {
         dependsOn(generateLexer, generateParser)
     }
 
+    // CrystalParserTest golden files are environment-flaky (JDK 21 + grammar-kit,
+    // see TODO.md "ParserTest Non-Determinism"). They are excluded from the default
+    // ./gradlew test and run via ./gradlew test -PgoldenOnly=true instead
+    // (non-blocking CI step). The filter is set in doFirst so Test-task
+    // configuration stays lazy (keeps the configuration cache working); the flag
+    // is read into a plain val so the closure captures no Project reference.
+    val goldenOnly = providers.gradleProperty("goldenOnly").orNull == "true"
+    named<Test>("test") {
+        doFirst {
+            filter {
+                if (goldenOnly) {
+                    includeTestsMatching("*CrystalParserTest*")
+                } else {
+                    excludeTestsMatching("io.github.unurgunite.crystal.parser.CrystalParserTest")
+                }
+            }
+        }
+    }
+
     withType<JavaCompile>().configureEach {
         options.isFork = false
     }

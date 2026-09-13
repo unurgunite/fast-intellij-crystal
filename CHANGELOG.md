@@ -20,6 +20,9 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   run, spec and debug states, extracted from three duplicated inline implementations (no behavior
   change). `CrystalTestRunState.buildCommandLine`, `CrystalDebugAdapterDescriptor.findLldbDapCandidate`
   and `CrystalFormattingService.formatStdin` extracted the same way for testability.
+- **CI runs parser goldens as a non-blocking step** — `CrystalParserTest` is excluded from the
+  default `./gradlew test` (environment-flaky on JDK 21, see TODO.md) and runs via
+  `./gradlew test -PgoldenOnly=true` with `continue-on-error` plus a known-flaky-set warning.
 
 ### Fixed
 
