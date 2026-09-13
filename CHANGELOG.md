@@ -27,6 +27,13 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Fixed
 
+- **RegExp key namespace collision crashed `verifyPlugin`** — six highlighter keys were registered
+  under the platform-owned `REGEXP.*` external names with different fallbacks, so whichever side
+  initialized second died in `TextAttributesKey.mergeKeys` (order-dependent: green locally, red in
+  CI's `buildSearchableOptions`). Keys now live in `CRYSTAL_REGEXP.*` with identical fallbacks,
+  plus a reflection-based regression test pinning the `CRYSTAL_` namespace.
+- **`verifyPlugin` muted for `TemplateWordInPluginName`** — "Fast Crystal Plugin" keeps the word
+  "Plugin" by council decision; the verifier's naming-style check is muted via `freeArgs`.
 - **Removed dead lexer stub builder** — the 286-line `CrystalStubBuilder` and its
   `languageStubDefinition` registration were never invoked by the platform (verified with
   a file-write probe: zero calls during stub indexing; stubs come from `DefaultStubBuilder`).

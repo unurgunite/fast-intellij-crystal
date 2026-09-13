@@ -62,6 +62,41 @@ class CrystalSyntaxHighlighterTest : TestCase() {
             keys(CrystalTypes.MACRO_CONTROL_BEGIN)
         )
     }
+
+    fun testAllKeysLiveInCrystalNamespace() {
+        // Regression guard: creating a key under a foreign namespace (e.g. REGEXP.*,
+        // owned by the platform's RegExpHighlighter with different fallbacks) crashes
+        // in TextAttributesKey.mergeKeys for whoever initializes second — broke CI
+        // verifyPlugin's buildSearchableOptions depending on class-load order.
+        // Companion vals compile to getters (no fields), so iterate those.
+        val companion = CrystalSyntaxHighlighter.Companion
+        val keys = companion.javaClass.methods
+            .filter {
+                it.name.startsWith("get") && it.parameterCount == 0 &&
+                    it.returnType == com.intellij.openapi.editor.colors.TextAttributesKey::class.java
+            }
+            .map { it.invoke(companion) as com.intellij.openapi.editor.colors.TextAttributesKey }
+        assertFalse("Expected highlighter keys, found none", keys.isEmpty())
+        for (key in keys) {
+            assertTrue(
+                "Key '${key.externalName}' must live in the CRYSTAL_ namespace",
+                key.externalName.startsWith("CRYSTAL_")
+            )
+        }
+    }
+
+    fun testRegexpSubpatternKeysExist() {
+        for (key in listOf(
+            CrystalSyntaxHighlighter.REGEXP_CHAR_CLASS,
+            CrystalSyntaxHighlighter.REGEXP_ESC_CHARACTER,
+            CrystalSyntaxHighlighter.REGEXP_QUANTIFIER,
+            CrystalSyntaxHighlighter.REGEXP_UNION,
+            CrystalSyntaxHighlighter.REGEXP_PARENTHS,
+            CrystalSyntaxHighlighter.REGEXP_META
+        )) {
+            assertTrue(key.externalName.startsWith("CRYSTAL_REGEXP."))
+        }
+    }
 }
 
 class CrystalRegExpLanguageHostTest : BasePlatformTestCase() {

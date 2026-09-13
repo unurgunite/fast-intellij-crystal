@@ -54,6 +54,13 @@ intellijPlatform {
     publishing {
         token.set(providers.environmentVariable("PUBLISH_TOKEN"))
     }
+
+    pluginVerification {
+        // "Fast Crystal Plugin" intentionally contains the word "Plugin" (council decision:
+        // the name must answer "why this one, not upstream" in 2 seconds). Mute the
+        // verifier's naming-style check; it is not a functional defect.
+        freeArgs.addAll("-mute", "TemplateWordInPluginName")
+    }
 }
 
 tasks {
