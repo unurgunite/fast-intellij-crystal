@@ -6,7 +6,7 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Added
 
-- **Test coverage marathon (+276 tests, 717 → 993)** — every previously untested subsystem now has
+- **Test coverage marathon (+284 tests, 717 → 1001)** — every previously untested subsystem now has
   fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder and references
   searcher, all four completion providers, run-configuration producer/factories/options round-trip,
   `CrystalRunState` command-line building, DAP debug args and runner routing, folding builder,
@@ -14,8 +14,9 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   highlighter mappings and factory, RegExp host, type-compatibility matrix, SDK detector, stdlib
   resolver/library provider, settings persistence, rename guards, navigation items, file type/icons,
   spec-test locator and line markers, definition finder, structure-view factory, spec command-line
-  building, lldb-dap candidate lookup, and real `crystal tool format` round-trips. Weak tests with
-  zero assertions were rewritten with real assertions.
+  building, lldb-dap candidate lookup, real `crystal tool format` round-trips, SM console
+  properties wiring, and project-generator helpers. Weak tests with zero assertions were
+  rewritten with real assertions. (`./gradlew test` runs 909; 92 parser goldens run separately.)
 - **Shared `CrystalCommandLine` helper** — argument splitting and `KEY=VALUE` env parsing used by
   run, spec and debug states, extracted from three duplicated inline implementations (no behavior
   change). `CrystalTestRunState.buildCommandLine`, `CrystalDebugAdapterDescriptor.findLldbDapCandidate`
@@ -26,6 +27,10 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Fixed
 
+- **Stale `HighlightErrorFilter` test case** — `def foo(bar,)` parses cleanly (trailing commas are
+  legal per the `TrailingCommas` golden), so the unhandled-error test asserted on zero error
+  elements. Switched to `def foo(,)`, which genuinely produces one `PsiErrorElement` passing
+  through the filter. The filter itself was innocent.
 - **`findSpecName` never found spec names** — strings parse as `STRING_EXPRESSION` composites, never
   as bare `STRING_LITERAL` siblings, so single-spec configs were always named `spec: line N` instead
   of `spec: <name>`. Now resolves via `CrystalStringExpression`.

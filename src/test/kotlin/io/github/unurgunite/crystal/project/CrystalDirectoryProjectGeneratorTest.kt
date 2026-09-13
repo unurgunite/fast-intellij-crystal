@@ -28,4 +28,43 @@ class CrystalDirectoryProjectGeneratorTest {
         assertEquals("app", settings.projectType)
         assertEquals("", settings.crystalPath)
     }
+
+    @Test
+    fun testResolveCrystalPathPrefersExplicitSetting() {
+        assertEquals(
+            "/custom/crystal",
+            CrystalDirectoryProjectGenerator.resolveCrystalPath(
+                CrystalProjectSettings(projectType = "app", crystalPath = "/custom/crystal")
+            )
+        )
+    }
+
+    @Test
+    fun testResolveCrystalPathFallsBackToDetector() {
+        val resolved = CrystalDirectoryProjectGenerator.resolveCrystalPath(
+            CrystalProjectSettings(projectType = "app", crystalPath = "")
+        )
+        assertTrue("Fallback must be non-blank, got: '$resolved'", resolved.isNotBlank())
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesBothMissing() {
+        val additions = CrystalDirectoryProjectGenerator.missingGitignoreEntries("*.cr\n")
+        assertTrue(".idea/" in additions)
+        assertTrue("*.iml" in additions)
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesPartial() {
+        val additions = CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.cr\n")
+        assertFalse(".idea/" in additions.replace("*.iml", ""))
+        assertTrue("*.iml" in additions)
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesNoneMissing() {
+        assertTrue(
+            CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.iml\n").isBlank()
+        )
+    }
 }

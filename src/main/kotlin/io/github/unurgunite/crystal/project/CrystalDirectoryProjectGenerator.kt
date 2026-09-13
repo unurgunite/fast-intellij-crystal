@@ -31,6 +31,26 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
 
     override fun createPeer(): ProjectGeneratorPeer<CrystalProjectSettings> = CrystalProjectGeneratorPeer()
 
+    companion object {
+        /**
+         * Resolves the crystal binary for `crystal init`: explicit setting wins,
+         * otherwise auto-detect, otherwise plain `crystal` from PATH.
+         */
+        fun resolveCrystalPath(settings: CrystalProjectSettings): String =
+            settings.crystalPath.ifBlank {
+                CrystalSdkDetector.detect() ?: "crystal"
+            }
+
+        /**
+         * IDE entries missing from a freshly generated `.gitignore`.
+         * Returned without the `# IDE` header; empty when nothing is missing.
+         */
+        fun missingGitignoreEntries(content: String): String = buildString {
+            if (!content.contains(".idea/")) appendLine(".idea/")
+            if (!content.contains("*.iml")) appendLine("*.iml")
+        }
+    }
+
     override fun generateProject(
         project: Project,
         baseDir: VirtualFile,
@@ -38,9 +58,7 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
         module: Module
     ) {
         val projectType = settings.projectType
-        val crystalPath = settings.crystalPath.ifBlank {
-            CrystalSdkDetector.detect() ?: "crystal"
-        }
+        val crystalPath = resolveCrystalPath(settings)
 
         // Save crystal path to settings
         if (settings.crystalPath.isNotBlank()) {
@@ -68,11 +86,7 @@ class CrystalDirectoryProjectGenerator : DirectoryProjectGeneratorBase<CrystalPr
                 // Append IDE-specific entries to .gitignore
                 val gitignore = java.io.File(basePath, ".gitignore")
                 if (gitignore.exists()) {
-                    val content = gitignore.readText()
-                    val additions = buildString {
-                        if (!content.contains(".idea/")) appendLine(".idea/")
-                        if (!content.contains("*.iml")) appendLine("*.iml")
-                    }
+                    val additions = missingGitignoreEntries(gitignore.readText())
                     if (additions.isNotBlank()) {
                         gitignore.appendText("\n# IDE\n$additions")
                     }
