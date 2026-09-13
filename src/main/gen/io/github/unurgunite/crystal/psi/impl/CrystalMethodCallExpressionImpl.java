@@ -44,4 +44,10 @@ public class CrystalMethodCallExpressionImpl extends CrystalMethodCallExpression
     return PsiTreeUtil.getChildOfType(this, CrystalCallArgs.class);
   }
 
+  @Override
+  @Nullable
+  public CrystalTypePath getTypePath() {
+    return PsiTreeUtil.getChildOfType(this, CrystalTypePath.class);
+  }
+
 }

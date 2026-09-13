@@ -2,7 +2,6 @@ package io.github.unurgunite.crystal.inspections
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
-import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.completion.CrystalTypeInference
 import io.github.unurgunite.crystal.psi.*
 
@@ -28,6 +27,25 @@ object CrystalExpressionTypeResolver {
      * Returns null if the type cannot be determined.
      */
     fun resolveType(expr: PsiElement): ResolvedType? {
+        // Guard against infinite mutual recursion with CrystalTypeInference
+        // (resolveType → inferTypeList → inferFromAssignmentList →
+        // inferTypeFromExpressionList → resolveType, e.g. on self-referential
+        // `x = ... x ...`). Without this, BackgroundHighlighter dies with
+        // StackOverflowError on ordinary files (printer.cr). ThreadLocal because
+        // resolution runs on EDT and background threads concurrently.
+        val depth = recursionDepth.get()
+        if (depth > 16) return null
+        recursionDepth.set(depth + 1)
+        try {
+            return resolveTypeInner(expr)
+        } finally {
+            recursionDepth.set(depth)
+        }
+    }
+
+    private val recursionDepth = ThreadLocal.withInitial { 0 }
+
+    private fun resolveTypeInner(expr: PsiElement): ResolvedType? {
         if (expr is CrystalBareArgument) {
             val inner = findExpressionInContainer(expr)
             if (inner != null) return resolveType(inner)
@@ -88,12 +106,12 @@ object CrystalExpressionTypeResolver {
         if (expr is CrystalIfStatement) return resolveIfExpression(expr)
         if (expr is CrystalCaseStatement) return resolveCaseExpression(expr)
 
-        // Variable references → delegate to existing type inference
+        // Variable references → delegate to existing type inference (unions preserved as "A | B")
         if (expr is CrystalVariableReference) {
             val name = expr.text
             val project = expr.project
-            val inferred = CrystalTypeInference.inferType(name, expr, project)
-            if (inferred != null) return ResolvedType(inferred)
+            val inferred = CrystalTypeInference.inferTypeList(name, expr, project)
+            if (inferred.isNotEmpty()) return ResolvedType(inferred.joinToString(" | "))
             return null
         }
 
@@ -388,7 +406,7 @@ object CrystalExpressionTypeResolver {
             val elemType = child.node?.elementType
             if (elemType == CrystalTypes.IDENTIFIER || elemType == CrystalTypes.COLON
                 || elemType == CrystalTypes.STAR || elemType == CrystalTypes.DOUBLE_STAR
-                || child is com.intellij.psi.PsiWhiteSpace) {
+                || child is PsiWhiteSpace) {
                 child = child.nextSibling
                 continue
             }

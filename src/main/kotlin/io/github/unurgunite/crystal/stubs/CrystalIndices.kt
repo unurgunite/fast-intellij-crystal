@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal.stubs
 
 import com.intellij.psi.stubs.StringStubIndexExtension
 import com.intellij.psi.stubs.StubIndexKey
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
 import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
@@ -44,6 +45,20 @@ class CrystalMacroIndex : StringStubIndexExtension<CrystalMacroDefinition>() {
     companion object {
         val KEY: StubIndexKey<String, CrystalMacroDefinition> =
             StubIndexKey.createIndexKey("crystal.macro.index")
+    }
+}
+
+/**
+ * Index that maps constant names (top-level and namespaced, e.g. `DEFAULT_CREATE_PERMISSIONS`,
+ * `Math::PI` keyed by the simple name `PI`) to their [CrystalConstantAssignment] definitions.
+ * Enables Go to Definition and Find Usages for project constants.
+ */
+class CrystalConstantIndex : StringStubIndexExtension<CrystalConstantAssignment>() {
+    override fun getKey(): StubIndexKey<String, CrystalConstantAssignment> = KEY
+
+    companion object {
+        val KEY: StubIndexKey<String, CrystalConstantAssignment> =
+            StubIndexKey.createIndexKey("crystal.constant.index")
     }
 }
 

@@ -45,16 +45,26 @@ class CrystalNamespaceReference(
                 CrystalClassIndex.KEY, simpleName, project, scope,
                 CrystalNamedElement::class.java
             )
-            return candidates.filter { candidate ->
+            val filtered = candidates.filter { candidate ->
                 CrystalPsiUtils.buildQualifiedName(candidate) == fullName
             }.firstOrNull()
+            if (filtered != null) return filtered
         }
 
         // 3. Simple name only (e.g., `::Foo` — no preceding path)
-        return StubIndex.getElements(
+        val simple = StubIndex.getElements(
             CrystalClassIndex.KEY, simpleName, project, scope,
             CrystalNamedElement::class.java
         ).firstOrNull()
+        if (simple != null) return simple
+
+        // 4. Stdlib fallback. Constants (e.g. `Crystal::VERSION`) and macros are not in
+        //    the StubIndex (their roots live under an internal SyntheticLibrary scope), so
+        //    fall back to the cached stdlib scan. Prefer the full qualified name, then the
+        //    simple name (matches the class-index fallback above).
+        val stdlibFull = CrystalReference.resolveStdlibSymbol(project, fullName)
+        if (stdlibFull != null) return stdlibFull
+        return CrystalReference.resolveStdlibSymbol(project, simpleName)
     }
 
     /**
