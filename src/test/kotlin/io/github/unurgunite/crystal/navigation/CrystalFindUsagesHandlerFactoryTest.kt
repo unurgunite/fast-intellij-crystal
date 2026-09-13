@@ -2,7 +2,7 @@ package io.github.unurgunite.crystal.navigation
 
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.psi.CrystalConstantAssignment
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
 
 class CrystalFindUsagesHandlerFactoryTest : BasePlatformTestCase() {
 

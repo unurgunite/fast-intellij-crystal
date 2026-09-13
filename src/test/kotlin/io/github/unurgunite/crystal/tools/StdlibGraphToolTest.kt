@@ -1,4 +1,4 @@
-package de.magynhard.crystal.tools
+package io.github.unurgunite.crystal.tools
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -12,9 +12,9 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.CrystalLanguage
-import de.magynhard.crystal.psi.CrystalReference
-import de.magynhard.crystal.psi.SymbolLoc
+import io.github.unurgunite.crystal.CrystalLanguage
+import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.SymbolLoc
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.util.ArrayDeque
@@ -693,7 +693,7 @@ render();
     }
 
     companion object {
-        private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
+        private val STDLIB get() = io.github.unurgunite.crystal.StdlibTestPaths.STDLIB
         private val MACRO_NAMES = setOf(
             "getter", "setter", "property", "delegate", "forward_missing_to",
             "define_new", "define_clone", "define_finalize", "define_initialize"

@@ -1,4 +1,4 @@
-package de.magynhard.crystal.sdk
+package io.github.unurgunite.crystal.sdk
 
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.vfs.LocalFileSystem

@@ -1,4 +1,4 @@
-package de.magynhard.crystal.stubs
+package io.github.unurgunite.crystal.stubs
 
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.diagnostic.Logger
@@ -8,10 +8,10 @@ import com.intellij.psi.StubBuilder
 import com.intellij.psi.stubs.PsiFileStubImpl
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.tree.IElementType
-import de.magynhard.crystal.lexer.CrystalLexerAdapter
-import de.magynhard.crystal.sdk.CrystalStdlibResolver
-import de.magynhard.crystal.lexer.CrystalTokenTypes
-import de.magynhard.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.lexer.CrystalLexerAdapter
+import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
+import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
+import io.github.unurgunite.crystal.psi.CrystalTypes
 
 class CrystalStubBuilder : StubBuilder {
 
@@ -55,7 +55,7 @@ class CrystalStubBuilder : StubBuilder {
         )
 
     override fun buildStubTree(file: PsiFile): StubElement<*> {
-        if (file.fileType !is de.magynhard.crystal.CrystalFileType) {
+        if (file.fileType !is io.github.unurgunite.crystal.CrystalFileType) {
             return PsiFileStubImpl(file)
         }
         if (isStdlibFile(file)) {

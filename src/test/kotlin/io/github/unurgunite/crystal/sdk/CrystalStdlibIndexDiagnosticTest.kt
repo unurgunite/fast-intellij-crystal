@@ -24,7 +24,7 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
         // test VFS sandbox forbids by default. Allow read access for the duration
         // of the test so constants/classes (DEFAULT_CREATE_PERMISSIONS, Math::PI,
         // File) resolve into the real stdlib.
-        de.magynhard.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)?.path?.let {
+        io.github.unurgunite.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)?.path?.let {
             com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess.allowRootAccess(testRootDisposable, it)
         }
     }
@@ -34,7 +34,7 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
     }
 
     fun testStdlibPathResolves() {
-        val path = de.magynhard.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)
+        val path = io.github.unurgunite.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)
         assertNotNull("Stdlib path should resolve", path)
     }
 

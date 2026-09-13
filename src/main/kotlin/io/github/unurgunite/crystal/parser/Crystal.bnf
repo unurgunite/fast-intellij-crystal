@@ -734,7 +734,7 @@ grouped_expression ::= LPAREN NLS expression [assign_op NLS expression] NLS RPAR
 // (the command `add` with the grouped-expression argument `("x")`).
 bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT) !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead (bare_argument_list [block] | block) [postfix_modifier]
                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier] {
-  mixin="de.magynhard.crystal.psi.impl.CrystalMethodCallExpressionMixin"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
 }
 
 // A bare command (shell-style `cp a b`) never contains a top-level `=` assignment among its

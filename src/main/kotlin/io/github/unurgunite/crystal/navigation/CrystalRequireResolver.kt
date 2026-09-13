@@ -1,10 +1,10 @@
-package de.magynhard.crystal.navigation
+package io.github.unurgunite.crystal.navigation
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import de.magynhard.crystal.psi.CrystalRequireStatement
-import de.magynhard.crystal.sdk.CrystalStdlibResolver
+import io.github.unurgunite.crystal.psi.CrystalRequireStatement
+import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 /**
  * Resolves Crystal `require "..."` paths to their target `.cr` files, mirroring

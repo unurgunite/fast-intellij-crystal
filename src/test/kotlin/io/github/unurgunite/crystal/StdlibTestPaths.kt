@@ -1,4 +1,4 @@
-package de.magynhard.crystal
+package io.github.unurgunite.crystal
 
 import java.io.File
 

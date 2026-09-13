@@ -1,10 +1,10 @@
-package de.magynhard.crystal.navigation
+package io.github.unurgunite.crystal.navigation
 
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.psi.CrystalRequireStatement
-import de.magynhard.crystal.sdk.CrystalStdlibResolver
+import io.github.unurgunite.crystal.psi.CrystalRequireStatement
+import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 class CrystalRequireResolverTest : BasePlatformTestCase() {
 

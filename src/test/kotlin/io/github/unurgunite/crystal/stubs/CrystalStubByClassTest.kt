@@ -1,9 +1,9 @@
-package de.magynhard.crystal.stubs
+package io.github.unurgunite.crystal.stubs
 
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 
 class CrystalStubByClassTest : BasePlatformTestCase() {
     override fun getTestDataPath(): String = "src/test/testData"

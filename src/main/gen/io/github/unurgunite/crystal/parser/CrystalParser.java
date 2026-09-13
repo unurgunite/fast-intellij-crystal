@@ -1881,9 +1881,9 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   /* ********************************************************** */
   // grouped_expression
   //                                   | type_receiver_expression
-  //                                   | array_literal
-  //                                   | hash_literal
-  //                                   | tuple_literal
+  //                                  | array_literal
+  //                                  | hash_literal
+  //                                  | tuple_literal
   //                                   | proc_literal
   //                                   | bare_method_call_expression
   //                                   | implicit_object_call
@@ -4660,6 +4660,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                          | [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT) call_args [block]
   //                          | (IDENTIFIER | CONSTANT) block
   //                          | (SUPER | PREVIOUS_DEF) call_args [block]
+  //                          | (SUPER | PREVIOUS_DEF) bare_argument_list
   //                          | (SUPER | PREVIOUS_DEF) block
   public static boolean method_call_expression(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "method_call_expression")) return false;
@@ -4670,6 +4671,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = method_call_expression_2(builder_, level_ + 1);
     if (!result_) result_ = method_call_expression_3(builder_, level_ + 1);
     if (!result_) result_ = method_call_expression_4(builder_, level_ + 1);
+    if (!result_) result_ = method_call_expression_5(builder_, level_ + 1);
     exit_section_(builder_, level_, marker_, result_, false, null);
     return result_;
   }
@@ -4778,13 +4780,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // (SUPER | PREVIOUS_DEF) block
+  // (SUPER | PREVIOUS_DEF) bare_argument_list
   private static boolean method_call_expression_4(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "method_call_expression_4")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = method_call_expression_4_0(builder_, level_ + 1);
-    result_ = result_ && block(builder_, level_ + 1);
+    result_ = result_ && bare_argument_list(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
@@ -4792,6 +4794,26 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   // SUPER | PREVIOUS_DEF
   private static boolean method_call_expression_4_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "method_call_expression_4_0")) return false;
+    boolean result_;
+    result_ = consumeToken(builder_, SUPER);
+    if (!result_) result_ = consumeToken(builder_, PREVIOUS_DEF);
+    return result_;
+  }
+
+  // (SUPER | PREVIOUS_DEF) block
+  private static boolean method_call_expression_5(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "method_call_expression_5")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = method_call_expression_5_0(builder_, level_ + 1);
+    result_ = result_ && block(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // SUPER | PREVIOUS_DEF
+  private static boolean method_call_expression_5_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "method_call_expression_5_0")) return false;
     boolean result_;
     result_ = consumeToken(builder_, SUPER);
     if (!result_) result_ = consumeToken(builder_, PREVIOUS_DEF);
@@ -6923,9 +6945,9 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   /* ********************************************************** */
   // grouped_expression
   //                              | type_receiver_expression
-  //                               | array_literal
-  //                               | hash_literal
-  //                               | tuple_literal
+  //                              | array_literal
+  //                              | hash_literal
+  //                              | tuple_literal
   //                              | proc_literal
   //                              | namespace_access
   //                              | method_call_expression

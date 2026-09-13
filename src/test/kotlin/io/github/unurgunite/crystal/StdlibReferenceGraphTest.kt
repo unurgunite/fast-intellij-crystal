@@ -1,4 +1,4 @@
-package de.magynhard.crystal
+package io.github.unurgunite.crystal
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -9,7 +9,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.CrystalReference
 
 class StdlibReferenceGraphTest : BasePlatformTestCase() {
     override fun setUp() {
@@ -87,6 +87,6 @@ class StdlibReferenceGraphTest : BasePlatformTestCase() {
     }
 
     companion object {
-        private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
+        private val STDLIB get() = io.github.unurgunite.crystal.StdlibTestPaths.STDLIB
     }
 }

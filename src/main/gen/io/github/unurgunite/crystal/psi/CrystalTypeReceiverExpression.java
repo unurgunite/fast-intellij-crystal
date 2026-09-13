@@ -1,5 +1,5 @@
 // This is a generated file. Not intended for manual editing.
-package de.magynhard.crystal.psi;
+package io.github.unurgunite.crystal.psi;
 
 import java.util.List;
 import org.jetbrains.annotations.*;

@@ -1,5 +1,5 @@
 // This is a generated file. Not intended for manual editing.
-package de.magynhard.crystal.psi.impl;
+package io.github.unurgunite.crystal.psi.impl;
 
 import java.util.List;
 import org.jetbrains.annotations.*;
@@ -7,9 +7,9 @@ import com.intellij.lang.ASTNode;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
-import static de.magynhard.crystal.psi.CrystalTypes.*;
+import static io.github.unurgunite.crystal.psi.CrystalTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
-import de.magynhard.crystal.psi.*;
+import io.github.unurgunite.crystal.psi.*;
 
 public class CrystalNextExpressionImpl extends ASTWrapperPsiElement implements CrystalNextExpression {
 

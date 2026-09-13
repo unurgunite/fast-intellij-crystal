@@ -1,12 +1,12 @@
-package de.magynhard.crystal
+package io.github.unurgunite.crystal
 
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import de.magynhard.crystal.navigation.CrystalGotoDeclarationHandler
-import de.magynhard.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.navigation.CrystalGotoDeclarationHandler
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import java.io.File
 
 /**
@@ -23,7 +23,7 @@ import java.io.File
  */
 class CrystalStdlibFileInfoTreeTest : BasePlatformTestCase() {
 
-    private val STDLIB get() = de.magynhard.crystal.StdlibTestPaths.STDLIB
+    private val STDLIB get() = io.github.unurgunite.crystal.StdlibTestPaths.STDLIB
 
     override fun setUp() {
         super.setUp()

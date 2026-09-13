@@ -1,4 +1,4 @@
-package de.magynhard.crystal.stubs
+package io.github.unurgunite.crystal.stubs
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.stubs.LanguageStubDefinition
