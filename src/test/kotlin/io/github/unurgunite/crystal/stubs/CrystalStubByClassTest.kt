@@ -3,6 +3,8 @@ package io.github.unurgunite.crystal.stubs
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 
@@ -19,45 +21,45 @@ class CrystalStubByClassTest : BasePlatformTestCase() {
 
     fun testMethodByClassIndexForSimpleFile() {
         myFixture.addFileToProject("test.cr", """
-class Foo
-  def bar
+class StubWidget
+  def widget_alpha
   end
-  def baz(x : Int32)
+  def widget_beta(x : Int32)
   end
 end
         """.trimIndent())
 
-        val names = methodsOf("Foo").mapNotNull { it.name }.toSet()
-        assertEquals("Foo should expose exactly bar and baz", setOf("bar", "baz"), names)
+        val names = methodsOf("StubWidget").mapNotNull { it.name }.toSet()
+        assertEquals("StubWidget should expose exactly widget_alpha and widget_beta", setOf("widget_alpha", "widget_beta"), names)
     }
 
     fun testMethodByClassIndexIsScopedPerClass() {
         myFixture.addFileToProject("two.cr", """
-class Foo
-  def foo_method
+class StubWidget
+  def widget_a_method
   end
 end
 
-class Bar
-  def bar_method
+class StubWidgetB
+  def widget_b_method
   end
 end
         """.trimIndent())
 
         assertEquals(
-            setOf("foo_method"),
-            methodsOf("Foo").mapNotNull { it.name }.toSet()
+            setOf("widget_a_method"),
+            methodsOf("StubWidget").mapNotNull { it.name }.toSet()
         )
         assertEquals(
-            setOf("bar_method"),
-            methodsOf("Bar").mapNotNull { it.name }.toSet()
+            setOf("widget_b_method"),
+            methodsOf("StubWidgetB").mapNotNull { it.name }.toSet()
         )
     }
 
     fun testMethodByClassIndexMissesUnknownClass() {
         myFixture.addFileToProject("test.cr", """
-class Foo
-  def bar
+class StubWidget
+  def widget_alpha
   end
 end
         """.trimIndent())
@@ -70,23 +72,23 @@ end
 
     fun testMethodIndexHasBareMethods() {
         myFixture.addFileToProject("test.cr", """
-def top_level
+def widget_top_level
 end
 
-class Foo
-  def bar
+class StubWidget
+  def widget_alpha
   end
 end
         """.trimIndent())
 
         val scope = GlobalSearchScope.allScope(project)
-        val bar = StubIndex.getElements(
-            CrystalMethodIndex.KEY, "bar", project, scope,
+        val widget_alpha = StubIndex.getElements(
+            CrystalMethodIndex.KEY, "widget_alpha", project, scope,
             CrystalMethodDefinition::class.java
         )
-        assertEquals(1, bar.size)
+        assertEquals(1, widget_alpha.size)
         val topLevel = StubIndex.getElements(
-            CrystalMethodIndex.KEY, "top_level", project, scope,
+            CrystalMethodIndex.KEY, "widget_top_level", project, scope,
             CrystalMethodDefinition::class.java
         )
         assertEquals(1, topLevel.size)
@@ -94,32 +96,73 @@ end
 
     fun testClassIndexFindsClass() {
         myFixture.addFileToProject("test.cr", """
-class Foo
+class StubWidget
 end
         """.trimIndent())
 
         val scope = GlobalSearchScope.allScope(project)
         val found = StubIndex.getElements(
-            CrystalClassIndex.KEY, "Foo", project, scope,
+            CrystalClassIndex.KEY, "StubWidget", project, scope,
             CrystalNamedElement::class.java
         )
         assertEquals(1, found.size)
-        assertEquals("Foo", found.first().name)
+        assertEquals("StubWidget", found.first().name)
     }
 
-    fun testClassByEnclosingIndexFindsNestedType() {
-        myFixture.addFileToProject("test.cr", """
-class Foo
-  class Sub
+    fun testClassByEnclosingIndexFindsNestedType() {        myFixture.addFileToProject("test.cr", """
+class StubWidget
+  class StubWidgetInner
   end
 end
         """.trimIndent())
 
         val scope = GlobalSearchScope.allScope(project)
         val nested = StubIndex.getElements(
-            CrystalClassByEnclosingIndex.KEY, "Foo", project, scope,
+            CrystalClassByEnclosingIndex.KEY, "StubWidget", project, scope,
             CrystalNamedElement::class.java
         ).mapNotNull { it.name }.toSet()
-        assertTrue("Sub should be listed as nested in Foo, got: $nested", "Sub" in nested)
+        assertTrue("Sub should be listed as nested in StubWidget, got: $nested", "StubWidgetInner" in nested)
+    }
+
+    fun testMacroIndexFindsMacro() {
+        myFixture.addFileToProject("test.cr", """
+macro stub_widget_macro_xyz
+end
+        """.trimIndent())
+
+        val scope = GlobalSearchScope.allScope(project)
+        val found = StubIndex.getElements(
+            CrystalMacroIndex.KEY, "stub_widget_macro_xyz", project, scope,
+            CrystalMacroDefinition::class.java
+        )
+        assertEquals(1, found.size)
+        assertEquals("stub_widget_macro_xyz", found.first().name)
+    }
+
+    fun testConstantIndexFindsConstant() {
+        myFixture.addFileToProject("test.cr", """
+STUB_WIDGET_CONST_XYZ = 0o644
+        """.trimIndent())
+
+        val scope = GlobalSearchScope.allScope(project)
+        val found = StubIndex.getElements(
+            CrystalConstantIndex.KEY, "STUB_WIDGET_CONST_XYZ", project, scope,
+            CrystalConstantAssignment::class.java
+        )
+        assertEquals(1, found.size)
+    }
+
+    fun testConstantIndexMissesUnknown() {
+        myFixture.addFileToProject("test.cr", """
+STUB_WIDGET_OTHER = 1
+        """.trimIndent())
+
+        val scope = GlobalSearchScope.allScope(project)
+        assertTrue(
+            StubIndex.getElements(
+                CrystalConstantIndex.KEY, "NO_SUCH_STUB_CONST_XYZ", project, scope,
+                CrystalConstantAssignment::class.java
+            ).isEmpty()
+        )
     }
 }

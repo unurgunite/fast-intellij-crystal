@@ -1,63 +1,75 @@
 package io.github.unurgunite.crystal.sdk
 
-import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import java.io.File
+import org.junit.Assume
 
 class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
 
+    private val realFiles = mutableListOf<java.io.File>()
+
+    override fun tearDown() {
+        try {
+            realFiles.forEach { it.delete() }
+            realFiles.clear()
+            CrystalStdlibLibraryProvider.clearCache()
+            CrystalSettings.getInstance(project).loadState(CrystalSettings.State())
+        } finally {
+            super.tearDown()
+        }
+    }
+
+    private val provider = CrystalStdlibLibraryProvider()
+
     /**
-     * Regression test for the workspace-model save loop.
-     *
-     * The provider is invoked by the platform under the write-intent lock while the
-     * workspace model is being recomputed. It must NOT read the workspace model
-     * (ModuleManager / ModuleRootManager) — doing so re-enters the model and causes an
-     * infinite "workspace model save" loop (write-intent lock).
-     *
-     * If the provider accidentally touches the model again, this test will either deadlock
-     * (timeout) or throw a re-entrant model-access error instead of returning cleanly.
-     *
-     * NOTE: isCrystalProject reads the on-disk project via LocalFileSystem, so the markers
-     * must be real files on disk (not light/in-memory fixtures).
+     * Writes a marker into the REAL project base dir. Fixture files live under
+     * temp:// which LocalFileSystem cannot see, but the provider deliberately
+     * uses model-free LocalFileSystem checks — so the test does too.
      */
-    fun testProviderLoadsStdlibForCrystalProject() {
+    private fun writeBaseFile(name: String, content: String) {
+        val basePath = project.basePath
+        assertNotNull("No base path in test project", basePath)
+        val file = java.io.File(basePath!!, name)
+        // The fixture base dir may have been cleaned between tests — recreate it.
+        file.parentFile?.mkdirs()
+        file.writeText(content)
+        realFiles.add(file)
+        com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByPath(file.absolutePath)
+    }
+
+    fun testNonCrystalProjectYieldsNoLibrary() {
+        // Empty temp project: no shard.yml, no .cr files → no library, no crash.
+        // Must not touch the workspace model (infinite-save-loop regression guard).
         CrystalStdlibLibraryProvider.clearCache()
-        writeProjectFile("shard.yml", "name: test\nversion: 0.1.0\n")
-        writeProjectFile("main.cr", "puts 1\n")
+        assertTrue(provider.getAdditionalProjectLibraries(project).isEmpty())
+    }
 
-        val libs = CrystalStdlibLibraryProvider().getAdditionalProjectLibraries(project)
-        assertEquals("Exactly one stdlib library for a Crystal project", 1, libs.size)
-
-        val stdlibPath = CrystalStdlibResolver.resolveStdlibPath(project)
-        assertNotNull("Stdlib path should resolve", stdlibPath)
-
-        val roots = libs.first().sourceRoots
+    fun testMissingCrystalBinaryYieldsNoLibrary() {
+        CrystalStdlibLibraryProvider.clearCache()
+        writeBaseFile("shard.yml", "name: demo")
+        CrystalSettings.getInstance(project).loadState(
+            CrystalSettings.State(crystalPath = "/nonexistent-dir-xyz/crystal")
+        )
         assertTrue(
-            "Stdlib path must be a source root of the provided library",
-            roots.any { it.url == stdlibPath!!.url }
+            "Unresolvable stdlib must yield no library, not a crash",
+            provider.getAdditionalProjectLibraries(project).isEmpty()
         )
     }
 
-    fun testProviderReturnsEmptyForNonCrystalProject() {
+    fun testCrystalProjectYieldsStableLibrary() {
+        Assume.assumeTrue(
+            "Requires installed Crystal binary",
+            CrystalStdlibResolver.resolveStdlibPath(project) != null
+        )
+        writeBaseFile("shard.yml", "name: demo")
         CrystalStdlibLibraryProvider.clearCache()
-        // BasePlatformTestCase reuses one project across methods; the positive test may
-        // have left shard.yml / .cr markers on disk. Remove them through the VFS (a plain
-        // File.delete can fail while the VFS holds the file open).
-        val baseVfs = LocalFileSystem.getInstance().findFileByPath(project.basePath!!)
-        WriteCommandAction.runWriteCommandAction(project) {
-            baseVfs?.findChild("shard.yml")?.delete(this)
-            baseVfs?.children?.filter { it.extension == "cr" }?.forEach { it.delete(this) }
-        }
-
-        val libs = CrystalStdlibLibraryProvider().getAdditionalProjectLibraries(project)
-        assertTrue("No stdlib library for a non-Crystal project", libs.isEmpty())
-    }
-
-    private fun writeProjectFile(name: String, text: String) {
-        val file = File(project.basePath!!, name)
-        file.parentFile?.mkdirs()
-        file.writeText(text)
-        LocalFileSystem.getInstance().refreshAndFindFileByIoFile(file)
+        val first = provider.getAdditionalProjectLibraries(project)
+        assertEquals(1, first.size)
+        val roots = first.first().sourceRoots
+        assertEquals(1, roots.size)
+        assertTrue(roots.first().isDirectory)
+        // Second call must return an equal library (platform treats inequality as "changed").
+        val second = provider.getAdditionalProjectLibraries(project)
+        assertEquals(first, second)
+        assertEquals(first.first().hashCode(), second.first().hashCode())
     }
 }

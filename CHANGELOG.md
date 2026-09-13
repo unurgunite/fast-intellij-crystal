@@ -4,6 +4,36 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ## [1.0.0] — 2026-09-13
 
+### Added
+
+- **Test coverage marathon (+178 tests, 717 → 895)** — every previously untested subsystem now has
+  fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder, all four
+  completion providers, run-configuration producer/factories/options round-trip, `CrystalRunState`
+  command-line building, DAP debug args, folding builder, structure view, brace matcher, commenter,
+  single-quote inspection, syntax highlighter mappings, RegExp host, type-compatibility matrix,
+  SDK detector, stdlib resolver/library provider, settings persistence, rename guards, and the
+  spec-test locator. Weak tests with zero assertions were rewritten with real assertions.
+- **Shared `CrystalCommandLine` helper** — argument splitting and `KEY=VALUE` env parsing used by
+  run, spec and debug states, extracted from three duplicated inline implementations (no behavior
+  change).
+
+### Fixed
+
+- **`findSpecName` never found spec names** — strings parse as `STRING_EXPRESSION` composites, never
+  as bare `STRING_LITERAL` siblings, so single-spec configs were always named `spec: line N` instead
+  of `spec: <name>`. Now resolves via `CrystalStringExpression`.
+- **`workingDirectory` fallback was dead** — the `project.basePath` fallback never fired because the
+  stored default is `""`, not null. Blank is now treated as unset.
+- **`CrystalTestLocator` threw on out-of-range lines** — `getLineStartOffset(line - 1)` is now clamped
+  to the document instead of throwing.
+- **`CrystalNamesValidator` accepted invalid names** — setter `=` suffix was rejected while interior
+  `?`/`!` (e.g. `a?b`, `@foo?`) was accepted. Now a single trailing `?`/`!`/`=` is allowed, interior
+  markers are not.
+- **`CrystalInstanceVarFinder` missed assignments and property declarations** — `@x = 1` parses as
+  `ASSIGNMENT > INSTANCE_VAR_ACCESS` (the leaf check never fired) and `@size : Int32` parses as
+  `PROPERTY_DECLARATION > INSTANCE_VAR_ACCESS` (the direct-token lookup missed). Both now recognized,
+  so Go to Definition on `@name` resolves again.
+
 ### Changed
 
 - **Replace deprecated `DefaultLiveTemplatesProvider`** — replaced the deprecated `DefaultLiveTemplatesProvider` class-based implementation with the declarative `<defaultLiveTemplates file="..."/>` extension point, aligning with current IntelliJ Platform API conventions.

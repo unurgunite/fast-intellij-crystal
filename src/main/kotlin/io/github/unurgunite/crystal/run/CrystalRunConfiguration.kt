@@ -28,7 +28,9 @@ class CrystalRunConfiguration(
         set(value) { options.arguments = value }
 
     var workingDirectory: String
-        get() = options.workingDirectory ?: project.basePath ?: ""
+        // Stored default is "" (never null), so treat blank as unset to let the
+        // project base path fallback actually work.
+        get() = options.workingDirectory?.ifBlank { null } ?: project.basePath ?: ""
         set(value) { options.workingDirectory = value }
 
     var environmentVariables: String

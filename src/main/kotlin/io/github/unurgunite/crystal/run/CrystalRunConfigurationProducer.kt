@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import java.io.File
 
@@ -128,16 +129,20 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
             if (firstChild != null && firstChild.node?.elementType == CrystalTypes.IDENTIFIER) {
                 val name = firstChild.text
                 if (name == "it" || name == "describe" || name == "context") {
-                    // Find the string literal argument
+                    // Find the string literal argument. Strings parse as a
+                    // STRING_EXPRESSION composite (quote + content + quote leaves),
+                    // never as a bare STRING_LITERAL sibling.
                     var sibling = firstChild.nextSibling
                     while (sibling != null) {
-                        if (sibling.node?.elementType == CrystalTypes.STRING_LITERAL) {
-                            return sibling.text.removeSurrounding("\"")
+                        val stringExpr = PsiTreeUtil.findChildOfType(
+                            sibling, CrystalStringExpression::class.java, false
+                        ) ?: (sibling as? CrystalStringExpression)
+                        if (stringExpr != null) {
+                            return stringExpr.text.removeSurrounding("\"")
                         }
-                        // Check inside call_args or bare_argument_list
-                        val stringInChild = PsiTreeUtil.findChildOfType(sibling, PsiElement::class.java)
-                        if (stringInChild?.node?.elementType == CrystalTypes.STRING_LITERAL) {
-                            return stringInChild.text.removeSurrounding("\"")
+                        val directString = PsiTreeUtil.findChildOfType(sibling, PsiElement::class.java)
+                        if (directString?.node?.elementType == CrystalTypes.STRING_LITERAL) {
+                            return directString.text.removeSurrounding("\"")
                         }
                         sibling = sibling.nextSibling
                     }

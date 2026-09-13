@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.platform.dap.DapLaunchArgumentsProvider
 import com.intellij.platform.dap.DapStartRequest
 import com.intellij.platform.dap.LaunchRequestArguments
+import io.github.unurgunite.crystal.run.CrystalCommandLine
 import io.github.unurgunite.crystal.run.CrystalRunConfiguration
 import java.io.File
 
@@ -48,20 +49,12 @@ class CrystalDebugRunState(
         )
 
         if (configuration.arguments.isNotBlank()) {
-            args["args"] = configuration.arguments.split(" ").filter { it.isNotBlank() }
+            args["args"] = CrystalCommandLine.splitArgs(configuration.arguments)
         }
 
-        if (configuration.environmentVariables.isNotBlank()) {
-            val env = mutableMapOf<String, String>()
-            for (line in configuration.environmentVariables.split("\n")) {
-                val parts = line.trim().split("=", limit = 2)
-                if (parts.size == 2) {
-                    env[parts[0].trim()] = parts[1].trim()
-                }
-            }
-            if (env.isNotEmpty()) {
-                args["env"] = env
-            }
+        val env = CrystalCommandLine.parseEnvVars(configuration.environmentVariables)
+        if (env.isNotEmpty()) {
+            args["env"] = env
         }
 
         val formattersPath = extractFormattersScript()
@@ -89,6 +82,19 @@ class CrystalDebugRunState(
 
     private var built = false
 
+    /**
+     * The `crystal build --debug` argument list, extracted for testability.
+     * [buildWithDebugInfo] executes exactly this list.
+     */
+    fun buildDebugArgs(): List<String> = listOf(
+        configuration.crystalPath,
+        "build",
+        "--debug",
+        configuration.filePath,
+        "-o",
+        outputBinary.absolutePath
+    )
+
     private fun buildWithDebugInfo() {
         if (built) return
 
@@ -97,14 +103,7 @@ class CrystalDebugRunState(
             outputDir.mkdirs()
         }
 
-        val buildArgs = mutableListOf<String>().apply {
-            add(configuration.crystalPath)
-            add("build")
-            add("--debug")
-            add(configuration.filePath)
-            add("-o")
-            add(outputBinary.absolutePath)
-        }
+        val buildArgs = buildDebugArgs().toMutableList()
 
         val buildCommand = GeneralCommandLine(buildArgs).apply {
             workDirectory = File(configuration.workingDirectory)

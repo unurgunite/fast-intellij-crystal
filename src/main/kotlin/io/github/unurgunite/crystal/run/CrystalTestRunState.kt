@@ -87,18 +87,13 @@ class CrystalTestRunState(
             }
 
             if (configuration.arguments.isNotBlank()) {
-                addParameters(configuration.arguments.split(" ").filter { it.isNotBlank() })
+                addParameters(CrystalCommandLine.splitArgs(configuration.arguments))
             }
 
             workDirectory = File(configuration.workingDirectory)
 
-            if (configuration.environmentVariables.isNotBlank()) {
-                for (line in configuration.environmentVariables.split("\n")) {
-                    val parts = line.trim().split("=", limit = 2)
-                    if (parts.size == 2) {
-                        environment.put(parts[0].trim(), parts[1].trim())
-                    }
-                }
+            for ((key, value) in CrystalCommandLine.parseEnvVars(configuration.environmentVariables)) {
+                environment.put(key, value)
             }
 
             withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)

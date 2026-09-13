@@ -62,11 +62,15 @@ object CrystalInstanceVarFinder {
         while (astChild != null) {
             val child = astChild.psi
 
-            // Property declaration: @name : Type or name : Type
+            // Property declaration: @name : Type or name : Type.
+            // The variable may be a raw leaf token or a composite *_VAR_ACCESS
+            // (`@size : Int32` parses as PROPERTY_DECLARATION > INSTANCE_VAR_ACCESS).
             if (child is CrystalPropertyDeclaration) {
                 val declName = child.node.findChildByType(CrystalTypes.INSTANCE_VAR)?.text
                     ?: child.node.findChildByType(CrystalTypes.CLASS_VAR)?.text
                     ?: child.node.findChildByType(CrystalTypes.IDENTIFIER)?.text
+                    ?: PsiTreeUtil.findChildOfType(child, CrystalInstanceVarAccess::class.java, false)?.text
+                    ?: PsiTreeUtil.findChildOfType(child, CrystalClassVarAccess::class.java, false)?.text
                 if (declName == bareName || declName == varName) {
                     propertyDecls.add(child)
                 }
@@ -87,6 +91,7 @@ object CrystalInstanceVarFinder {
             }
 
             // Check for assignment: @name = ...
+            // The assignee may be a raw INSTANCE_VAR/CLASS_VAR leaf token ...
             val tokenType = astChild.elementType
             if (tokenType == CrystalTypes.INSTANCE_VAR || tokenType == CrystalTypes.CLASS_VAR) {
                 if (astChild.text == varName) {
@@ -94,6 +99,15 @@ object CrystalInstanceVarFinder {
                     if (nextMeaningful != null && nextMeaningful.elementType == CrystalTypes.ASSIGN) {
                         assignments.add(child)
                     }
+                }
+            }
+            // ... or a composite access (`@x = 1` parses as ASSIGNMENT > *_VAR_ACCESS + ASSIGN,
+            // so the leaf's own next sibling is null and the check above never fires)
+            if ((child is CrystalInstanceVarAccess || child is CrystalClassVarAccess) &&
+                child.text == varName) {
+                val nextMeaningful = skipWhitespaceAst(child.node.treeNext)
+                if (nextMeaningful != null && nextMeaningful.elementType == CrystalTypes.ASSIGN) {
+                    assignments.add(child)
                 }
             }
 
