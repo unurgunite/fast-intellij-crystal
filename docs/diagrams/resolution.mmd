@@ -1,0 +1,29 @@
+flowchart TB
+    Mixins["psi/impl mixins\ngetReference() on composites\nno PsiReferenceContributor"]
+    Mixins --> Direct{"direct reference?"}
+    Direct -->|variable / call / type| CrystalRef["CrystalReference.resolve()"]
+    Direct -->|obj.method / Class.method| DotRef["CrystalDotCallReference.resolve()"]
+    Direct -->|A::B::C segment| NsRef["CrystalNamespaceReference\nfull path, else simple name"]
+
+    CrystalRef --> LocalScope["CrystalLocalScopeResolve\nfile-bounded walk:\nassignments + params"]
+    LocalScope --> StubIdx["StubIndex\nClassIndex + MethodIndex\nallScope"]
+    StubIdx --> Tiebreak["bare-call stdlib tiebreak\nenclosing class preferred\nFile.exists? not Dir.exists?"]
+    Tiebreak --> StdlibFB["stdlib fallback"]
+
+    DotRef --> RecvScan["CrystalDotCallReceiver\nprevSibling of dot_call_access\nCONSTANT / namespace /\ninferred ident / self / literal"]
+    RecvScan --> Known{"receiver type known?"}
+    Known -->|yes, per union member| ByClass["CrystalMethodByClassIndex\nclass name + method filter\nqualified-name disambiguation"]
+    Known -->|new| Ctor["constructor order:\ndef self.new > record >\ndef initialize"]
+    Known -->|no| ProjFallback["project-only name fallback\nnever stdlib"]
+    ByClass --> StdlibFB
+    Ctor --> StdlibFB
+
+    StdlibFB --> HomeFile["CrystalStdlibFileResolve\nparse home file only\nClassName to class_name.cr"]
+    HomeFile -->|miss| TextScan["CrystalStdlibTextScan\ncached SymbolLoc table\nstdlib root only"]
+    TextScan --> Materialize["materialize via VFS+PSI\nevery resolve"]
+
+    CrystalRef --> GotoHandler["CrystalGotoDeclarationHandler\nClassName.new routing\nrequire paths\n@var / @@var targets"]
+    DotRef --> GotoHandler
+    NsRef --> GotoHandler
+
+    Warmup["CrystalStdlibCacheWarmup\npost-startup daemon"] --> TextScan

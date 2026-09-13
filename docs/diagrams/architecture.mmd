@@ -1,0 +1,50 @@
+flowchart TB
+    subgraph Core["Language core"]
+        Flex["lexer/Crystal.flex\nJFlex tokenizer"]
+        BNF["parser/Crystal.bnf\nGrammarKit PEG"]
+        Gen["src/main/gen/\ncommitted output"]
+        PSI["psi/\nreferences + mixins"]
+        Stubs["stubs/\nStubIndex backbone"]
+        Flex --> Gen
+        BNF --> Gen
+        Gen --> PSI
+        PSI --> Stubs
+    end
+
+    subgraph Intelligence["Intelligence"]
+        Completion["completion/\ndispatch + inference"]
+        Navigation["navigation/\ngoto + usages + param info"]
+        Inspections["inspections/\ntype + arity checks"]
+        Documentation["documentation/\nhover + Ctrl+Q"]
+    end
+
+    subgraph Frontend["Editor frontend"]
+        Highlighting["highlighting/\nlexer colors + annotator"]
+        Structure["structure/\nstructure view"]
+        Formatting["formatting/\ncrystal tool format"]
+        Root["root: enter/brace/folding\ncommenter/quote/typed"]
+    end
+
+    subgraph Execution["Execution"]
+        Run["run/\nconfigs + spec SMRunner"]
+        Debugger["debugger/\nLLDB-DAP"]
+        SDK["sdk/ + settings/ + project/\nSDK detect + wizard"]
+        Refactoring["refactoring/\nrename"]
+    end
+
+    PSI --> Completion
+    PSI --> Navigation
+    PSI --> Inspections
+    PSI --> Documentation
+    Stubs --> Completion
+    Stubs --> Navigation
+    Stubs --> Inspections
+    Stubs --> Documentation
+    Completion --> Navigation
+    Inspections --> Completion
+    Navigation --> Refactoring
+    Run --> SDK
+    Debugger --> Run
+    Highlighting --> PSI
+    Documentation --> Navigation
+    Formatting --> Root

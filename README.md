@@ -37,11 +37,11 @@ Principles we enforce (see `AGENTS.md`):
 > and fill out the template carefully (current/expected examples are required)
 > so we can triage effectively.
 
-![New Project Wizard](doc/img/screenshots/001_new_project.png)
+![New Project Wizard](docs/img/screenshots/001_new_project.png)
 
-![Test Runner](doc/img/screenshots/002_testrunner.png)
+![Test Runner](docs/img/screenshots/002_testrunner.png)
 
-![Debugger](doc/img/screenshots/003_debugger.png)
+![Debugger](docs/img/screenshots/003_debugger.png)
 
 
 ## Features

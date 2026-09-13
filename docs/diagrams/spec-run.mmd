@@ -1,0 +1,20 @@
+flowchart TB
+    Gutter["CrystalRunLineMarkerProvider\ndescribe / it gutter icons"]
+    Gutter --> Config["Run/Build/Spec factories\nCrystalRunConfiguration\nRUN / BUILD / SPEC"]
+    Config --> Producer["CrystalRunConfigurationProducer\ncontext detection"]
+
+    Producer --> SpecState["CrystalTestRunState"]
+    SpecState --> Indexer["CrystalSpecFileIndexer\nindent stack over\ndescribe/context/it\nfullName to locations"]
+    Indexer --> CmdLine["CrystalCommandLine\ncrystal spec -v --no-color\n--junit_output tmp\nfile[:line]"]
+    CmdLine --> Console["CrystalTestConsoleProperties\nSMTRunner console"]
+
+    Console --> Converter["CrystalTestEventsConverter\nstdout chunks to Parser"]
+    Converter --> Tree["Parser: TestNode Suite/Test\nCrystalSpecTree collect/find\nCrystalSpecLocations queues\nfor duplicate names"]
+    Tree --> Failures["CrystalSpecFailures\nFailures: section\nN name + Failure/Error +\nfile:line onto nodes"]
+    Failures --> Timing["JUnit XML testcase time\nper name queue"]
+    Timing --> Events["suite/test started\nfinished / failed events\ncrystal_spec://file:line URLs"]
+    Events --> Locator["CrystalTestLocator\nURL to PsiLocation\nclick-to-source + rerun"]
+
+    Producer --> PlainRun["CrystalRunState\ncrystal run / build\nGeneralCommandLine"]
+    Producer --> DebugRun["CrystalDebugRunState\ncompile bin/name --debug\nDapLaunchArgumentsProvider"]
+    DebugRun --> DAP["crystal-lldb adapter\nlldb-dap process\nline + exception breakpoints"]

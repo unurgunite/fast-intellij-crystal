@@ -1,0 +1,25 @@
+flowchart TB
+    Visitor["inspection visitors\ncall expressions +\ndetached args holders"]
+    Visitor --> DotScan["CrystalDotCallScan.detectDotCall\nDOT-call args without\ncall-expression parent"]
+    Visitor --> Shapes["CrystalCallArguments\nextractMethodName + extractArguments\nArgumentInfo + ambiguity guard"]
+
+    Shapes --> Splat["CrystalSplatResolver\n*x to tuple count\n**o to named-tuple keys\nunresolvable to skip"]
+    Splat --> Candidates["CrystalOverloadEvaluator\nMethodIndex candidates\nDOT: ByClassIndex +\ninitialize for .new"]
+    Candidates --> RecordDivert{"record constructor?"}
+    RecordDivert -->|yes| RecordCheck["CrystalRecordArgumentCheck\nCrystalRecordTypeCheck\nrecord params beat initialize"]
+    RecordDivert -->|no| Arity["arity: best overload match\ndefaults + splats aware\nany accept silences error"]
+
+    Arity --> PerArg["per-arg types\nCrystalExpressionTypeResolver\nThreadLocal depth ≤ 16"]
+    PerArg --> Leaf["leaf: wrappers + tokens"]
+    Leaf --> Coll["CrystalCollectionTypeResolver\narray / hash / tuple"]
+    Coll --> Ctrl["CrystalControlFlowTypeResolver\nternary / branches / operators"]
+    Ctrl --> Calls["CrystalCallReturnTypeResolver\n.new > annotated returns"]
+
+    Calls --> Compat["CrystalTypeCompatibility\nInt/UInt/Float alias expansion\nnilable + union split\nknown-builtin guard\nunsuffixed numeric autocast"]
+    Compat --> Report{"all overloads reject?"}
+    Report -->|yes| Error["GENERIC_ERROR on innermost\nliteral/expression"]
+    Report -->|no| Silent["silent"]
+
+    UnusedEntry["CrystalUnusedVariableInspection"] --> Collect["CrystalUnusedVarCollect\nassignments vs reads\ncompound counts as read"]
+    Collect --> Reads["CrystalUnusedVarReads\nconditional-branch windows"]
+    Reads --> Warn["assigned-never-read\nWEAK WARNING"]
