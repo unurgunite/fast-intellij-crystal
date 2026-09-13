@@ -41,11 +41,13 @@ class CrystalTestLocator : SMTestLocator {
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath) ?: return emptyList()
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: return emptyList()
 
-        // Navigate to the specific line (1-based line number → 0-based offset)
+        // Navigate to the specific line (1-based line number → 0-based offset).
+        // Clamp out-of-range lines to the file instead of throwing.
         if (line > 0) {
             val document: Document? = FileDocumentManager.getInstance().getDocument(virtualFile)
-            if (document != null) {
-                val offset = document.getLineStartOffset(line - 1)
+            if (document != null && document.lineCount > 0) {
+                val safeLine = line.coerceIn(1, document.lineCount)
+                val offset = document.getLineStartOffset(safeLine - 1)
                 val element = psiFile.findElementAt(offset)
                 if (element != null) {
                     return listOf(PsiLocation(element))

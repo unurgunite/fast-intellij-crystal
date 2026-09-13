@@ -34,14 +34,22 @@ class CrystalNamesValidator : NamesValidator {
             offset = 1
         }
         if (offset > 0) {
-            // After @/@@ prefix, must start with letter/underscore
+            // After @/@@ prefix, must start with letter/underscore; no ?/!/= suffixes on variables
             if (name.length <= offset) return false
             val first = name[offset]
             if (!first.isLetter() && first != '_') return false
-            return name.substring(offset).all { it.isLetterOrDigit() || it == '_' || it == '?' || it == '!' }
+            return name.substring(offset + 1).all { it.isLetterOrDigit() || it == '_' }
         }
-        val first = name[0]
+        // Method names may carry a single trailing ?, ! or = (predicate/bang/setter)
+        var body = name
+        val last = body.last()
+        if (last == '?' || last == '!' || last == '=') {
+            body = body.dropLast(1)
+            if (body.isEmpty()) return false
+        }
+        if (body.any { it == '?' || it == '!' || it == '=' }) return false
+        val first = body[0]
         if (!first.isLetter() && first != '_') return false
-        return name.all { it.isLetterOrDigit() || it == '_' || it == '?' || it == '!' }
+        return body.all { it.isLetterOrDigit() || it == '_' }
     }
 }
