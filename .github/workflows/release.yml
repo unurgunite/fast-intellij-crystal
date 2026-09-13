@@ -46,6 +46,12 @@ jobs:
           fi
           echo "Version ${{ inputs.version }} consistent"
 
+      - name: Check formatting
+        run: ./gradlew spotlessCheck
+
+      - name: Static analysis
+        run: ./gradlew detekt
+
       - name: Test
         run: ./gradlew test
 

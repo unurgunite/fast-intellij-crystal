@@ -68,6 +68,12 @@ jobs:
           echo "CHANGELOG has [$PROP_VERSION]"
           echo "All version checks passed"
 
+      - name: Check formatting
+        run: ./gradlew spotlessCheck
+
+      - name: Static analysis
+        run: ./gradlew detekt
+
       - name: Test
         run: ./gradlew test
         # Full suite minus CrystalParserTest golden files, which run in the

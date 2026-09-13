@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.20"
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.grammarkit") version "2023.3.0.3"
+    id("com.diffplug.spotless") version "8.6.0"
+    id("dev.detekt") version "2.0.0-alpha.4"
 }
 
 sourceSets {
@@ -63,6 +65,26 @@ intellijPlatform {
     }
 }
 
+spotless {
+    kotlin {
+        ktlint()
+        target("src/**/*.kt")
+        // Generated parser/lexer sources are committed but not hand-written.
+        targetExclude("src/main/gen/**")
+    }
+    kotlinGradle {
+        ktlint()
+        target("*.kts")
+    }
+}
+
+detekt {
+    // Minimal config/detekt/detekt.yml on top of the default rule set:
+    // ReturnCount max 5 and MaxLineLength 140, both aligned with ktlint.
+    buildUponDefaultConfig = true
+    config.setFrom(file("config/detekt/detekt.yml"))
+}
+
 tasks {
     runIde {
         systemProperty("idea.trust.all.projects", "true")
@@ -109,6 +131,7 @@ tasks {
 }
 
 val defaultTest = tasks.named<Test>("test")
+
 fun Test.stdlibTool(name: String) {
     group = "stdlib"
     val dt = defaultTest.get()

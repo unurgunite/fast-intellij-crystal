@@ -11,6 +11,8 @@ Closes #...
 - [ ] Commit message starts with version tag (`[1.0.0] ...`)
 - [ ] Version matches `gradle.properties` and target `v*.*.*` branch
 - [ ] Tests pass (`./gradlew test`)
+- [ ] Formatting clean (`./gradlew spotlessCheck`)
+- [ ] Static analysis clean (`./gradlew detekt`)
 - [ ] Plugin verified (`./gradlew verifyPlugin`)
 - [ ] CHANGELOG updated (if applicable)
 
