@@ -2,7 +2,7 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
-## [0.1.18] — 2026-xx-yy
+## [1.0.0] — 2026-09-13
 
 ### Changed
 
