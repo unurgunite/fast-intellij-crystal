@@ -24,7 +24,7 @@
 ### Task 1: Sigil-aware prefix matcher
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/completion/CrystalCompletionContributor.kt` (addCompletions, ~lines 155-168)
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalCompletionContributor.kt` (addCompletions, ~lines 155-168)
 
 **Interfaces:**
 - Consumes: `parameters.editor`, `parameters.offset`
@@ -128,13 +128,13 @@ Note: `effectiveResult` is declared inside the `addCompletions` body before Case
 
 - [ ] **Step 4: Run existing completion tests to verify no regression**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalCompletionTest"`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalCompletionTest"`
 Expected: All existing tests pass (the sigil-aware prefix equals the old prefix for non-`@` inputs)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/completion/CrystalCompletionContributor.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalCompletionContributor.kt
 git commit -m "fix: sigil-aware completion prefix so @/@@ vars match when only sigil typed"
 ```
 
@@ -143,7 +143,7 @@ git commit -m "fix: sigil-aware completion prefix so @/@@ vars match when only s
 ### Task 2: Class-scoped instance/class variable collection
 
 **Files:**
-- Modify: `src/main/kotlin/de/magynhard/crystal/completion/CrystalCompletionContributor.kt` (addLocalCompletions, lines 218-248)
+- Modify: `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalCompletionContributor.kt` (addLocalCompletions, lines 218-248)
 
 **Interfaces:**
 - Consumes: `CrystalClassDefinition`, `CrystalInstanceVarAccess`, `CrystalClassVarAccess`
@@ -259,13 +259,13 @@ Add this `private` method to `CrystalCompletionProvider`:
 
 - [ ] **Step 3: Run completion tests**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalCompletionTest"`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalCompletionTest"`
 Expected: Pass
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/completion/CrystalCompletionContributor.kt
+git add src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalCompletionContributor.kt
 git commit -m "fix: collect instance/class variables from enclosing class, not just current method"
 ```
 
@@ -274,7 +274,7 @@ git commit -m "fix: collect instance/class variables from enclosing class, not j
 ### Task 3: CompletionConfidence to auto-show popup on `@`
 
 **Files:**
-- Create: `src/main/kotlin/de/magynhard/crystal/completion/CrystalAtCompletionConfidence.kt`
+- Create: `src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalAtCompletionConfidence.kt`
 - Modify: `src/main/resources/META-INF/plugin.xml` (register `completion.confidence` EP)
 
 **Interfaces:**
@@ -288,7 +288,7 @@ In `CrystalCompletionContributor.kt`, move the existing `private fun isInsideStr
 - [ ] **Step 2: Create CrystalAtCompletionConfidence**
 
 ```kotlin
-package de.magynhard.crystal.completion
+package io.github.unurgunite.crystal.completion
 
 import com.intellij.codeInsight.completion.CompletionConfidence
 import com.intellij.codeInsight.completion.CompletionConfidence.Resolution
@@ -321,7 +321,7 @@ class CrystalAtCompletionConfidence : CompletionConfidence() {
 Add inside the `<extensions>` block of `src/main/resources/META-INF/plugin.xml`:
 
 ```xml
-<completion.confidence implementation="de.magynhard.crystal.completion.CrystalAtCompletionConfidence"/>
+<completion.confidence implementation="io.github.unurgunite.crystal.completion.CrystalAtCompletionConfidence"/>
 ```
 
 - [ ] **Step 4: Build to verify registration compiles**
@@ -332,7 +332,7 @@ Expected: BUILD SUCCESSFUL
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/kotlin/de/magynhard/crystal/completion/CrystalAtCompletionConfidence.kt src/main/kotlin/de/magynhard/crystal/completion/CrystalCompletionContributor.kt src/main/resources/META-INF/plugin.xml
+git add src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalAtCompletionConfidence.kt src/main/kotlin/io/github/unurgunite/crystal/completion/CrystalCompletionContributor.kt src/main/resources/META-INF/plugin.xml
 git commit -m "fix: auto-show completion popup after @ for instance/class variables"
 ```
 
@@ -341,7 +341,7 @@ git commit -m "fix: auto-show completion popup after @ for instance/class variab
 ### Task 4: Tests
 
 **Files:**
-- Modify: `src/test/kotlin/de/magynhard/crystal/CrystalCompletionTest.kt`
+- Modify: `src/test/kotlin/io/github/unurgunite/crystal/CrystalCompletionTest.kt`
 
 **Interfaces:**
 - Consumes: the three fixes above
@@ -461,13 +461,13 @@ fun testAtPrefixDoesNotLeakNestedClassVars() {
 
 - [ ] **Step 5: Run completion tests**
 
-Run: `./gradlew test --tests "de.magynhard.crystal.CrystalCompletionTest"`
+Run: `./gradlew test --tests "io.github.unurgunite.crystal.CrystalCompletionTest"`
 Expected: All pass
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/test/kotlin/de/magynhard/crystal/CrystalCompletionTest.kt
+git add src/test/kotlin/io/github/unurgunite/crystal/CrystalCompletionTest.kt
 git commit -m "test: add @/@@ completion tests for instance/class variables"
 ```
 

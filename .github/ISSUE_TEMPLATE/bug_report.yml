@@ -27,7 +27,7 @@ body:
           required: true
         - label: I reproduced this with the latest plugin version
           required: true
-        - label: I checked [CHANGELOG.md](https://github.com/magynhard/intellij-crystal/blob/main/CHANGELOG.md) for known limitations
+        - label: I checked [CHANGELOG.md](https://github.com/unurgunite/intellij-crystal/blob/main/CHANGELOG.md) for known limitations
           required: true
 
   - type: input
@@ -52,7 +52,7 @@ body:
     id: plugin-version
     attributes:
       label: Plugin version
-      description: Settings → Plugins → Crystal Language. Use the exact version number.
+      description: Settings → Plugins → Fast Crystal Plugin. Use the exact version number.
       placeholder: "0.1.16"
     validations:
       required: true

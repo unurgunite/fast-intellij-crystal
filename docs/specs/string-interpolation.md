@@ -351,11 +351,11 @@ The existing escape rule on line 467 already handles `\\` → `STRING_ESCAPE` fo
 
 | File | Path |
 |---|---|
-| Lexer | `src/main/kotlin/de/magynhard/crystal/lexer/Crystal.flex` |
-| Parser | `src/main/kotlin/de/magynhard/crystal/parser/Crystal.bnf` |
-| Token types | `src/main/kotlin/de/magynhard/crystal/lexer/CrystalTokenTypes.kt` |
-| Generated lexer | `src/main/gen/de/magynhard/crystal/lexer/CrystalLexer.java` |
-| Generated parser | `src/main/gen/de/magynhard/crystal/parser/CrystalParser.java` |
-| Parser tests | `src/test/kotlin/de/magynhard/crystal/parser/CrystalParserTest.kt` |
+| Lexer | `src/main/kotlin/io/github/unurgunite/crystal/lexer/Crystal.flex` |
+| Parser | `src/main/kotlin/io/github/unurgunite/crystal/parser/Crystal.bnf` |
+| Token types | `src/main/kotlin/io/github/unurgunite/crystal/lexer/CrystalTokenTypes.kt` |
+| Generated lexer | `src/main/gen/io/github/unurgunite/crystal/lexer/CrystalLexer.java` |
+| Generated parser | `src/main/gen/io/github/unurgunite/crystal/parser/CrystalParser.java` |
+| Parser tests | `src/test/kotlin/io/github/unurgunite/crystal/parser/CrystalParserTest.kt` |
 | Test data | `src/test/testData/parser/` |
 | Plugin XML | `src/main/resources/META-INF/plugin.xml` |

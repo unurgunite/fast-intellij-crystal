@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Crystal Language Plugin for JetBrains IDEs will be documented in this file.
+All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
 ## [0.1.18] — 2026-xx-yy
 

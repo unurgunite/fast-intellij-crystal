@@ -2,18 +2,38 @@
   <img src="src/main/resources/META-INF/pluginIcon.svg" width="150" alt="Crystal Logo">
 </p>
 
-# Crystal Language Plugin for JetBrains IDEs
+# Fast Crystal Plugin for JetBrains IDEs
 
-[![JetBrains Plugin](https://img.shields.io/badge/Plugin-v0.1.17-gray?style=plastic&logo=jetbrains&logoColor=white&labelColor=purple&label=JetBrains)](https://plugins.jetbrains.com/plugin/32180-crystal-language)
+[![JetBrains Plugin](https://img.shields.io/badge/Plugin-v0.1.18-gray?style=plastic&logo=jetbrains&logoColor=white&labelColor=purple&label=JetBrains)](https://github.com/unurgunite/intellij-crystal)
 [![IntelliJ Platform](https://img.shields.io/badge/Platform-2026.1+-gray?style=plastic&logo=intellijidea&logoColor=white&labelColor=black&label=IntelliJ)](https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html)
 [![Crystal](https://img.shields.io/badge/Crystal-1.x-gray?style=plastic&logo=crystal&logoColor=white&labelColor=darkslategray&label=Crystal)](https://crystal-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg?style=plastic&logo=mit&labelColor=beige)](LICENSE)
 
-Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBrains IDEs.
+Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBrains IDEs — built for speed.
+
+## Why a separate project?
+
+Fast Crystal Plugin started as a fork, but it is developed independently with one priority: **the IDE must never hang**. Every change is measured, not vibed — the repo ships a `stdlib-graph/` harness (`stdlibParseErrors`, `stdlibStructure`, `stdlibBuildGraph`, `stdlibCheckFile`) that parses and resolves the entire Crystal standard library through the plugin's own parser, so regressions show up as numbers before they ship.
+
+Principles we enforce (see `AGENTS.md`):
+
+- **PEG longest-match-first** — longer/more specific grammar alternatives always precede shorter ones sharing a prefix. Violations cause silent misparses (e.g. `def Float64.new!` parsed as a method named `Float64`).
+- **No prefix-sharing alternatives** — two alternatives starting with the same sub-rule make PEG re-parse the prefix per alternative. The ternary rules did this and cost **O(3^depth)**: a 2.5KB file took **191s** to parse; after the fix, **94ms**. A full project index that hung 95–99% for **709s** completes now.
+- **StubIndex-only at runtime** — no `FileTypeIndex` full-project scans on hover, completion, or Go to Definition (those caused 90s+ freezes).
+- **One stdlib registration** — no duplicate library roots (those caused an infinite reindex loop).
+- **Scoped error filtering** — file-type checks before any PSI tree walk, so foreign files (`.groovy`, `.rb`) never pay for our highlighting.
+- **Bounded caches, stable locations** — the stdlib symbol cache is a sub-second text scan storing `(path, offset)` pairs, never stale PSI elements; type inference carries a recursion budget instead of `StackOverflowError`.
+
+| Before | After | Measured on |
+|---|---|---|
+| 191s parse, 2.5KB file | 94ms | `catalyst/src/catalyst/formatters/json.cr` |
+| 709s project index, stuck at 95–99% | completes, IDE goes idle | `catalyst` (522 `.cr` files) |
+| `float.cr` parse error | 0 errors | Crystal 1.21 stdlib |
+| `StackOverflowError` in highlighter | unknown type, no crash | self-referential assignments |
 
 > [!WARNING]
 > Early Beta — This plugin is in active development. Bugs are to be expected.
-> Please [open an issue](https://github.com/magynhard/intellij-crystal/issues/new/choose)
+> Please [open an issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose)
 > and fill out the template carefully (current/expected examples are required)
 > so we can triage effectively.
 
@@ -232,18 +252,16 @@ automatically.
 
 ### From JetBrains Marketplace
 
-The recommended way to install:
+> **Note:** the Marketplace listing for Fast Crystal Plugin is pending publication. Until then, install from source below.
 
 1. In your IDE, open *Settings → Plugins → Marketplace*
-2. Search for **Crystal Language**
+2. Search for **Fast Crystal Plugin**
 3. Click **Install** and restart the IDE
-
-Direct link: [Crystal Language on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/32180-crystal-language)
 
 ### From Source
 
 ```bash
-git clone https://github.com/magynhard/intellij-crystal.git
+git clone https://github.com/unurgunite/intellij-crystal.git
 cd intellij-crystal
 ./gradlew buildPlugin
 ```
@@ -277,7 +295,7 @@ Stubs                    →  StubIndex (project-wide search, Go to Definition)
 ### Project Structure
 
 ```
-src/main/kotlin/de/magynhard/crystal/
+src/main/kotlin/io/github/unurgunite/crystal/
 ├── lexer/              # JFlex lexer definition + token types
 ├── parser/             # GrammarKit BNF grammar
 ├── psi/                # PSI element types and stub mixins
@@ -313,9 +331,9 @@ Issues and pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING
 before opening an issue — it explains the three issue types and what
 information we need.
 
-- 🐛 [Report a bug](https://github.com/magynhard/intellij-crystal/issues/new/choose) — something doesn't work as expected
-- ✨ [Request a feature](https://github.com/magynhard/intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
-- 🦥 [Report a UX issue](https://github.com/magynhard/intellij-crystal/issues/new/choose) — something works but feels clunky
+- 🐛 [Report a bug](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something doesn't work as expected
+- ✨ [Request a feature](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
+- 🦥 [Report a UX issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something works but feels clunky
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to report issues and contribute.
 

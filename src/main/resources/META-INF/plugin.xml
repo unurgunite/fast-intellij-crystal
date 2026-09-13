@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>de.magynhard.crystal</id>
-    <name>Crystal Language</name>
-    <vendor url="https://github.com/magynhard">magynhard</vendor>
+    <id>io.github.unurgunite.crystal</id>
+    <name>Fast Crystal Plugin</name>
+    <vendor url="https://github.com/unurgunite">unurgunite</vendor>
     <description><![CDATA[
 <p>
   Comprehensive Crystal language support for all JetBrains IDEs — IntelliJ IDEA, RubyMine, WebStorm, CLion, and others.
@@ -11,7 +11,7 @@
 
 <p>
   <b>Early Beta</b> — This plugin is under active development and bugs are to be expected.
-  If you encounter a problem, please <a href="https://github.com/magynhard/intellij-crystal/issues/new/choose">open a GitHub issue</a>
+  If you encounter a problem, please <a href="https://github.com/unurgunite/intellij-crystal/issues/new/choose">open a GitHub issue</a>
   with a minimal reproduction — that helps us fix it faster than a negative review would.
 </p>
 
@@ -222,7 +222,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileType
                 name="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalFileType"
+                implementationClass="io.github.unurgunite.crystal.CrystalFileType"
                 fieldName="INSTANCE"
                 language="Crystal"
                 extensions="cr"
@@ -230,51 +230,51 @@
 
         <lang.parserDefinition
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalParserDefinition"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalParserDefinition"/>
 
         <lang.syntaxHighlighterFactory
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.highlighting.CrystalSyntaxHighlighterFactory"/>
+                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalSyntaxHighlighterFactory"/>
 
         <lang.commenter
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalCommenter"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalCommenter"/>
 
         <lang.braceMatcher
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalBraceMatcher"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalBraceMatcher"/>
 
         <codeBlockSupportHandler
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalCodeBlockSupportHandler"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalCodeBlockSupportHandler"/>
 
         <lang.foldingBuilder
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalFoldingBuilder"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalFoldingBuilder"/>
 
         <lang.documentationProvider
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.documentation.CrystalDocumentationProvider"/>
+                implementationClass="io.github.unurgunite.crystal.documentation.CrystalDocumentationProvider"/>
 
         <colorSettingsPage
-                implementation="de.magynhard.crystal.highlighting.CrystalColorSettingsPage"/>
+                implementation="io.github.unurgunite.crystal.highlighting.CrystalColorSettingsPage"/>
 
         <lang.quoteHandler
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalQuoteHandler"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalQuoteHandler"/>
 
         <typedHandler
-                implementation="de.magynhard.crystal.CrystalTypedHandler"/>
+                implementation="io.github.unurgunite.crystal.CrystalTypedHandler"/>
 
         <enterHandlerDelegate
-                implementation="de.magynhard.crystal.CrystalEnterHandler"/>
+                implementation="io.github.unurgunite.crystal.CrystalEnterHandler"/>
 
         <annotator
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.highlighting.CrystalAnnotator"/>
+                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalAnnotator"/>
 
         <highlightErrorFilter
-                implementation="de.magynhard.crystal.highlighting.CrystalHighlightErrorFilter"/>
+                implementation="io.github.unurgunite.crystal.highlighting.CrystalHighlightErrorFilter"/>
 
         <localInspection
                 language="Crystal"
@@ -283,7 +283,7 @@
                 shortName="CrystalTypeMismatch"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.inspections.CrystalTypeCheckInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalTypeCheckInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -292,7 +292,7 @@
                 shortName="CrystalArgumentCount"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="de.magynhard.crystal.inspections.CrystalArgumentCountInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalArgumentCountInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -301,7 +301,7 @@
                 shortName="CrystalUnusedVariable"
                 enabledByDefault="true"
                 level="WEAK WARNING"
-                implementationClass="de.magynhard.crystal.inspections.CrystalUnusedVariableInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalUnusedVariableInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -310,7 +310,7 @@
                 shortName="CrystalEmptyCollection"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.inspections.CrystalEmptyCollectionInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalEmptyCollectionInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -319,7 +319,7 @@
                 shortName="CrystalLibFunParameterType"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.inspections.CrystalLibFunParameterTypeInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalLibFunParameterTypeInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -328,7 +328,7 @@
                 shortName="CrystalSingleQuoteString"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.highlighting.CrystalSingleQuoteStringInspection"/>
+                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalSingleQuoteStringInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -337,7 +337,7 @@
                 shortName="CrystalColonSpacing"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.inspections.CrystalColonSpacingInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalColonSpacingInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -346,67 +346,67 @@
                 shortName="CrystalInstanceVarType"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="de.magynhard.crystal.inspections.CrystalInstanceVarTypeInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalInstanceVarTypeInspection"/>
 
         <todoIndexer
                 filetype="Crystal"
-                implementationClass="de.magynhard.crystal.CrystalTodoIndexer"/>
+                implementationClass="io.github.unurgunite.crystal.CrystalTodoIndexer"/>
 
         <lang.psiStructureViewFactory
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.structure.CrystalStructureViewFactory"/>
+                implementationClass="io.github.unurgunite.crystal.structure.CrystalStructureViewFactory"/>
 
         <configurationType
-                implementation="de.magynhard.crystal.run.CrystalRunConfigurationType"/>
+                implementation="io.github.unurgunite.crystal.run.CrystalRunConfigurationType"/>
 
         <runConfigurationProducer
-                implementation="de.magynhard.crystal.run.CrystalRunConfigurationProducer"/>
+                implementation="io.github.unurgunite.crystal.run.CrystalRunConfigurationProducer"/>
 
         <runLineMarkerContributor
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.run.CrystalRunLineMarkerProvider"/>
+                implementationClass="io.github.unurgunite.crystal.run.CrystalRunLineMarkerProvider"/>
 
         <testLocator
-                implementation="de.magynhard.crystal.run.CrystalTestLocator"/>
+                implementation="io.github.unurgunite.crystal.run.CrystalTestLocator"/>
 
         <defaultLiveTemplates file="/liveTemplates/Crystal.xml"/>
 
         <liveTemplateContext
                 contextId="CRYSTAL"
-                implementation="de.magynhard.crystal.CrystalTemplateContextType"/>
+                implementation="io.github.unurgunite.crystal.CrystalTemplateContextType"/>
 
         <formattingService
-                implementation="de.magynhard.crystal.formatting.CrystalFormattingService"/>
+                implementation="io.github.unurgunite.crystal.formatting.CrystalFormattingService"/>
 
         <gotoSymbolContributor
-                implementation="de.magynhard.crystal.navigation.CrystalGoToSymbolContributor"/>
+                implementation="io.github.unurgunite.crystal.navigation.CrystalGoToSymbolContributor"/>
 
         <gotoDeclarationHandler
-                implementation="de.magynhard.crystal.navigation.CrystalGotoDeclarationHandler"/>
+                implementation="io.github.unurgunite.crystal.navigation.CrystalGotoDeclarationHandler"/>
 
         <lang.findUsagesProvider
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.navigation.CrystalFindUsagesProvider"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.CrystalFindUsagesProvider"/>
 
         <highlightUsagesHandlerFactory
-                implementation="de.magynhard.crystal.highlighting.CrystalHighlightUsagesHandlerFactory"/>
+                implementation="io.github.unurgunite.crystal.highlighting.CrystalHighlightUsagesHandlerFactory"/>
 
         <findUsagesHandlerFactory
-                implementation="de.magynhard.crystal.navigation.CrystalFindUsagesHandlerFactory"/>
+                implementation="io.github.unurgunite.crystal.navigation.CrystalFindUsagesHandlerFactory"/>
 
         <referencesSearch
-                implementation="de.magynhard.crystal.navigation.CrystalInstanceVarReferencesSearcher"/>
+                implementation="io.github.unurgunite.crystal.navigation.CrystalInstanceVarReferencesSearcher"/>
 
         <gotoClassContributor
-                implementation="de.magynhard.crystal.navigation.CrystalGoToClassContributor"/>
+                implementation="io.github.unurgunite.crystal.navigation.CrystalGoToClassContributor"/>
 
         <lang.refactoringSupport
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.refactoring.CrystalRefactoringSupportProvider"/>
+                implementationClass="io.github.unurgunite.crystal.refactoring.CrystalRefactoringSupportProvider"/>
 
         <lang.namesValidator
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.refactoring.CrystalNamesValidator"/>
+                implementationClass="io.github.unurgunite.crystal.refactoring.CrystalNamesValidator"/>
 
         <notificationGroup id="Crystal Formatting" displayType="BALLOON"/>
         <notificationGroup id="Crystal Rename Verification" displayType="BALLOON"/>
@@ -414,71 +414,71 @@
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.navigation.CrystalParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.CrystalParameterInfoHandler"/>
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.navigation.CrystalAsmParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.CrystalAsmParameterInfoHandler"/>
 
-        <stubIndex implementation="de.magynhard.crystal.stubs.CrystalClassIndex"/>
-        <stubIndex implementation="de.magynhard.crystal.stubs.CrystalMethodIndex"/>
-        <stubIndex implementation="de.magynhard.crystal.stubs.CrystalMethodByClassIndex"/>
-        <stubIndex implementation="de.magynhard.crystal.stubs.CrystalClassByEnclosingIndex"/>
-        <stubIndex implementation="de.magynhard.crystal.stubs.CrystalMacroIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassByEnclosingIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMacroIndex"/>
 
-        <stubElementTypeHolder class="de.magynhard.crystal.stubs.CrystalStubElementTypeHolder"/>
+        <stubElementTypeHolder class="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeHolder"/>
 
         <additionalTextAttributes scheme="Default" file="colorSchemes/CrystalDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/CrystalDarcula.xml"/>
 
         <newProjectWizard.languageGenerator
-                implementation="de.magynhard.crystal.project.CrystalNewProjectWizard"/>
+                implementation="io.github.unurgunite.crystal.project.CrystalNewProjectWizard"/>
 
         <directoryProjectGenerator
-                implementation="de.magynhard.crystal.project.CrystalDirectoryProjectGenerator"/>
+                implementation="io.github.unurgunite.crystal.project.CrystalDirectoryProjectGenerator"/>
 
         <projectConfigurable
                 parentId="language"
-                instance="de.magynhard.crystal.sdk.CrystalSettingsConfigurable"
-                id="de.magynhard.crystal.settings"
+                instance="io.github.unurgunite.crystal.sdk.CrystalSettingsConfigurable"
+                id="io.github.unurgunite.crystal.settings"
                 displayName="Crystal"/>
 
-        <projectService serviceImplementation="de.magynhard.crystal.sdk.CrystalSettings"/>
+        <projectService serviceImplementation="io.github.unurgunite.crystal.sdk.CrystalSettings"/>
 
         <completion.contributor
                 language="Crystal"
-                implementationClass="de.magynhard.crystal.completion.CrystalCompletionContributor"/>
+                implementationClass="io.github.unurgunite.crystal.completion.CrystalCompletionContributor"/>
 
         <!-- Icons -->
         <iconProvider
-                implementation="de.magynhard.crystal.CrystalIconProvider"/>
+                implementation="io.github.unurgunite.crystal.CrystalIconProvider"/>
 
         <postStartupActivity
-                implementation="de.magynhard.crystal.CrystalSpecSourceRootConfigurator"/>
+                implementation="io.github.unurgunite.crystal.CrystalSpecSourceRootConfigurator"/>
 
         <!-- Crystal stdlib as indexed source library -->
         <additionalLibraryRootsProvider
-                implementation="de.magynhard.crystal.sdk.CrystalStdlibLibraryProvider"/>
+                implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibLibraryProvider"/>
 
         <!-- Add Crystal stdlib as library source root on project open (triggers indexing) -->
         <postStartupActivity
-                implementation="de.magynhard.crystal.sdk.CrystalStdlibSourceRootConfigurator"/>
+                implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibSourceRootConfigurator"/>
 
         <!-- Debugger -->
         <xdebugger.breakpointType
-                implementation="de.magynhard.crystal.debugger.CrystalLineBreakpointType"/>
+                implementation="io.github.unurgunite.crystal.debugger.CrystalLineBreakpointType"/>
 
         <programRunner
-                implementation="de.magynhard.crystal.debugger.CrystalDebugProgramRunner"/>
+                implementation="io.github.unurgunite.crystal.debugger.CrystalDebugProgramRunner"/>
 
         <regExpLanguageHost
-                psiElementClass="de.magynhard.crystal.psi.CrystalRegexExpression"
-                implementation="de.magynhard.crystal.highlighting.CrystalRegExpLanguageHost"/>
+                psiElementClass="io.github.unurgunite.crystal.psi.CrystalRegexExpression"
+                implementation="io.github.unurgunite.crystal.highlighting.CrystalRegExpLanguageHost"/>
     </extensions>
 
     <projectListeners>
         <listener
-                class="de.magynhard.crystal.refactoring.CrystalRenameVerifier"
+                class="io.github.unurgunite.crystal.refactoring.CrystalRenameVerifier"
                 topic="com.intellij.refactoring.listeners.RefactoringEventListener"/>
     </projectListeners>
 </idea-plugin>

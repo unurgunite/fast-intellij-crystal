@@ -1,0 +1,31 @@
+// This is a generated file. Not intended for manual editing.
+package io.github.unurgunite.crystal.psi;
+
+import java.util.List;
+import org.jetbrains.annotations.*;
+import com.intellij.psi.PsiElement;
+
+public interface CrystalParameter extends PsiElement {
+
+  @NotNull
+  List<CrystalAnnotationUsage> getAnnotationUsageList();
+
+  @Nullable
+  CrystalExpression getExpression();
+
+  @Nullable
+  CrystalInstanceVarAccess getInstanceVarAccess();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
+  List<CrystalTypeArguments> getTypeArgumentsList();
+
+  @NotNull
+  List<CrystalTypePath> getTypePathList();
+
+  @Nullable
+  CrystalTypeReference getTypeReference();
+
+}

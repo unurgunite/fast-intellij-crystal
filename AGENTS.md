@@ -24,7 +24,7 @@
 ```bash
 ./gradlew build          # compile + generate lexer/parser + package
 ./gradlew test           # run all tests (JUnit 4, BasePlatformTestCase)
-./gradlew test --tests "de.magynhard.crystal.CrystalEnterHandlerTest.testEndInsertedAfterDef"  # single test
+./gradlew test --tests "io.github.unurgunite.crystal.CrystalEnterHandlerTest.testEndInsertedAfterDef"  # single test
 ```
 
 - Gradle 9.4.1 (wrapper committed), JDK 21 required
@@ -68,7 +68,7 @@ Generated sources live in `src/main/gen/` and are **committed**. Regenerate with
 ## Key Directories
 
 ```
-src/main/kotlin/de/magynhard/crystal/
+src/main/kotlin/io/github/unurgunite/crystal/
 ├── lexer/          Crystal.flex + CrystalTokenTypes.kt (TokenSets)
 ├── parser/         Crystal.bnf
 ├── highlighting/   Syntax highlighter + Annotator + Color settings
