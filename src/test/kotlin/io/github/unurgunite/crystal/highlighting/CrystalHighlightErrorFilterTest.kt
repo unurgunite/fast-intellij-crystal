@@ -46,16 +46,18 @@ class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
     }
 
     /**
-     * Normal parser errors (e.g. unexpected token) that we do NOT handle
-     * ourselves should still be shown.
+     * Normal parser errors that we do NOT handle ourselves should still be shown.
+     * NOTE: `def foo(bar,)` is NOT such a case — trailing commas are legal in the
+     * grammar (see TrailingCommas golden), so it parses with zero error elements.
+     * `def foo(,)` genuinely fails to parse and must pass through the filter.
      */
     fun testUnhandledParserErrorIsStillShown() {
-        myFixture.configureByText("test.cr", "def foo(bar,)")
+        myFixture.configureByText("test.cr", "def foo(,)")
         val highlights = myFixture.doHighlighting()
 
         val errors = highlights.filter { it.severity == HighlightSeverity.ERROR }
 
-        // Should still show the parser error for trailing comma
+        // Should still show the parser error for the empty parameter slot
         assertTrue("Should still show unhandled parser errors", errors.isNotEmpty())
     }
 }
