@@ -115,10 +115,11 @@ class CrystalDotCallReference(
         //    multiple same-named methods is acceptable for navigation (they are semantically
         //    equivalent definitions of the same message).
         if (classNames.isEmpty()) {
-            // CrystalMethodIndex (StubIndex) contains ONLY project methods — stdlib files are
-            // skipped by CrystalStubBuilder, so stdlib is never indexed. Querying it therefore
-            // cannot produce stdlib false positives; the only possible ambiguity is between
-            // same-named project methods, which is acceptable for local navigation.
+            // CrystalMethodIndex (StubIndex) contains no stdlib methods — stdlib roots live
+            // under a SyntheticLibrary scope that no GlobalSearchScope intersects (see §2
+            // above). Querying it therefore cannot produce stdlib false positives; the only
+            // possible ambiguity is between same-named project methods, which is acceptable
+            // for local navigation.
             val projectMethods = StubIndex.getElements(
                 CrystalMethodIndex.KEY, methodName, project,
                 scope, CrystalMethodDefinition::class.java

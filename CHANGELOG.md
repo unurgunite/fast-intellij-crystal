@@ -6,7 +6,7 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Added
 
-- **Test coverage marathon (+284 tests, 717 → 1001)** — every previously untested subsystem now has
+- **Test coverage marathon (+281 tests, 717 → 998)** — every previously untested subsystem now has
   fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder and references
   searcher, all four completion providers, run-configuration producer/factories/options round-trip,
   `CrystalRunState` command-line building, DAP debug args and runner routing, folding builder,
@@ -16,7 +16,7 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   spec-test locator and line markers, definition finder, structure-view factory, spec command-line
   building, lldb-dap candidate lookup, real `crystal tool format` round-trips, SM console
   properties wiring, and project-generator helpers. Weak tests with zero assertions were
-  rewritten with real assertions. (`./gradlew test` runs 909; 92 parser goldens run separately.)
+  rewritten with real assertions. (`./gradlew test` runs 906; 92 parser goldens run separately.)
 - **Shared `CrystalCommandLine` helper** — argument splitting and `KEY=VALUE` env parsing used by
   run, spec and debug states, extracted from three duplicated inline implementations (no behavior
   change). `CrystalTestRunState.buildCommandLine`, `CrystalDebugAdapterDescriptor.findLldbDapCandidate`
@@ -27,6 +27,11 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Fixed
 
+- **Removed dead lexer stub builder** — the 286-line `CrystalStubBuilder` and its
+  `languageStubDefinition` registration were never invoked by the platform (verified with
+  a file-write probe: zero calls during stub indexing; stubs come from `DefaultStubBuilder`).
+  Also fixed the stale `CrystalDotCallReference` comment that credited the builder with
+  skipping stdlib files.
 - **Stale `HighlightErrorFilter` test case** — `def foo(bar,)` parses cleanly (trailing commas are
   legal per the `TrailingCommas` golden), so the unhandled-error test asserted on zero error
   elements. Switched to `def foo(,)`, which genuinely produces one `PsiErrorElement` passing
