@@ -47,3 +47,30 @@ Not `PsiElement`. No `.node` call needed.
 ## Structure view renders method signatures
 
 Methods appear as `name(params)` (e.g. `bar()`), not bare names.
+
+## Final classes with protected surface need reflection
+
+`CrystalCodeBlockSupportHandler` is final with protected TokenSet methods and no
+behavioral public entry for structure. Structural assertions go through
+`getDeclaredMethod(...).isAccessible = true`; behavioral assertions use the
+public `getCodeBlockMarkerRanges(element)` with the caret **inside** the keyword
+token (an adjacent identifier yields no ranges).
+
+## Query searchers in isolation via direct `processQuery`
+
+`ReferencesSearch.search(target)` also runs the platform's default word search,
+which pollutes counts (it re-adds the excluded target). To test a custom
+`QueryExecutorBase`, construct `ReferencesSearch.SearchParameters` directly and
+call `processQuery` with a collecting processor.
+
+## `RunLineMarkerContributor.Info.tooltipProvider` is `java.util.Function`
+
+Call `.apply(element)`, not `.invoke()`.
+
+## `OccurrenceConsumer` / `IdDataConsumer` are final
+
+No test doubles — use the real `IdDataConsumer` and assert on result masks
+(`IN_COMMENTS` bit). `IdIndexEntry.toString()` prints only hashes, so content
+matching via constructed entries does not work. The filter lexer needs the test
+app (BasePlatformTestCase), not a pure unit test, because TODO counting touches
+the extension point.
