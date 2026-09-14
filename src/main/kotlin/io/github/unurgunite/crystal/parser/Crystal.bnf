@@ -270,7 +270,10 @@ lib_definition ::= LIB CONSTANT lib_body END {pin=1}
 // (record names are not separately indexed), but the body parses so enclosed methods/constants do.
 // Field names may be keywords (`record ZoneTransition, when : Int64`, `record T, type : X`,
 // `record Hook, scope : M, macro : Macro` — all verified against the real compiler).
-record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (block | class_body END)? {pin=1}
+// The `do` body is a class_body (not a block): record members include definitions
+// that statements lack (`private def`, properties...). Verified: http/headers.cr
+// `record Key, name : String do ... private def normalize_byte ... end`.
+record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END | class_body END)? {pin=1}
 
 record_field ::= (IDENTIFIER | keyword_as_record_field) [COLON type_reference] [ASSIGN expression] | STAR
 
@@ -300,20 +303,6 @@ private class_member ::= NEWLINE
                | abstract_method_definition
                | method_definition
                | macro_definition
-               | class_definition
-               | module_definition
-               | struct_definition
-               | enum_definition
-               | record_definition
-               | lib_definition
-               | include_statement
-               | extend_statement
-               | alias_definition
-               | visibility_modifier
-               | property_declaration
-               | property_macro
-               | macro_control
-               | statement
                | class_definition
                | module_definition
                | struct_definition

@@ -3172,20 +3172,6 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                | property_macro
   //                | macro_control
   //                | statement
-  //                | class_definition
-  //                | module_definition
-  //                | struct_definition
-  //                | enum_definition
-  //                | record_definition
-  //                | lib_definition
-  //                | include_statement
-  //                | extend_statement
-  //                | alias_definition
-  //                | visibility_modifier
-  //                | property_declaration
-  //                | property_macro
-  //                | macro_control
-  //                | statement
   static boolean class_member(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "class_member")) return false;
     boolean result_;
@@ -3196,20 +3182,6 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = abstract_method_definition(builder_, level_ + 1);
     if (!result_) result_ = method_definition(builder_, level_ + 1);
     if (!result_) result_ = macro_definition(builder_, level_ + 1);
-    if (!result_) result_ = class_definition(builder_, level_ + 1);
-    if (!result_) result_ = module_definition(builder_, level_ + 1);
-    if (!result_) result_ = struct_definition(builder_, level_ + 1);
-    if (!result_) result_ = enum_definition(builder_, level_ + 1);
-    if (!result_) result_ = record_definition(builder_, level_ + 1);
-    if (!result_) result_ = lib_definition(builder_, level_ + 1);
-    if (!result_) result_ = include_statement(builder_, level_ + 1);
-    if (!result_) result_ = extend_statement(builder_, level_ + 1);
-    if (!result_) result_ = alias_definition(builder_, level_ + 1);
-    if (!result_) result_ = visibility_modifier(builder_, level_ + 1);
-    if (!result_) result_ = property_declaration(builder_, level_ + 1);
-    if (!result_) result_ = property_macro(builder_, level_ + 1);
-    if (!result_) result_ = macro_control(builder_, level_ + 1);
-    if (!result_) result_ = statement(builder_, level_ + 1);
     if (!result_) result_ = class_definition(builder_, level_ + 1);
     if (!result_) result_ = module_definition(builder_, level_ + 1);
     if (!result_) result_ = struct_definition(builder_, level_ + 1);
@@ -8164,7 +8136,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (block | class_body END)?
+  // RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END | class_body END)?
   public static boolean record_definition(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "record_definition")) return false;
     if (!nextTokenIs(builder_, RECORD)) return false;
@@ -8230,20 +8202,32 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // (block | class_body END)?
+  // (DO class_body END | class_body END)?
   private static boolean record_definition_4(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "record_definition_4")) return false;
     record_definition_4_0(builder_, level_ + 1);
     return true;
   }
 
-  // block | class_body END
+  // DO class_body END | class_body END
   private static boolean record_definition_4_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "record_definition_4_0")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
-    result_ = block(builder_, level_ + 1);
+    result_ = record_definition_4_0_0(builder_, level_ + 1);
     if (!result_) result_ = record_definition_4_0_1(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // DO class_body END
+  private static boolean record_definition_4_0_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "record_definition_4_0_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = consumeToken(builder_, DO);
+    result_ = result_ && class_body(builder_, level_ + 1);
+    result_ = result_ && consumeToken(builder_, END);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
