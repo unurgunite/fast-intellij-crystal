@@ -14,6 +14,22 @@ end
 
 record RecursiveDirectories
 
+# Bodyless records inside a module must not eat the module's `end`
+# (http/common.cr shape: `record EndOfRequest` inside `module HTTP`).
+# Verified: a DO-less indented `def` after a record is a separate method,
+# not a record member (`R.new(5).foo` → "undefined method 'foo' for R").
+module HttpLike
+  record EndOfRequest
+
+  record HeaderLine, name : String, value : String, bytesize : Int32
+
+  record Key, name : String do
+    def hash(hasher)
+      hasher
+    end
+  end
+end
+
 x = foo do
   def bar
     1

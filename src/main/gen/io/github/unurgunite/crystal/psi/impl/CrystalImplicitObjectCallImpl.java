@@ -166,9 +166,9 @@ public class CrystalImplicitObjectCallImpl extends ASTWrapperPsiElement implemen
   }
 
   @Override
-  @NotNull
-  public List<CrystalMacroInterpolation> getMacroInterpolationList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroInterpolation.class);
+  @Nullable
+  public CrystalMacroInterpolation getMacroInterpolation() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
   }
 
   @Override

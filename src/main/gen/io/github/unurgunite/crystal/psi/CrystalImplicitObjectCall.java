@@ -76,8 +76,8 @@ public interface CrystalImplicitObjectCall extends PsiElement {
   @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
-  @NotNull
-  List<CrystalMacroInterpolation> getMacroInterpolationList();
+  @Nullable
+  CrystalMacroInterpolation getMacroInterpolation();
 
   @NotNull
   List<CrystalMethodCallExpression> getMethodCallExpressionList();

@@ -273,7 +273,14 @@ lib_definition ::= LIB CONSTANT lib_body END {pin=1}
 // The `do` body is a class_body (not a block): record members include definitions
 // that statements lack (`private def`, properties...). Verified: http/headers.cr
 // `record Key, name : String do ... private def normalize_byte ... end`.
-record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END | class_body END)? {pin=1}
+// The body REQUIRES `do` (verified with the real compiler: a DO-less indented
+// `def` after `record R, x : Int32` is a separate top-level method, not a record
+// member — `R.new(5).foo` fails with "undefined method 'foo' for R"). An earlier
+// revision had a DO-less `class_body END` alternative and it ate the enclosing
+// definition's `end` (`record EndOfRequest` inside `module HTTP` consumed the
+// module's `end`, breaking all of http/common.cr past that point): with an empty
+// class_body, `class_body END` matches the outer `end` and PEG commits to it.
+record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
 
 record_field ::= (IDENTIFIER | keyword_as_record_field) [COLON type_reference] [ASSIGN expression] | STAR
 
@@ -385,11 +392,21 @@ private method_name ::= IDENTIFIER [macro_interpolation] [BANG|QUESTION] [ASSIGN
                       | SELF DOT (IDENTIFIER [macro_interpolation] | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation [BANG|QUESTION] [ASSIGN]
-                      | keyword_as_method [ASSIGN]
+                      // PEG longer-first: operator_method_name precedes keyword_as_method
+                      // because both match bare `&`/`+`/etc. single tokens, but only the
+                      // operator rule has the longer `&{{op}}` / `!~` forms (`def &{{op.id}}`
+                      // — primitives.cr). A bare-keyword match would commit first and leave
+                      // the `{{...}}` unparsed.
                       | operator_method_name
+                      | keyword_as_method [ASSIGN]
                       | macro_interpolation
+                      // Backtick command-literal name (`def \`(command : String) : String`
+                      // — process.cr; the lexer emits COMMAND_BEGIN without entering
+                      // the BACKTICK state in method-name position, see Crystal.flex).
+                      | COMMAND_BEGIN
 
-private operator_method_name ::= PLUS | MINUS | STAR | SLASH | PERCENT | AMPERSAND | PIPE | CARET | TILDE
+private operator_method_name ::= PLUS | MINUS | STAR | SLASH | PERCENT | AMPERSAND macro_interpolation | AMPERSAND | PIPE | CARET | TILDE
+                               | BANG TILDE
                                | WRAP_PLUS | WRAP_MINUS | WRAP_STAR | WRAP_DOUBLE_STAR
                                | DOUBLE_STAR | LSHIFT | RSHIFT | EQ | NEQ | LT | GT | LTE | GTE
                                | SPACESHIP | CASE_EQ | MATCH_OP | LBRACKET RBRACKET ASSIGN | LBRACKET RBRACKET QUESTION | LBRACKET RBRACKET
@@ -449,9 +466,17 @@ private param_prefix ::= annotation_usage
                        | macro_control
                        | OUT
 
-parameter ::= param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER instance_var_access [COLON type_reference] [ASSIGN expression]
-            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER IDENTIFIER [COLON type_reference] [ASSIGN expression]
-            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER [COLON (splat_type | type_reference)] [ASSIGN expression]
+// Parameter name: a plain identifier or a keyword the real compiler accepts as
+// a name (`of` as single name with default: `def self.map(values, of = nil, &)`,
+// `for` as external name: `def f(for dst_io : IO)`, `when` as block param:
+// `node.whens.each do |when|` — all stdlib shapes). Mirrors `bare_arg_name`.
+// Declaration positions (COLON/ASSIGN/COMMA/RPAREN/PIPE follow), so the keyword
+// alternative fails fast elsewhere.
+private param_name ::= IDENTIFIER | keyword_as_record_field
+
+parameter ::= param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
+            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name IDENTIFIER [COLON type_reference] [ASSIGN expression]
+            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [COLON (splat_type | type_reference)] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] instance_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] class_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* AMPERSAND class_var_access [COLON type_reference]
@@ -495,7 +520,14 @@ statement_list ::= statement_or_separator*
 
 private statement_or_separator ::= NEWLINE | SEMICOLON | statement
 
-statement ::= if_statement
+// `when` can never start a statement (reserved word — a `when` at statement
+// position is always a clause keyword of the enclosing case/select). The guard
+// is load-bearing: `variable_reference` accepts WHEN for `|when|` block params
+// (`puts when`, `when.body` — type_guess_visitor.cr), and without it a
+// statement_list would swallow the next `when` clause as an expression
+// statement (`when 0 then @x` broke with `got 'then'`; multi-when case/select
+// collapsed into one clause).
+statement ::= !WHEN (if_statement
             | unless_statement
             | while_statement
             | until_statement
@@ -517,7 +549,7 @@ statement ::= if_statement
             | bare_command_expression
             | method_definition
             | macro_definition
-            | expression_statement
+            | expression_statement)
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
 
@@ -649,7 +681,7 @@ constant_assignment ::= CONSTANT ASSIGN NLS expression [postfix_modifier] {
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
-private variable ::= instance_var_access | class_var_access | GLOBAL_VAR | IDENTIFIER macro_interpolation | IDENTIFIER
+private variable ::= instance_var_access | class_var_access | GLOBAL_VAR | IDENTIFIER macro_interpolation | IDENTIFIER | OF
 
 private assign_op ::= ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
                     | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
@@ -737,7 +769,7 @@ namespace_access ::= DOUBLE_COLON (CONSTANT | macro_interpolation) {
 }
 
 // Keywords that Crystal allows as method names after DOT
-private keyword_as_method ::= ABSTRACT | ALIAS | AS | AS_QUESTION | ASM
+private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION | ASM
                             | BEGIN | BREAK
                             | CASE | CLASS
                             | DEF | DO
@@ -875,11 +907,14 @@ argument ::= STAR expression
 // PEG order: before `expression` so the assign-op is not left dangling.
 private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS expression
 
-// Named argument: requires both IDENTIFIER and COLON to match before committing.
+// Named argument: requires both name and COLON to match before committing.
+// The name may be a keyword (`for: STDIN`, `in: 1`, `of: 2` — real call sites;
+// process.cr `exec_stdio_to_fd(input, for: STDIN)`). Mirrors `bare_arg_name`
+// below, which already accepts `keyword_as_record_field` for bare labels.
 // Without pin=2, the optional [IDENTIFIER COLON] prefix would greedily consume
 // IDENTIFIER even when COLON doesn't follow, causing binary expressions like
 // x * 2 to be misparsed (x consumed, * 2 treated as unary star expression).
-private named_argument ::= IDENTIFIER COLON expression {pin=2}
+private named_argument ::= (IDENTIFIER | keyword_as_record_field) COLON expression {pin=2}
 
 // Bare (parenthesis-free) arguments — used for calls like: describe App5 do ... end
 // Arguments may continue on following lines after a comma (`printf "%s",\n  a` —
@@ -1066,7 +1101,7 @@ class_var_access ::= AT AT macro_interpolation | CLASS_VAR {
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
-variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | IDENTIFIER {
+variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | IDENTIFIER | OF | WHEN {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalVariableReferenceMixin"
 }
 

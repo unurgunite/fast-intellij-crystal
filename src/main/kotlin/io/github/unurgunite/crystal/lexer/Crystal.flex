@@ -353,7 +353,10 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   \"                   { pushState(STRING); return track(CrystalTypes.STRING_LITERAL); }
 
   // Command literal
-  "`"                    { pushState(BACKTICK); return track(CrystalTypes.COMMAND_BEGIN); }
+  // After `def`/`macro` a backtick is the method name (`def \`(command)` —
+  // process.cr), not a literal: same token but no BACKTICK state push, so the
+  // parameter list lexes normally. Mirrors the afterDef `%` rule below.
+  "`"                    { if (afterDef) { afterDef = false; return track(CrystalTypes.COMMAND_BEGIN); } pushState(BACKTICK); return track(CrystalTypes.COMMAND_BEGIN); }
 
   // Regex literal (only in operator position — not after identifiers, constants, literals, ) or ])
   "/"                    { if (isRegexAllowed()) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
