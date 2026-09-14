@@ -4,10 +4,8 @@ package io.github.unurgunite.crystal.psi;
 import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.StubBasedPsiElement;
-import io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub;
 
-public interface CrystalAbstractMethodDefinition extends CrystalNamedElement, StubBasedPsiElement<CrystalMethodDefinitionStub> {
+public interface CrystalAbstractMethodDefinition extends PsiElement {
 
   @Nullable
   CrystalMacroInterpolation getMacroInterpolation();

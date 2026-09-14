@@ -10,7 +10,7 @@ import io.github.unurgunite.crystal.psi.impl.*;
 
 public interface CrystalTypes {
 
-  IElementType ABSTRACT_METHOD_DEFINITION = CrystalStubElementTypeFactory.create("ABSTRACT_METHOD_DEFINITION");
+  IElementType ABSTRACT_METHOD_DEFINITION = new CrystalElementType("ABSTRACT_METHOD_DEFINITION");
   IElementType ALIAS_DEFINITION = new CrystalElementType("ALIAS_DEFINITION");
   IElementType ANNOTATION_DEFINITION = new CrystalElementType("ANNOTATION_DEFINITION");
   IElementType ANNOTATION_USAGE = new CrystalElementType("ANNOTATION_USAGE");

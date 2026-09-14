@@ -11,7 +11,7 @@
   elementTypeHolderClass="io.github.unurgunite.crystal.psi.CrystalTypes"
   elementTypeClass="io.github.unurgunite.crystal.psi.CrystalElementType"
   tokenTypeClass="io.github.unurgunite.crystal.lexer.CrystalTokenType"
-  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|abstract_method_definition|macro_definition|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
+  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
 
   tokens = [
     // Keywords
@@ -378,8 +378,7 @@ lib_union_definition ::= UNION CONSTANT lib_body END
 
 // ==================== Methods ====================
 
-method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*]
-                    | DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] [method_body END] {
+method_definition ::= DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] [method_body END] {
   pin(".*")=2
   stubClass="io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub"
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedMethodDefinitionImpl"
@@ -389,12 +388,7 @@ method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RP
 // Bodiless `abstract def foo` (Crystal forbids bodies on abstract defs —
 // verified: `abstract def foo : Int32; 1; end` is a compile error).
 // Same stub contract as method_definition so OverrideImplement finds them.
-// Public so abstract defs are real PSI + indexed (not anonymous content).
-abstract_method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] {
-  stubClass="io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub"
-  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedMethodDefinitionImpl"
-  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
-}
+abstract_method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*]
 
 private method_name ::= IDENTIFIER [macro_interpolation] [BANG|QUESTION] [ASSIGN]
                       | type_path DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]

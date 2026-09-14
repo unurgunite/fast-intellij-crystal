@@ -23,6 +23,10 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
         // How far up the tree to look for a BAD_CHARACTER sibling when deciding
         // whether a parser error is just fallout from an invalid single-quote string.
         private const val MAX_CAUSE_WALK_UP_LEVELS = 3
+
+        // Shortest multi-char single-quoted text is `'ab'` (4 chars); anything
+        // shorter is a valid char literal or empty quotes, not our error shape.
+        private const val MIN_INVALID_QUOTED_LENGTH = 3
     }
 
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
@@ -70,7 +74,8 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
     }
 
     /** Multi-char single-quoted text (`'hello world'`) — the invalid-char-literal shape. */
-    private fun isSingleQuotedText(text: String): Boolean = text.length > 3 && text.startsWith("'") && text.endsWith("'")
+    private fun isSingleQuotedText(text: String): Boolean =
+        text.length > MIN_INVALID_QUOTED_LENGTH && text.startsWith("'") && text.endsWith("'")
 
     /**
      * Check if this PsiErrorElement is caused by a HEREDOC_START without matching HEREDOC_END.
