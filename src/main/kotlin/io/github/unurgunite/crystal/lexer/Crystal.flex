@@ -245,6 +245,10 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   {DEC_INT} "." {DEC_INT} (("e" | "E") ("+" | "-")? {DEC_INT})? {FLOAT_SUFFIX}  { return track(CrystalTypes.FLOAT_LITERAL); }
   {DEC_INT} ("e" | "E") ("+" | "-")? {DEC_INT} {FLOAT_SUFFIX}                    { return track(CrystalTypes.FLOAT_LITERAL); }
   {DEC_INT} "_f" ("32" | "64")                                                    { return track(CrystalTypes.FLOAT_LITERAL); }
+  // Suffix float without dot/exponent/underscore (`1f32` — compiler_rt/pow.cr).
+  // JFlex longest-match prefers 4-char `1f32` over 1-char INTEGER; placed with
+  // the other float rules. Plain `1f` / `1f33` stay INTEGER + IDENTIFIER (illegal).
+  {DEC_INT} "f" ("32" | "64")                                                     { return track(CrystalTypes.FLOAT_LITERAL); }
   {INTEGER}            { return track(CrystalTypes.INTEGER_LITERAL); }
 
   // Heredoc start: <<-IDENTIFIER or <<-'IDENTIFIER'
@@ -514,6 +518,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   {CONSTANT}           { return track(CrystalTypes.CONSTANT); }
   {INSTANCE_VAR}       { return track(CrystalTypes.INSTANCE_VAR); }
   {CLASS_VAR}          { return track(CrystalTypes.CLASS_VAR); }
+  {GLOBAL_VAR}         { return track(CrystalTypes.GLOBAL_VAR); }
   {DEC_INT}            { return track(CrystalTypes.INTEGER_LITERAL); }
   \"                   { pushState(STRING); return track(CrystalTypes.STRING_LITERAL); }
   {CHAR_LITERAL}       { return track(CrystalTypes.CHAR_LITERAL); }
@@ -661,6 +666,11 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   {DEC_INT}            { return track(CrystalTypes.INTEGER_LITERAL); }
   \"                   { pushState(STRING); return track(CrystalTypes.STRING_LITERAL); }
   {CHAR_LITERAL}       { return track(CrystalTypes.CHAR_LITERAL); }
+  "{"                  { return track(CrystalTypes.LBRACE); }
+  "}"                  { return track(CrystalTypes.RBRACE); }
+  "{{"                 { pushState(MACRO_INTERPOLATION); return track(CrystalTypes.MACRO_INTERPOLATION_BEGIN); }
+  "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
+  "="                  { return track(CrystalTypes.ASSIGN); }
   "."                  { return track(CrystalTypes.DOT); }
   "("                  { return track(CrystalTypes.LPAREN); }
   ")"                  { return track(CrystalTypes.RPAREN); }
@@ -743,6 +753,8 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "/"                  { return track(CrystalTypes.SLASH); }
   "?"                  { return track(CrystalTypes.QUESTION); }
   "!"                  { return track(CrystalTypes.BANG); }
+  "^"                  { return track(CrystalTypes.CARET); }
+  "~"                  { return track(CrystalTypes.TILDE); }
   ".."                 { return track(CrystalTypes.DOTDOT); }
   "..."                { return track(CrystalTypes.DOTDOTDOT); }
   "::"                 { return track(CrystalTypes.DOUBLE_COLON); }

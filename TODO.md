@@ -24,6 +24,14 @@ After the `def %` fix, re-run a full stdlib VFS walk and report per-file symbol
 counts; fix any other operator methods (`[]`, `[]?`, `==`, `<<`, etc.) or constructs
 that still abort file parsing.
 
+Status 2026-09-14: waves 1–9 done, 509 → 85 files with errors (2172 files,
+95 total errors). Biggest remaining clusters: `got '('` (15, incl. macro_control
+as call arg, `&.`+keyword verified-fixed, space-call paren-first open),
+`got ','` (10, multi-assign dot targets + bare-in-bare open), `got 'do'` (9),
+`{% ... %}` with `^`/CHAR_LITERAL/`||`-chains (7), `got '{'` (6). Deferred
+open gaps are listed in `docs/specs/wave-9-grammar.md` (all verified legal
+with crystal 1.21.0).
+
 ### P2 — Implement Members
 
 Standard IDE expectation, moderate effort:

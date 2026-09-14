@@ -34,9 +34,27 @@ public class CrystalForStatementImpl extends ASTWrapperPsiElement implements Cry
   }
 
   @Override
+  @NotNull
+  public List<CrystalInClause> getInClauseList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInClause.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
   @Nullable
   public CrystalStatementList getStatementList() {
     return PsiTreeUtil.getChildOfType(this, CrystalStatementList.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalWhenClause> getWhenClauseList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalWhenClause.class);
   }
 
 }

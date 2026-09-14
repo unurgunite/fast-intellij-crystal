@@ -17,6 +17,9 @@ public interface CrystalArgument extends PsiElement {
   CrystalInstanceVarAccess getInstanceVarAccess();
 
   @Nullable
+  CrystalMacroControl getMacroControl();
+
+  @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
 
 }

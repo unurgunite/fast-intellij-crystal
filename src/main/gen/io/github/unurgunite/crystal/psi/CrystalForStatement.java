@@ -10,7 +10,16 @@ public interface CrystalForStatement extends PsiElement {
   @Nullable
   CrystalExpression getExpression();
 
+  @NotNull
+  List<CrystalInClause> getInClauseList();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
   @Nullable
   CrystalStatementList getStatementList();
+
+  @NotNull
+  List<CrystalWhenClause> getWhenClauseList();
 
 }

@@ -47,6 +47,12 @@ public class CrystalArgumentImpl extends ASTWrapperPsiElement implements Crystal
 
   @Override
   @Nullable
+  public CrystalMacroControl getMacroControl() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalMacroInterpolation getMacroInterpolation() {
     return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
   }

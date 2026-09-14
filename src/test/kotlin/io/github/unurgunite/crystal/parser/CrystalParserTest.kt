@@ -9,6 +9,16 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
 
     // Pin the recursion limit so golden-file comparisons are deterministic and not
     // affected by other tests mutating grammar.kit.gpub.max.level at runtime.
+    // NOTE 2026-09-14: pinned 6000 is NOT enough for determinism. The suite is
+    // green file-by-file but red on full runs: ~10 tests flip between two
+    // well-formed shapes depending on execution order (trailing-newline PSI +
+    // DOT_CALL_ACCESS-vs-IMPLICIT_OBJECT_CALL on identical input). This is the
+    // known GrammarKit GPUB nondeterminism (see TODO.md "ParserTest
+    // Non-Determinism"): the generated parser's memo table/seed order leaks
+    // across tests in one JVM. Mitigations that did NOT help: max-workers=1,
+    // single-test reruns (green alone, red in suite), regen-goldens (the flip
+    // follows order, not content). The goldens stay at their committed shapes;
+    // CI runs this suite with -PgoldenOnly=true as a NON-BLOCKING step.
     override fun setUp() {
         super.setUp()
         System.setProperty("grammar.kit.gpub.max.level", "6000")
@@ -522,6 +532,67 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     }
 
     fun testBareNamespaceValue() {
+        doTest(true)
+    }
+
+    // Wave 9 grammar coverage (all shapes verified legal with crystal 1.21.0).
+    fun testShorthandKeywordMethods() {
+        doTest(true)
+    }
+
+    fun testUnionTypeAsIdentifier() {
+        doTest(true)
+    }
+
+    fun testLibIncludeExtend() {
+        doTest(true)
+    }
+
+    fun testMacroGeneratedMembers() {
+        doTest(true)
+    }
+
+    fun testMacroForMultiTarget() {
+        doTest(true)
+    }
+
+    fun testIvarInterpolationAccess() {
+        doTest(true)
+    }
+
+    fun testInterpolatedMethodSegment() {
+        doTest(true)
+    }
+
+    fun testReturnAssignValue() {
+        doTest(true)
+    }
+
+    fun testNotComparisonRhs() {
+        doTest(true)
+    }
+
+    fun testChainedDotAssign() {
+        doTest(true)
+    }
+
+    fun testGroupedRescueModifier() {
+        doTest(true)
+    }
+
+    fun testTypeIndexArgs() {
+        doTest(true)
+    }
+
+    fun testIndexMiscShapes() {
+        doTest(true)
+    }
+
+    fun testRespondsToCall() {
+        doTest(true)
+    }
+
+    fun testMacroInterpTokens() {
         doTest(true)
     }
 
