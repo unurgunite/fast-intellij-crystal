@@ -893,16 +893,38 @@ bare_argument ::= named_bare_argument
                 | bare_expression
                 | OUT (IDENTIFIER | instance_var_access)
 
+// NOTE: no `::`-led positional bare alternative here by design. A previous
+// revision added `bare_namespace_value ::= namespace_access [dot_call_access]`
+// as a trailing `bare_argument` alternative and it let `bare_command_expression`
+// steal `CONSTANT::...` tails (`NamespaceAccess::Inner.inner_method`,
+// `@buffer = IO::Memory.new`, `"#{Foo::Bar.method}"` all regressed to
+// BARE_COMMAND shape): after the CONSTANT callee, the `::...` remainder
+// suddenly parsed as a bare argument. Leading-`::` values are only valid in
+// the named-arg value position below (after `name COLON`), which cannot steal
+// because the COLON anchor precedes the value.
+
 // Named bare argument: requires both name and COLON to match before committing.
 // The name may be a keyword (`def: a_def`, `in_macro: false` — real call sites
 // pass `def`/`in`/`class` etc. as labels; verified with the real compiler).
 // Without pin=2, the optional prefix would greedily consume
 // IDENTIFIER even when COLON doesn't follow, causing binary expressions like
 // x * scalar to be misparsed (x consumed, * scalar treated as unary star).
-private named_bare_argument ::= bare_arg_name COLON bare_expression [ASSIGN bare_expression] {pin=2}
+private named_bare_argument ::= bare_arg_name COLON named_bare_value [ASSIGN bare_expression] {pin=2}
 
 // Bare-call label: plain identifier or any non-reserved keyword usable as a label.
 private bare_arg_name ::= IDENTIFIER | keyword_as_record_field
+
+// Named-arg value: leading-`::` namespaces (`level: ::Socket::Protocol::TCP`)
+// are not valid `bare_expression` (the bare tower has no leading-`::` primary
+// by design — it would let `bare_command_expression` steal `CONSTANT::...`
+// tails, see NOTE above), so they get their own alternative. A single
+// `namespace_access` is one `::Segment`; chains ride `bare_postfix_op*`
+// (which includes `namespace_access`), mirroring how `postfix_expression`
+// builds `::A::B::C` in expression context — flat NAMESPACE_ACCESS siblings.
+// The COLON anchor precedes the value, so this cannot steal tails the way a
+// positional alternative could. Plain values never start with `::`, so the
+// first alternative fails fast with no shape changes elsewhere.
+private named_bare_value ::= namespace_access bare_postfix_op* | bare_expression
 
 // Bare expression: same as expression but does not consume blocks or assignments
 // This prevents the bare argument from eating the 'do' that belongs to the outer method call

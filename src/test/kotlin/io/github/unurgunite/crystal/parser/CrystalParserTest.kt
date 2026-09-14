@@ -520,4 +520,8 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testBareMultilineArgs() {
         doTest(true)
     }
+
+    fun testBareNamespaceValue() {
+        doTest(true)
+    }
 }
