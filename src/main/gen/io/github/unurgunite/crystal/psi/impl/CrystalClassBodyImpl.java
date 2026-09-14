@@ -29,8 +29,116 @@ public class CrystalClassBodyImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @NotNull
-  public List<CrystalClassMember> getClassMemberList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalClassMember.class);
+  public List<CrystalAbstractMethodDefinition> getAbstractMethodDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAbstractMethodDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalAliasDefinition> getAliasDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAliasDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalAnnotationDefinition> getAnnotationDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAnnotationDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalAnnotationUsage> getAnnotationUsageList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAnnotationUsage.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalClassDefinition> getClassDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalClassDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalEnumDefinition> getEnumDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalEnumDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalExtendStatement> getExtendStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExtendStatement.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalIncludeStatement> getIncludeStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalIncludeStatement.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalLibDefinition> getLibDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalLibDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroDefinition> getMacroDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMethodDefinition> getMethodDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMethodDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalModuleDefinition> getModuleDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalModuleDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalPropertyDeclaration> getPropertyDeclarationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalPropertyDeclaration.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalPropertyMacro> getPropertyMacroList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalPropertyMacro.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalRecordDefinition> getRecordDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalRecordDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalStatement> getStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalStatement.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalStructDefinition> getStructDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalStructDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalVisibilityModifier> getVisibilityModifierList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalVisibilityModifier.class);
   }
 
 }

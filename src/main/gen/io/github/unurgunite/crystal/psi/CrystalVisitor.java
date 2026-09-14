@@ -7,6 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public class CrystalVisitor extends PsiElementVisitor {
 
+  public void visitAbstractMethodDefinition(@NotNull CrystalAbstractMethodDefinition o) {
+    visitNamedElement(o);
+  }
+
   public void visitAliasDefinition(@NotNull CrystalAliasDefinition o) {
     visitPsiElement(o);
   }
@@ -89,10 +93,6 @@ public class CrystalVisitor extends PsiElementVisitor {
 
   public void visitClassDefinition(@NotNull CrystalClassDefinition o) {
     visitNamedElement(o);
-  }
-
-  public void visitClassMember(@NotNull CrystalClassMember o) {
-    visitPsiElement(o);
   }
 
   public void visitClassVarAccess(@NotNull CrystalClassVarAccess o) {

@@ -8,6 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface CrystalVisibilityModifier extends PsiElement {
 
   @Nullable
+  CrystalAbstractMethodDefinition getAbstractMethodDefinition();
+
+  @Nullable
   CrystalBareArgumentList getBareArgumentList();
 
   @Nullable

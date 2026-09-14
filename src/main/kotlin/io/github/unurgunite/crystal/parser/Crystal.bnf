@@ -293,13 +293,27 @@ alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_refer
 
 class_body ::= class_member*
 
-class_member ::= NEWLINE
+private class_member ::= NEWLINE
                | SEMICOLON
                | annotation_usage
                | annotation_definition
                | abstract_method_definition
                | method_definition
                | macro_definition
+               | class_definition
+               | module_definition
+               | struct_definition
+               | enum_definition
+               | record_definition
+               | lib_definition
+               | include_statement
+               | extend_statement
+               | alias_definition
+               | visibility_modifier
+               | property_declaration
+               | property_macro
+               | macro_control
+               | statement
                | class_definition
                | module_definition
                | struct_definition
@@ -372,10 +386,20 @@ method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RP
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
+// Bodiless `abstract def foo` (Crystal forbids bodies on abstract defs —
+// verified: `abstract def foo : Int32; 1; end` is a compile error).
+// Same stub contract as method_definition so OverrideImplement finds them.
+// Public so abstract defs are real PSI + indexed (not anonymous content).
+abstract_method_definition ::= ABSTRACT DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] {
+  stubClass="io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedMethodDefinitionImpl"
+  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
+}
+
 private method_name ::= IDENTIFIER [macro_interpolation] [BANG|QUESTION] [ASSIGN]
                       | type_path DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
                       | CONSTANT [macro_interpolation] [BANG|QUESTION] [ASSIGN]
-                      | SELF DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
+                      | SELF DOT (IDENTIFIER [macro_interpolation] | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name) [BANG|QUESTION] [ASSIGN]
                       | macro_interpolation [BANG|QUESTION] [ASSIGN]
                       | keyword_as_method [ASSIGN]
@@ -399,6 +423,7 @@ private macro_body_element ::= MACRO_BODY_CONTENT
                              | NEWLINE
 
 macro_interpolation ::= MACRO_INTERPOLATION_BEGIN (bare_command_expression | expression) MACRO_INTERPOLATION_END
+                      | MACRO_INTERPOLATION_BEGIN (bare_command_expression | expression) RBRACE
 
 macro_control ::= MACRO_CONTROL_BEGIN macro_control_content* MACRO_CONTROL_END
 
@@ -443,7 +468,7 @@ private param_prefix ::= annotation_usage
 
 parameter ::= param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER instance_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER IDENTIFIER [COLON type_reference] [ASSIGN expression]
-            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER [COLON type_reference] [ASSIGN expression]
+            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER [COLON (splat_type | type_reference)] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] instance_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] class_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* AMPERSAND class_var_access [COLON type_reference]
@@ -453,6 +478,11 @@ parameter ::= param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] IDENTIFIER instance
             | param_prefix* type_reference {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalParameterMixin"
 }
+
+// Splat element type (`*args : *T`, `**opts : **T`): the same STAR/DOUBLE_STAR
+// prefix inside the annotation. Plain `x : **T` is a syntax error (verified),
+// so this shape only appears after a splat/double-splat/block parameter name.
+private splat_type ::= (STAR | DOUBLE_STAR) type_reference
 
 private bare_splat_separator ::= STAR &(COMMA | RPAREN | NEWLINE)
 
@@ -716,7 +746,10 @@ dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS 
 // (e.g. `Bar` in `Foo::Bar.baz`). The DOUBLE_COLON and CONSTANT are children of this
 // composite; the preceding part of the namespace path is the prevSibling in the flattened
 // postfix_expression sequence.
-namespace_access ::= DOUBLE_COLON CONSTANT {
+// The segment may be macro-generated (`Severity::{{severity}}` — at runtime a real
+// constant); the mixin returns null without a CONSTANT child, so resolution degrades
+// gracefully instead of failing the parse.
+namespace_access ::= DOUBLE_COLON (CONSTANT | macro_interpolation) {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalNamespaceAccessMixin"
 }
 
@@ -797,7 +830,8 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // a parenthesised call like `add("x")` from being greedily consumed as a bare command
 // (the command `add` with the grouped-expression argument `("x")`).
 bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT) !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead (bare_argument_list [block] | block) [postfix_modifier]
-                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier] {
+                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
+                          | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
 }
 
@@ -1031,6 +1065,12 @@ variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | 
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalVariableReferenceMixin"
 }
 
+// A `{{...}}` interpolation standing in for a whole expression statement
+// (`{{method.id}} path, form: body` — macro-generated bare calls; the callee
+// name is macro-generated so the parser cannot see it). Allowed as a bare
+// callee with trailing bare arguments.
+private macro_callee_call ::= macro_interpolation bare_argument_list
+
 // ==================== Type References ====================
 
 type_reference ::= type_union [ARROW [type_union]]
@@ -1045,7 +1085,7 @@ type_receiver_expression ::= type_path type_arguments &DOT
 
 private type_single ::= STAR type_path [type_arguments] [QUESTION]
                       | type_path macro_interpolation [QUESTION]
-                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* [LBRACKET (INTEGER_LITERAL | CONSTANT) RBRACKET]
+                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* static_array_size*
                       | SELF STAR [QUESTION]
                       | SELF [QUESTION]
                       | TYPEOF LPAREN NLS expression (COMMA NLS expression)* NLS RPAREN [QUESTION]
@@ -1060,6 +1100,7 @@ type_path ::= [DOUBLE_COLON] (CONSTANT | macro_interpolation) (DOUBLE_COLON (CON
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalTypePathMixin"
 }
 
+
 type_arguments ::= LPAREN NLS type_argument (NLS COMMA NLS type_argument)* [NLS COMMA] NLS RPAREN
 
 private type_argument ::= type_reference | INTEGER_LITERAL
@@ -1067,6 +1108,10 @@ private type_argument ::= type_reference | INTEGER_LITERAL
 type_parameters ::= LPAREN NLS type_parameter_item (COMMA NLS type_parameter_item)* [COMMA] NLS RPAREN
 
 private type_parameter_item ::= [STAR] CONSTANT [ASSIGN type_reference]
+
+// Multi-dimensional static array size (`UInt8[16][26]`): each `[N]` appends
+// one dimension (verified with real crystal, incl. inside `lib` structs).
+private static_array_size ::= LBRACKET (INTEGER_LITERAL | CONSTANT) RBRACKET
 
 // ==================== Type Names ====================
 

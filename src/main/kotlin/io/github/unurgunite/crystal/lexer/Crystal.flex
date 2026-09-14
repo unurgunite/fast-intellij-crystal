@@ -187,7 +187,13 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "instance_sizeof"    { return track(CrystalTypes.INSTANCE_SIZEOF); }
   "is_a?"              { return track(CrystalTypes.IS_A); }
   "lib"                { return track(CrystalTypes.LIB); }
-  "macro"              { macroHeaderSeen = true; afterDef = true; return track(CrystalTypes.MACRO); }
+  // `macro` heads a definition only when a name follows on the same line
+  // (`macro foo`). Any other `macro` (record field `macro : M`, call
+  // `foo.macro`, assignment, `def macro(`) must NOT arm the macro-body switch,
+  // or the next NEWLINE flips to MACRO_BODY and swallows the rest of the file.
+  // JFlex picks the first rule on equal length, so the lookahead rule is first.
+  "macro" / [ \t]+ ({IDENTIFIER} | {CONSTANT} | "{{")  { macroHeaderSeen = true; afterDef = true; return track(CrystalTypes.MACRO); }
+  "macro"              { afterDef = true; return track(CrystalTypes.MACRO); }
   "module"             { return track(CrystalTypes.MODULE); }
   "next"               { return track(CrystalTypes.NEXT); }
   "nil?"               { return track(CrystalTypes.NIL_QUESTION); }
@@ -259,6 +265,12 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
                          return track(CrystalTypes.HEREDOC_START);
                        }
 
+  // `\{%` / `\{{` anywhere: escaped delimiters that push the matching macro
+  // state exactly like the unescaped forms (the `\` only suppresses immediate
+  // expansion; the macro still parses — e.g. big_int.cr nests `\{% if %}`
+  // inside `{% for %}`). A lone `\` elsewhere stays BAD_CHARACTER.
+  "\\" "{{"            { pushState(MACRO_INTERPOLATION); return track(CrystalTypes.MACRO_INTERPOLATION_BEGIN); }
+  "\\" "{%"            { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   // Macro control at top level: {% ... %}
   "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   // Macro interpolation at top level: {{ ... }}
@@ -598,8 +610,8 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 }
 
 <MACRO_BODY> {
-  "\\" "{{"            { macroBodyAtLineStart = false; return track(CrystalTypes.MACRO_BODY_CONTENT); }
-  "\\" "{%"            { macroBodyAtLineStart = false; return track(CrystalTypes.MACRO_BODY_CONTENT); }
+  "\\" "{{"            { macroBodyAtLineStart = false; pushState(MACRO_INTERPOLATION); return track(CrystalTypes.MACRO_INTERPOLATION_BEGIN); }
+  "\\" "{%"            { macroBodyAtLineStart = false; pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   "{{"                 { pushState(MACRO_INTERPOLATION); return track(CrystalTypes.MACRO_INTERPOLATION_BEGIN); }
   "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   "#{"                 { return track(CrystalTypes.MACRO_BODY_CONTENT); }
