@@ -9,44 +9,45 @@ import io.github.unurgunite.crystal.CrystalIcons
 import javax.swing.Icon
 
 class CrystalColorSettingsPage : ColorSettingsPage {
-
     companion object {
-        private val DESCRIPTORS = arrayOf(
-            AttributesDescriptor("Keyword", CrystalSyntaxHighlighter.KEYWORD),
-            AttributesDescriptor("Number", CrystalSyntaxHighlighter.NUMBER),
-            AttributesDescriptor("String", CrystalSyntaxHighlighter.STRING),
-            AttributesDescriptor("String escape", CrystalSyntaxHighlighter.STRING_ESCAPE),
-            AttributesDescriptor("Character", CrystalSyntaxHighlighter.CHAR),
-            AttributesDescriptor("Comment", CrystalSyntaxHighlighter.COMMENT),
-            AttributesDescriptor("TODO/FIXME/NOTE comment", CrystalSyntaxHighlighter.TODO_COMMENT),
-            AttributesDescriptor("Identifier", CrystalSyntaxHighlighter.IDENTIFIER),
-            AttributesDescriptor("Constant", CrystalSyntaxHighlighter.CONSTANT),
-            AttributesDescriptor("Instance variable", CrystalSyntaxHighlighter.INSTANCE_VAR),
-            AttributesDescriptor("Class variable", CrystalSyntaxHighlighter.CLASS_VAR),
-            AttributesDescriptor("Global variable", CrystalSyntaxHighlighter.GLOBAL_VAR),
-            AttributesDescriptor("Symbol", CrystalSyntaxHighlighter.SYMBOL),
-            AttributesDescriptor("Operator", CrystalSyntaxHighlighter.OPERATOR),
-            AttributesDescriptor("Regular expression", CrystalSyntaxHighlighter.REGEX),
-            AttributesDescriptor("String interpolation", CrystalSyntaxHighlighter.INTERPOLATION),
-            AttributesDescriptor("Parentheses", CrystalSyntaxHighlighter.PARENTHESES),
-            AttributesDescriptor("Brackets", CrystalSyntaxHighlighter.BRACKETS),
-            AttributesDescriptor("Braces", CrystalSyntaxHighlighter.BRACES),
-            AttributesDescriptor("Comma", CrystalSyntaxHighlighter.COMMA),
-            AttributesDescriptor("Semicolon", CrystalSyntaxHighlighter.SEMICOLON),
-            AttributesDescriptor("Dot", CrystalSyntaxHighlighter.DOT),
-            AttributesDescriptor("Bad character", CrystalSyntaxHighlighter.BAD_CHARACTER),
-            AttributesDescriptor("Function declaration", CrystalSyntaxHighlighter.FUNCTION_DECLARATION),
-            AttributesDescriptor("Class/Module declaration", CrystalSyntaxHighlighter.CLASS_DECLARATION),
-            AttributesDescriptor("Parameter", CrystalSyntaxHighlighter.PARAMETER),
-            AttributesDescriptor("Heredoc delimiter", CrystalSyntaxHighlighter.HEREDOC_DELIMITER),
-        )
+        private val DESCRIPTORS =
+            arrayOf(
+                AttributesDescriptor("Keyword", CrystalSyntaxHighlighter.KEYWORD),
+                AttributesDescriptor("Number", CrystalSyntaxHighlighter.NUMBER),
+                AttributesDescriptor("String", CrystalSyntaxHighlighter.STRING),
+                AttributesDescriptor("String escape", CrystalSyntaxHighlighter.STRING_ESCAPE),
+                AttributesDescriptor("Character", CrystalSyntaxHighlighter.CHAR),
+                AttributesDescriptor("Comment", CrystalSyntaxHighlighter.COMMENT),
+                AttributesDescriptor("TODO/FIXME/NOTE comment", CrystalSyntaxHighlighter.TODO_COMMENT),
+                AttributesDescriptor("Identifier", CrystalSyntaxHighlighter.IDENTIFIER),
+                AttributesDescriptor("Constant", CrystalSyntaxHighlighter.CONSTANT),
+                AttributesDescriptor("Instance variable", CrystalSyntaxHighlighter.INSTANCE_VAR),
+                AttributesDescriptor("Class variable", CrystalSyntaxHighlighter.CLASS_VAR),
+                AttributesDescriptor("Global variable", CrystalSyntaxHighlighter.GLOBAL_VAR),
+                AttributesDescriptor("Symbol", CrystalSyntaxHighlighter.SYMBOL),
+                AttributesDescriptor("Operator", CrystalSyntaxHighlighter.OPERATOR),
+                AttributesDescriptor("Regular expression", CrystalSyntaxHighlighter.REGEX),
+                AttributesDescriptor("String interpolation", CrystalSyntaxHighlighter.INTERPOLATION),
+                AttributesDescriptor("Parentheses", CrystalSyntaxHighlighter.PARENTHESES),
+                AttributesDescriptor("Brackets", CrystalSyntaxHighlighter.BRACKETS),
+                AttributesDescriptor("Braces", CrystalSyntaxHighlighter.BRACES),
+                AttributesDescriptor("Comma", CrystalSyntaxHighlighter.COMMA),
+                AttributesDescriptor("Semicolon", CrystalSyntaxHighlighter.SEMICOLON),
+                AttributesDescriptor("Dot", CrystalSyntaxHighlighter.DOT),
+                AttributesDescriptor("Bad character", CrystalSyntaxHighlighter.BAD_CHARACTER),
+                AttributesDescriptor("Function declaration", CrystalSyntaxHighlighter.FUNCTION_DECLARATION),
+                AttributesDescriptor("Class/Module declaration", CrystalSyntaxHighlighter.CLASS_DECLARATION),
+                AttributesDescriptor("Parameter", CrystalSyntaxHighlighter.PARAMETER),
+                AttributesDescriptor("Heredoc delimiter", CrystalSyntaxHighlighter.HEREDOC_DELIMITER),
+            )
     }
 
     override fun getIcon(): Icon = CrystalIcons.FILE
 
     override fun getHighlighter(): SyntaxHighlighter = CrystalSyntaxHighlighter()
 
-    override fun getDemoText(): String = """
+    override fun getDemoText(): String =
+        """
         # Crystal example
         class Greeter
           @name : String
@@ -98,7 +99,7 @@ class CrystalColorSettingsPage : ColorSettingsPage {
         [1, 2, 3].each do |item|
           puts item
         end
-    """.trimIndent()
+        """.trimIndent()
 
     override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, TextAttributesKey>? = null
 

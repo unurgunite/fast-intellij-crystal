@@ -7,11 +7,11 @@ import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import java.io.File
 
 class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunConfiguration>() {
-
     override fun getConfigurationFactory(): ConfigurationFactory {
         val type = CrystalRunConfigurationType()
         return CrystalSpecFactory(type)
@@ -19,34 +19,42 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
 
     override fun isConfigurationFromContext(
         configuration: CrystalRunConfiguration,
-        context: ConfigurationContext
+        context: ConfigurationContext,
     ): Boolean {
         val element = context.psiLocation ?: return false
 
         // Directory context
         if (element is PsiDirectory) {
-            val dir = element.virtualFile
-            if (configuration.filePath != dir.path) return false
-            return configuration.command == CrystalCommand.SPEC
+            return matchesDirectoryConfig(configuration, element)
         }
 
-        // File context
+        return matchesFileConfig(configuration, context)
+    }
+
+    /** File context: same `.cr` path, plus spec-line match for spec runs. */
+    private fun matchesFileConfig(
+        configuration: CrystalRunConfiguration,
+        context: ConfigurationContext,
+    ): Boolean {
         val file = context.location?.virtualFile ?: return false
-        if (file.extension != "cr") return false
-        if (configuration.filePath != file.path) return false
-
+        if (file.extension != "cr" || configuration.filePath != file.path) return false
         // For spec files, also check line match
-        if (configuration.command == CrystalCommand.SPEC) {
-            val specLine = findSpecLine(context)
-            return configuration.specLine == specLine
-        }
-        return true
+        if (configuration.command != CrystalCommand.SPEC) return true
+        return configuration.specLine == findSpecLine(context)
+    }
+
+    private fun matchesDirectoryConfig(
+        configuration: CrystalRunConfiguration,
+        element: PsiDirectory,
+    ): Boolean {
+        val dir = element.virtualFile
+        return configuration.filePath == dir.path && configuration.command == CrystalCommand.SPEC
     }
 
     override fun setupConfigurationFromContext(
         configuration: CrystalRunConfiguration,
         context: ConfigurationContext,
-        sourceElement: Ref<PsiElement>
+        sourceElement: Ref<PsiElement>,
     ): Boolean {
         val element = context.psiLocation ?: return false
 
@@ -105,7 +113,9 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
                 val name = firstChild.text
                 if (name == "it" || name == "describe" || name == "context") {
                     // Return the line number (1-based)
-                    val document = com.intellij.psi.PsiDocumentManager.getInstance(context.project)
+                    val document =
+                        com.intellij.psi.PsiDocumentManager
+                            .getInstance(context.project)
                             .getDocument(psiElement.containingFile)
                     if (document != null) {
                         return document.getLineNumber(element.textOffset) + 1
@@ -121,29 +131,45 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
      * Find the name of the spec (the string argument to `it` or `describe`).
      */
     private fun findSpecName(context: ConfigurationContext): String? {
-        val psiElement = context.psiLocation ?: return null
-        var element: PsiElement? = psiElement
+        var element: PsiElement? = context.psiLocation ?: return null
         while (element != null) {
-            val firstChild = element.firstChild
-            if (firstChild != null && firstChild.node?.elementType == CrystalTypes.IDENTIFIER) {
-                val name = firstChild.text
-                if (name == "it" || name == "describe" || name == "context") {
-                    // Find the string literal argument
-                    var sibling = firstChild.nextSibling
-                    while (sibling != null) {
-                        if (sibling.node?.elementType == CrystalTypes.STRING_LITERAL) {
-                            return sibling.text.removeSurrounding("\"")
-                        }
-                        // Check inside call_args or bare_argument_list
-                        val stringInChild = PsiTreeUtil.findChildOfType(sibling, PsiElement::class.java)
-                        if (stringInChild?.node?.elementType == CrystalTypes.STRING_LITERAL) {
-                            return stringInChild.text.removeSurrounding("\"")
-                        }
-                        sibling = sibling.nextSibling
-                    }
-                }
-            }
+            findSpecNameIn(element)?.let { return it }
             element = element.parent
+        }
+        return null
+    }
+
+    /**
+     * String argument of an `it`/`describe`/`context` call rooted at [element], if any.
+     * Strings parse as a STRING_EXPRESSION composite (quote + content + quote leaves),
+     * never as a bare STRING_LITERAL sibling.
+     */
+    private fun findSpecNameIn(element: PsiElement): String? {
+        val firstChild = element.firstChild ?: return null
+        if (firstChild.node?.elementType != CrystalTypes.IDENTIFIER) return null
+        val name = firstChild.text
+        if (name != "it" && name != "describe" && name != "context") return null
+        var sibling = firstChild.nextSibling
+        while (sibling != null) {
+            extractStringArgument(sibling)?.let { return it }
+            sibling = sibling.nextSibling
+        }
+        return null
+    }
+
+    private fun extractStringArgument(sibling: PsiElement): String? {
+        val stringExpr =
+            PsiTreeUtil.findChildOfType(
+                sibling,
+                CrystalStringExpression::class.java,
+                false,
+            ) ?: (sibling as? CrystalStringExpression)
+        if (stringExpr != null) {
+            return stringExpr.text.removeSurrounding("\"")
+        }
+        val directString = PsiTreeUtil.findChildOfType(sibling, PsiElement::class.java)
+        if (directString?.node?.elementType == CrystalTypes.STRING_LITERAL) {
+            return directString.text.removeSurrounding("\"")
         }
         return null
     }

@@ -14,6 +14,9 @@ public interface CrystalBareCommandExpression extends PsiElement {
   CrystalBlock getBlock();
 
   @Nullable
+  CrystalMacroInterpolation getMacroInterpolation();
+
+  @Nullable
   CrystalPostfixModifier getPostfixModifier();
 
 }

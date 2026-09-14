@@ -26,4 +26,10 @@ public class CrystalNamespaceAccessImpl extends CrystalNamespaceAccessMixin impl
     else super.accept(visitor);
   }
 
+  @Override
+  @Nullable
+  public CrystalMacroInterpolation getMacroInterpolation() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
+  }
+
 }

@@ -1,17 +1,19 @@
 package io.github.unurgunite.crystal.run
 
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.dsl.builder.*
+import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
 
-class CrystalRunSettingsEditor(private val project: Project) : SettingsEditor<CrystalRunConfiguration>() {
-
+class CrystalRunSettingsEditor(
+    private val project: Project,
+) : SettingsEditor<CrystalRunConfiguration>() {
     private val commandCombo = ComboBox(CrystalCommand.entries.toTypedArray())
     private val fileField = TextFieldWithBrowseButton()
     private val argumentsField = JBTextField()
@@ -22,17 +24,20 @@ class CrystalRunSettingsEditor(private val project: Project) : SettingsEditor<Cr
     init {
         fileField.addBrowseFolderListener(
             TextBrowseFolderListener(
-                FileChooserDescriptorFactory.singleFile().withExtensionFilter("cr")
+                FileChooserDescriptorFactory
+                    .singleFile()
+                    .withExtensionFilter("cr")
                     .withTitle("Select Crystal File"),
-                project
-            )
+                project,
+            ),
         )
         workDirField.addBrowseFolderListener(
             TextBrowseFolderListener(
-                FileChooserDescriptorFactory.singleDir()
+                FileChooserDescriptorFactory
+                    .singleDir()
                     .withTitle("Select Working Directory"),
-                project
-            )
+                project,
+            ),
         )
     }
 
@@ -54,20 +59,21 @@ class CrystalRunSettingsEditor(private val project: Project) : SettingsEditor<Cr
         config.crystalPath = crystalPathField.text
     }
 
-    override fun createEditor(): JComponent {
-        return panel {
+    override fun createEditor(): JComponent =
+        panel {
             row("Command:") { cell(commandCombo) }
             row("File:") { cell(fileField).align(AlignX.FILL) }
             row("Arguments:") { cell(argumentsField).align(AlignX.FILL) }
             row("Working directory:") { cell(workDirField).align(AlignX.FILL) }
             row("Environment variables:") {
-                cell(envField).align(AlignX.FILL)
+                cell(envField)
+                    .align(AlignX.FILL)
                     .comment("KEY=VALUE (one per line)")
             }
             row("Crystal path:") {
-                cell(crystalPathField).align(AlignX.FILL)
+                cell(crystalPathField)
+                    .align(AlignX.FILL)
                     .comment("Path to crystal binary (default: crystal)")
             }
         }
-    }
 }

@@ -13,7 +13,6 @@ import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
  * 2. GotoDeclarationHandler fallback for the `.new` constructor special case.
  */
 class CrystalGotoDeclarationTest : BasePlatformTestCase() {
-
     /**
      * Resolves the target at the caret using the real platform flow:
      * - Element at caret (leaf IDENTIFIER / CONSTANT)
@@ -43,29 +42,37 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     }
 
     fun testSelfMethodViaClassDotCall() {
-        val targets = gotoTargets("""
-            class Apfel
-              def self.tanzen
-              end
-            end
-            Apfel.tan<caret>zen
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                class Apfel
+                  def self.tanzen
+                  end
+                end
+                Apfel.tan<caret>zen
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve Apfel.tanzen to def self.tanzen", targets)
         assertTrue("Should have at least one target", targets!!.isNotEmpty())
-        assertTrue("Target should be a method definition",
-            targets[0] is CrystalMethodDefinition)
+        assertTrue(
+            "Target should be a method definition",
+            targets[0] is CrystalMethodDefinition,
+        )
         assertEquals("tanzen", (targets[0] as CrystalMethodDefinition).name)
     }
 
     fun testInstanceMethodViaDotCall() {
-        val targets = gotoTargets("""
-            class Apfel
-              def essen
-              end
-            end
-            a = Apfel.new
-            a.es<caret>sen
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                class Apfel
+                  def essen
+                  end
+                end
+                a = Apfel.new
+                a.es<caret>sen
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve a.essen to def essen", targets)
         assertTrue(targets!!.isNotEmpty())
         assertTrue(targets[0] is CrystalMethodDefinition)
@@ -80,32 +87,41 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
      * old behaviour of jumping to the first method named `greet` project-wide.
      */
     fun testTopLevelMethodViaDotCallOnUnknownReceiverReturnsNull() {
-        val targets = gotoTargets("""
-            def greet
-            end
-            x = 1
-            x.gre<caret>et
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                def greet
+                end
+                x = 1
+                x.gre<caret>et
+                """.trimIndent(),
+            )
         // `greet` exists as a top-level def but is NOT a method of `Int` (x's type).
         // No false-positive name-only matching — return null per the no-guessing rule.
         assertNull("Should not resolve via name-only when receiver type is unknown/unrelated", targets)
     }
 
     fun testNonMethodIdentifierAfterDotReturnsNull() {
-        val targets = gotoTargets("""
-            x = 1
-            x.nonexist<caret>ent
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                x = 1
+                x.nonexist<caret>ent
+                """.trimIndent(),
+            )
         // No method named "nonexistent" — should return null
         assertNull("Should return null for unknown method", targets)
     }
 
     fun testDotCallDoesNotTriggerWithoutDot() {
-        val targets = gotoTargets("""
-            def hello
-            end
-            hell<caret>o
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                def hello
+                end
+                hell<caret>o
+                """.trimIndent(),
+            )
         // No DOT before "hello" — GotoDeclarationHandler returns null for DOT-only logic.
         // The variable_reference PsiReference also resolves to the method definition,
         // so the GotoDeclarationHandler is not invoked. But we still expect the test to
@@ -120,15 +136,18 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     }
 
     fun testNestedClassMethodViaDotCall() {
-        val targets = gotoTargets("""
-            class Outer
-              class Inner
-                def self.run
+        val targets =
+            gotoTargets(
+                """
+                class Outer
+                  class Inner
+                    def self.run
+                    end
+                  end
                 end
-              end
-            end
-            Outer::Inner.r<caret>un
-        """.trimIndent())
+                Outer::Inner.r<caret>un
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve nested class method", targets)
         assertTrue(targets!!.isNotEmpty())
         assertEquals("run", (targets[0] as CrystalMethodDefinition).name)
@@ -137,13 +156,16 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     // ==================== ".new" constructor resolution ====================
 
     fun testNewGoesToInitialize() {
-        val targets = gotoTargets("""
-            class Senf
-              def initialize(x : Int32)
-              end
-            end
-            Senf.n<caret>ew
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                class Senf
+                  def initialize(x : Int32)
+                  end
+                end
+                Senf.n<caret>ew
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve Senf.new to def initialize", targets)
         assertTrue(targets!!.isNotEmpty())
         assertTrue("Target should be a method definition", targets[0] is CrystalMethodDefinition)
@@ -151,15 +173,18 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     }
 
     fun testNewGoesToSelfNewWhenDefined() {
-        val targets = gotoTargets("""
-            class Senf
-              def self.new
-              end
-              def initialize
-              end
-            end
-            Senf.n<caret>ew
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                class Senf
+                  def self.new
+                  end
+                  def initialize
+                  end
+                end
+                Senf.n<caret>ew
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve Senf.new to def self.new (priority over initialize)", targets)
         assertTrue(targets!!.isNotEmpty())
         assertTrue("Target should be a method definition", targets[0] is CrystalMethodDefinition)
@@ -167,24 +192,32 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     }
 
     fun testNewGoesToRecord() {
-        val targets = gotoTargets("""
-            record Config, host : String, port : Int32 = 80
-            Config.n<caret>ew
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                record Config, host : String, port : Int32 = 80
+                Config.n<caret>ew
+                """.trimIndent(),
+            )
         assertNotNull("Should resolve Config.new to record definition", targets)
         assertTrue(targets!!.isNotEmpty())
-        assertTrue("Target should be the record macro call",
-            targets[0].text.contains("record"))
+        assertTrue(
+            "Target should be the record macro call",
+            targets[0].text.contains("record"),
+        )
     }
 
     fun testNewOnUnknownClassReturnsNull() {
-        val targets = gotoTargets("""
-            class Senf
-              def initialize
-              end
-            end
-            Unbekannt.n<caret>ew
-        """.trimIndent())
+        val targets =
+            gotoTargets(
+                """
+                class Senf
+                  def initialize
+                  end
+                end
+                Unbekannt.n<caret>ew
+                """.trimIndent(),
+            )
         // No class "Unbekannt" — should return null, not every "new" method in the project.
         assertNull("Should return null for unknown class .new", targets)
     }

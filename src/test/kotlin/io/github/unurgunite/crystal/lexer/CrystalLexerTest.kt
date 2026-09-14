@@ -3,11 +3,12 @@ package io.github.unurgunite.crystal.lexer
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import io.github.unurgunite.crystal.psi.CrystalTypes
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CrystalLexerTest {
-
     private fun tokenize(text: String): List<Pair<IElementType, String>> {
         val lexer = CrystalLexer(null)
         lexer.reset(text, 0, text.length, CrystalLexer.YYINITIAL)
@@ -27,42 +28,43 @@ class CrystalLexerTest {
 
     @Test
     fun testKeywords() {
-        val keywords = mapOf(
-            "def" to CrystalTypes.DEF,
-            "class" to CrystalTypes.CLASS,
-            "module" to CrystalTypes.MODULE,
-            "struct" to CrystalTypes.STRUCT,
-            "enum" to CrystalTypes.ENUM,
-            "if" to CrystalTypes.IF,
-            "elsif" to CrystalTypes.ELSIF,
-            "else" to CrystalTypes.ELSE,
-            "end" to CrystalTypes.END,
-            "while" to CrystalTypes.WHILE,
-            "until" to CrystalTypes.UNTIL,
-            "unless" to CrystalTypes.UNLESS,
-            "case" to CrystalTypes.CASE,
-            "when" to CrystalTypes.WHEN,
-            "return" to CrystalTypes.RETURN,
-            "yield" to CrystalTypes.YIELD,
-            "begin" to CrystalTypes.BEGIN,
-            "rescue" to CrystalTypes.RESCUE,
-            "ensure" to CrystalTypes.ENSURE,
-            "nil" to CrystalTypes.NIL,
-            "true" to CrystalTypes.TRUE,
-            "false" to CrystalTypes.FALSE,
-            "self" to CrystalTypes.SELF,
-            "super" to CrystalTypes.SUPER,
-            "abstract" to CrystalTypes.ABSTRACT,
-            "require" to CrystalTypes.REQUIRE,
-            "include" to CrystalTypes.INCLUDE,
-            "extend" to CrystalTypes.EXTEND,
-            "macro" to CrystalTypes.MACRO,
-            "is_a?" to CrystalTypes.IS_A,
-            "nil?" to CrystalTypes.NIL_QUESTION,
-            "responds_to?" to CrystalTypes.RESPONDS_TO,
-            "as?" to CrystalTypes.AS_QUESTION,
-            "as" to CrystalTypes.AS,
-        )
+        val keywords =
+            mapOf(
+                "def" to CrystalTypes.DEF,
+                "class" to CrystalTypes.CLASS,
+                "module" to CrystalTypes.MODULE,
+                "struct" to CrystalTypes.STRUCT,
+                "enum" to CrystalTypes.ENUM,
+                "if" to CrystalTypes.IF,
+                "elsif" to CrystalTypes.ELSIF,
+                "else" to CrystalTypes.ELSE,
+                "end" to CrystalTypes.END,
+                "while" to CrystalTypes.WHILE,
+                "until" to CrystalTypes.UNTIL,
+                "unless" to CrystalTypes.UNLESS,
+                "case" to CrystalTypes.CASE,
+                "when" to CrystalTypes.WHEN,
+                "return" to CrystalTypes.RETURN,
+                "yield" to CrystalTypes.YIELD,
+                "begin" to CrystalTypes.BEGIN,
+                "rescue" to CrystalTypes.RESCUE,
+                "ensure" to CrystalTypes.ENSURE,
+                "nil" to CrystalTypes.NIL,
+                "true" to CrystalTypes.TRUE,
+                "false" to CrystalTypes.FALSE,
+                "self" to CrystalTypes.SELF,
+                "super" to CrystalTypes.SUPER,
+                "abstract" to CrystalTypes.ABSTRACT,
+                "require" to CrystalTypes.REQUIRE,
+                "include" to CrystalTypes.INCLUDE,
+                "extend" to CrystalTypes.EXTEND,
+                "macro" to CrystalTypes.MACRO,
+                "is_a?" to CrystalTypes.IS_A,
+                "nil?" to CrystalTypes.NIL_QUESTION,
+                "responds_to?" to CrystalTypes.RESPONDS_TO,
+                "as?" to CrystalTypes.AS_QUESTION,
+                "as" to CrystalTypes.AS,
+            )
         for ((text, expected) in keywords) {
             val tokens = nonWhitespaceTokens(text)
             assertEquals("Keyword '$text' should produce one token", 1, tokens.size)
@@ -72,17 +74,18 @@ class CrystalLexerTest {
 
     @Test
     fun testIdentifiers() {
-        val cases = mapOf(
-            "foo" to CrystalTypes.IDENTIFIER,
-            "bar_baz" to CrystalTypes.IDENTIFIER,
-            "empty?" to CrystalTypes.IDENTIFIER,
-            "save!" to CrystalTypes.IDENTIFIER,
-            "_private" to CrystalTypes.IDENTIFIER,
-            "MyClass" to CrystalTypes.CONSTANT,
-            "HTTP" to CrystalTypes.CONSTANT,
-            "@name" to CrystalTypes.INSTANCE_VAR,
-            "@@count" to CrystalTypes.CLASS_VAR,
-        )
+        val cases =
+            mapOf(
+                "foo" to CrystalTypes.IDENTIFIER,
+                "bar_baz" to CrystalTypes.IDENTIFIER,
+                "empty?" to CrystalTypes.IDENTIFIER,
+                "save!" to CrystalTypes.IDENTIFIER,
+                "_private" to CrystalTypes.IDENTIFIER,
+                "MyClass" to CrystalTypes.CONSTANT,
+                "HTTP" to CrystalTypes.CONSTANT,
+                "@name" to CrystalTypes.INSTANCE_VAR,
+                "@@count" to CrystalTypes.CLASS_VAR,
+            )
         for ((text, expected) in cases) {
             val tokens = nonWhitespaceTokens(text)
             assertEquals("'$text' should produce one token, got: $tokens", 1, tokens.size)
@@ -92,17 +95,18 @@ class CrystalLexerTest {
 
     @Test
     fun testNumbers() {
-        val cases = listOf(
-            "42" to CrystalTypes.INTEGER_LITERAL,
-            "1_000_000" to CrystalTypes.INTEGER_LITERAL,
-            "0xFF" to CrystalTypes.INTEGER_LITERAL,
-            "0b1010" to CrystalTypes.INTEGER_LITERAL,
-            "0o777" to CrystalTypes.INTEGER_LITERAL,
-            "42_i64" to CrystalTypes.INTEGER_LITERAL,
-            "3.14" to CrystalTypes.FLOAT_LITERAL,
-            "1.0e10" to CrystalTypes.FLOAT_LITERAL,
-            "1_f32" to CrystalTypes.FLOAT_LITERAL,
-        )
+        val cases =
+            listOf(
+                "42" to CrystalTypes.INTEGER_LITERAL,
+                "1_000_000" to CrystalTypes.INTEGER_LITERAL,
+                "0xFF" to CrystalTypes.INTEGER_LITERAL,
+                "0b1010" to CrystalTypes.INTEGER_LITERAL,
+                "0o777" to CrystalTypes.INTEGER_LITERAL,
+                "42_i64" to CrystalTypes.INTEGER_LITERAL,
+                "3.14" to CrystalTypes.FLOAT_LITERAL,
+                "1.0e10" to CrystalTypes.FLOAT_LITERAL,
+                "1_f32" to CrystalTypes.FLOAT_LITERAL,
+            )
         for ((text, expected) in cases) {
             val tokens = nonWhitespaceTokens(text)
             assertEquals("Number '$text' should produce one token, got: $tokens", 1, tokens.size)
@@ -113,8 +117,10 @@ class CrystalLexerTest {
     @Test
     fun testStrings() {
         val tokens = nonWhitespaceTokens("\"hello\"")
-        assertTrue("String tokens should all be STRING_LITERAL",
-            tokens.all { it.first == CrystalTypes.STRING_LITERAL })
+        assertTrue(
+            "String tokens should all be STRING_LITERAL",
+            tokens.all { it.first == CrystalTypes.STRING_LITERAL },
+        )
     }
 
     @Test
@@ -149,20 +155,21 @@ class CrystalLexerTest {
 
     @Test
     fun testOperators() {
-        val cases = mapOf(
-            "<=>" to CrystalTypes.SPACESHIP,
-            "===" to CrystalTypes.CASE_EQ,
-            "==" to CrystalTypes.EQ,
-            "!=" to CrystalTypes.NEQ,
-            "&&" to CrystalTypes.AND_AND,
-            "||" to CrystalTypes.OR_OR,
-            "->" to CrystalTypes.ARROW,
-            "=>" to CrystalTypes.DOUBLE_ARROW,
-            "::" to CrystalTypes.DOUBLE_COLON,
-            ".." to CrystalTypes.DOTDOT,
-            "..." to CrystalTypes.DOTDOTDOT,
-            "**" to CrystalTypes.DOUBLE_STAR,
-        )
+        val cases =
+            mapOf(
+                "<=>" to CrystalTypes.SPACESHIP,
+                "===" to CrystalTypes.CASE_EQ,
+                "==" to CrystalTypes.EQ,
+                "!=" to CrystalTypes.NEQ,
+                "&&" to CrystalTypes.AND_AND,
+                "||" to CrystalTypes.OR_OR,
+                "->" to CrystalTypes.ARROW,
+                "=>" to CrystalTypes.DOUBLE_ARROW,
+                "::" to CrystalTypes.DOUBLE_COLON,
+                ".." to CrystalTypes.DOTDOT,
+                "..." to CrystalTypes.DOTDOTDOT,
+                "**" to CrystalTypes.DOUBLE_STAR,
+            )
         for ((text, expected) in cases) {
             val tokens = nonWhitespaceTokens(text)
             assertEquals("Operator '$text' should produce one token, got: $tokens", 1, tokens.size)
@@ -179,7 +186,7 @@ class CrystalLexerTest {
         val badChars = tokens.filter { it.first == TokenType.BAD_CHARACTER }
         assertTrue(
             "Comprehensive test file should have no BAD_CHARACTER tokens, but found: ${badChars.map { "'${it.second}'" }}",
-            badChars.isEmpty()
+            badChars.isEmpty(),
         )
     }
 
@@ -208,9 +215,10 @@ class CrystalLexerTest {
         assertEquals(CrystalTypes.PERCENT_LITERAL_BEGIN, tokens[0].first)
         assertEquals(CrystalTypes.PERCENT_LITERAL_END, tokens.last().first)
         // Should be exactly 2 non-string tokens (BEGIN and END), rest is content
-        val nonContent = tokens.filter {
-            it.first == CrystalTypes.PERCENT_LITERAL_BEGIN || it.first == CrystalTypes.PERCENT_LITERAL_END
-        }
+        val nonContent =
+            tokens.filter {
+                it.first == CrystalTypes.PERCENT_LITERAL_BEGIN || it.first == CrystalTypes.PERCENT_LITERAL_END
+            }
         assertEquals(2, nonContent.size)
     }
 

@@ -9,8 +9,8 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.stubs.PsiFileStub
-import com.intellij.psi.tree.IStubFileElementType
 import com.intellij.psi.tree.IFileElementType
+import com.intellij.psi.tree.IStubFileElementType
 import com.intellij.psi.tree.TokenSet
 import io.github.unurgunite.crystal.lexer.CrystalLexerAdapter
 import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
@@ -18,12 +18,13 @@ import io.github.unurgunite.crystal.parser.CrystalParser
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 class CrystalParserDefinition : ParserDefinition {
-
     companion object {
-        val FILE = object : IStubFileElementType<PsiFileStub<CrystalFile>>(CrystalLanguage) {
-            override fun getExternalId(): String = "crystal.FILE"
-            override fun getStubVersion(): Int = 2
-        }
+        val FILE =
+            object : IStubFileElementType<PsiFileStub<CrystalFile>>(CrystalLanguage) {
+                override fun getExternalId(): String = "crystal.FILE"
+
+                override fun getStubVersion(): Int = 2
+            }
     }
 
     override fun createLexer(project: Project?): Lexer = CrystalLexerAdapter()

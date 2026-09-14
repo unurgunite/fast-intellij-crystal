@@ -2,7 +2,64 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
-## [0.1.18] — 2026-xx-yy
+## [1.0.0] — 2026-09-13
+
+### Added
+
+- **Test coverage marathon (+281 tests, 717 → 998)** — every previously untested subsystem now has
+  fixture or unit tests: Go to Class/Symbol contributors, instance-variable finder and references
+  searcher, all four completion providers, run-configuration producer/factories/options round-trip,
+  `CrystalRunState` command-line building, DAP debug args and runner routing, folding builder,
+  structure view, brace matcher, commenter, code-block support, single-quote inspection, syntax
+  highlighter mappings and factory, RegExp host, type-compatibility matrix, SDK detector, stdlib
+  resolver/library provider, settings persistence, rename guards, navigation items, file type/icons,
+  spec-test locator and line markers, definition finder, structure-view factory, spec command-line
+  building, lldb-dap candidate lookup, real `crystal tool format` round-trips, SM console
+  properties wiring, and project-generator helpers. Weak tests with zero assertions were
+  rewritten with real assertions. (`./gradlew test` runs 906; 92 parser goldens run separately.)
+- **Shared `CrystalCommandLine` helper** — argument splitting and `KEY=VALUE` env parsing used by
+  run, spec and debug states, extracted from three duplicated inline implementations (no behavior
+  change). `CrystalTestRunState.buildCommandLine`, `CrystalDebugAdapterDescriptor.findLldbDapCandidate`
+  and `CrystalFormattingService.formatStdin` extracted the same way for testability.
+- **CI runs parser goldens as a non-blocking step** — `CrystalParserTest` is excluded from the
+  default `./gradlew test` (environment-flaky on JDK 21, see TODO.md) and runs via
+  `./gradlew test -PgoldenOnly=true` with `continue-on-error` plus a known-flaky-set warning.
+
+### Fixed
+
+- **RegExp key namespace collision crashed `verifyPlugin`** — six highlighter keys were registered
+  under the platform-owned `REGEXP.*` external names with different fallbacks, so whichever side
+  initialized second died in `TextAttributesKey.mergeKeys` (order-dependent: green locally, red in
+  CI's `buildSearchableOptions`). Keys now live in `CRYSTAL_REGEXP.*` with identical fallbacks,
+  plus a reflection-based regression test pinning the `CRYSTAL_` namespace.
+- **`verifyPlugin` muted for `TemplateWordInPluginName`** — "Fast Crystal Plugin" keeps the word
+  "Plugin" by council decision; the verifier's naming-style check is muted via `freeArgs`.
+- **Removed dead lexer stub builder** — the 286-line `CrystalStubBuilder` and its
+  `languageStubDefinition` registration were never invoked by the platform (verified with
+  a file-write probe: zero calls during stub indexing; stubs come from `DefaultStubBuilder`).
+  Also fixed the stale `CrystalDotCallReference` comment that credited the builder with
+  skipping stdlib files.
+- **Stale `HighlightErrorFilter` test case** — `def foo(bar,)` parses cleanly (trailing commas are
+  legal per the `TrailingCommas` golden), so the unhandled-error test asserted on zero error
+  elements. Switched to `def foo(,)`, which genuinely produces one `PsiErrorElement` passing
+  through the filter. The filter itself was innocent.
+- **`findSpecName` never found spec names** — strings parse as `STRING_EXPRESSION` composites, never
+  as bare `STRING_LITERAL` siblings, so single-spec configs were always named `spec: line N` instead
+  of `spec: <name>`. Now resolves via `CrystalStringExpression`.
+- **`workingDirectory` fallback was dead** — the `project.basePath` fallback never fired because the
+  stored default is `""`, not null. Blank is now treated as unset.
+- **`CrystalTestLocator` threw on out-of-range lines** — `getLineStartOffset(line - 1)` is now clamped
+  to the document instead of throwing.
+- **`CrystalNamesValidator` accepted invalid names** — setter `=` suffix was rejected while interior
+  `?`/`!` (e.g. `a?b`, `@foo?`) was accepted. Now a single trailing `?`/`!`/`=` is allowed, interior
+  markers are not.
+- **`isUnderContentRoot` compares on directory boundaries** — `/proj-other/spec` is no longer
+  misdetected as living under the `/proj` content root (plain `startsWith` matched the prefix),
+  which would have made the spec-root configurator register a folder outside the module.
+- **`CrystalInstanceVarFinder` missed assignments and property declarations** — `@x = 1` parses as
+  `ASSIGNMENT > INSTANCE_VAR_ACCESS` (the leaf check never fired) and `@size : Int32` parses as
+  `PROPERTY_DECLARATION > INSTANCE_VAR_ACCESS` (the direct-token lookup missed). Both now recognized,
+  so Go to Definition on `@name` resolves again.
 
 ### Changed
 
@@ -57,6 +114,27 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   - **Shorthand blocks with args/operators** — `&.method { |x| ... }` (shorthand block taking a block) and `&.=== '0'` / `&.unsafe_each { ... }` (operator/regular method shorthand) now parse, fixing many `each`/`map`/`synchronize` call sites.
   - **`Type.new` type-as-receiver** — `Hash(K, V).new`, `Pointer(T*).malloc`, `Container(U).new`, `Pair(B, A).new` now parse. New `type_receiver_expression` rule (`type_path type_arguments &DOT`) lets a generic type be a method-call receiver; the `&DOT` lookahead keeps an ordinary call `Foo(x)` from being misread as a type.
   - **`fun name = external(params)`** — C-binding `fun set_dll = LLVMSetDLL(global : ValueRef, x : Int32)` already parsed correctly inside `lib` (confirmed); no grammar change needed.
+  - **Leading-`::` namespace values in bare named arguments** — `getsockopt optname, 0, level: ::Socket::Protocol::TCP` (socket.cr) now parses. The bare-expression tower has no leading-`::` primary, so a new `named_bare_value ::= namespace_access bare_postfix_op* | bare_expression` alternative accepts it after the `name COLON` anchor (the anchor makes stealing `CONSTANT::...` tails impossible — verified: `NamespaceAccess::Inner.inner_method`, `IO::Memory.new`, `"#{Foo::Bar.method}"` keep their expression shape; a positional alternative was tried first and regressed all three). Chains ride `bare_postfix_op*` (flat `NAMESPACE_ACCESS` siblings, same as expression context). New `BareNamespaceValue` golden test; whole-stdlib currently 118 files / 134 errors across 2172 files.
+  - **`record` without `do` no longer eats the enclosing definition's `end`** — `record EndOfRequest` inside `module HTTP` consumed the module's `end` (the DO-less `class_body END` alternative matched an empty body + outer `end`), breaking all of http/common.cr past that point. The body now requires `DO` (verified with the real compiler: a DO-less indented `def` after a record is a separate top-level method — `R.new(5).foo` fails with "undefined method 'foo' for R"). Extended `RecordWithDoBlock` golden.
+  - **Keywords as names** — keyword call labels (`for: STDIN` — process.cr), `of`/`for` as parameter names (`def self.map(values, of = nil, &)`, `def f(for dst_io : IO)`), `of` as a local/condition target (`if of = node.of`), and `|when|` block params now parse. `named_argument` and `parameter` (via new `param_name`) accept `keyword_as_record_field`; `variable`/`variable_reference` accept `OF`/`WHEN`. A `!WHEN` guard on `statement` keeps `variable_reference`'s new `WHEN` from swallowing the next `when` clause (`when 0 then @x` broke with `got 'then'`). New `KeywordAsName` golden test.
+  - **Operator and special method names** — `def !~` (object.cr), ``def ` `` backtick name (process.cr, via `afterDef` lexer state mirroring the `def %` rule), `def annotation` (annotatable.cr, added to `keyword_as_method`), and wrapping `def &{{op.id}}` (primitives.cr, `AMPERSAND macro_interpolation` + `operator_method_name` before `keyword_as_method` in `method_name` per the PEG longer-first rule — bare `&` matched first and left `{{...}}` dangling). New `OperatorMethodNames` golden test.
+  - **Shorthand `&.` with keyword methods** — `a.try(&.def)`, `list.map(&.def)`, `try(&.when)`, `try(&.annotation(x))` now parse (`implicit_object_call` uses the full `keyword_as_method` set instead of the old ad-hoc list; verified `foo .{{x}}`/`foo(&.{{x}})` are real syntax errors, so `macro_interpolation` was deliberately dropped from the name set — it had let the bare tower steal `{{a}}.{{b}}` chains). New `ShorthandKeywordMethods` golden.
+  - **`union`/`type` as identifiers** — `union.union_types`, bare `union patterns` call, `type` as a local now parse (`UNION`/`TYPE` in `variable`/`variable_reference` + `UNION` as a bare-command callee; single tokens, fail fast elsewhere). New `UnionTypeAsIdentifier` golden.
+  - **`include`/`extend` inside `lib`** — `include NodeCommon` in `lib LibXML2` structs now parses (`include_statement | extend_statement` in `lib_member`; distinct leading tokens, no order hazard). New `LibIncludeExtend` golden.
+  - **Macro-generated members** — `{{ name.id.upcase }} = {{ i }}` enum members (`enum_constant` accepts `macro_interpolation`) and `fun {{ "foo".id }}(...)` names (`interpolated_name` may start with interpolation; `top_level_fun` uses it; lib `fun` already did). Both verified legal only in macro context — the grammar accepts the union. New `MacroGeneratedMembers` golden.
+  - **`{% for a, b in ... %}` multi-target loops + clause bodies** — `for_statement` takes `(COMMA IDENTIFIER)*` and a `for_body` (`statement_list | (when_clause | in_clause | macro_control)+`) so `{% for %}`-generated `in`/`when` branches (token.cr, tracing.cr) parse. New `MacroForMultiTarget` golden.
+  - **`@{{ivar}}` / `other.@{{ivar}}`** — new `DOT AT macro_interpolation` alternative in `dot_call_access` (struct.cr; verified `a.@b = 1`/`a.@b(1)` are syntax errors, so no ASSIGN/args tail there). New `IvarInterpolationAccess` golden.
+  - **Macro-suffixed method segments** — `LibLLVM.build_{{name}}2(...)` via `interpolated_method_segment` (first in the DOT name set, longer than bare IDENTIFIER). New `InterpolatedMethodSegment` golden.
+  - **`return`/`break`/`next` with assignment values** — `return @last = make_fun(...)` (call.cr): the value position tries `assignment` before `expression` in all six statement/expression forms (fails fast without `=`, no shape change). New `ReturnAssignValue` golden.
+  - **`!`/`!!` on comparison RHS** — `!!a != !!b`, `a == !b` (restrictions.cr): comparison RHS reaches `not_expression` instead of `range_expression` (both towers; verified no golden shape change — `!=`/`==` RHS with leading `!` previously dangled). New `NotComparisonRhs` golden.
+  - **Chained DOT-call assignment** — `point.x_ptr.value = 5.0` via a greedy first alternative in `assignment` (`assignable_head` = receiver + ONE no-args DOT segment + explicit DOT + name + rest + value; plain `a.b = v` keeps its shape through the old alternative — verified by probes). New `ChainedDotAssign` golden.
+  - **`rescue` modifier in parens** — `(Process.run(...) rescue nil)` (link.cr): `grouped_expression` takes an optional `RESCUE expression` (narrower than full `postfix_modifier` so `(x) if y` keeps its shape). New `GroupedRescueModifier` golden.
+  - **Static/named type indexes** — `UInt8[16]`, `UInt8[LibC::MAX_PATH]`, `NamedTuple(time: Time)` as types via `type_index_args`/`type_index_arg` (`INTEGER | CONSTANT !DOUBLE_COLON | type_reference`; single bare CONSTANT keeps the old raw shape — `Char[SS_SIZE]` golden preserved). New `TypeIndexArgs` golden.
+  - **Index misc shapes** — `[] of Int32, T ->` two-type proc arrays stay open (documented gap); `1f32` suffix floats lex as FLOAT_LITERAL (`{DEC_INT} "f" (32|64)`); `$GLOBAL` lexes in INTERPOLATION; `{{ {a: 1} }}`, `{{ (t = 1) ? t : 2 }}`, `{{ list.empty? }}`, `{% x = s.gsub(/a/, "b") %}` need `=`/`{`/`}`/`{{`/`{%`/`^`/`~` tokens in MACRO_INTERPOLATION (added; `<=`-style `{{ @type <= T }}` stays open — needs LTE/GTE tokens). New `IndexMiscShapes` + `MacroInterpTokens` goldens.
+  - **`responds_to?` as a plain callee** — `responds_to?(:infinite?)` via RESPONDS_TO in both call-expression callee sets. New `RespondsToCall` golden.
+  - **`getter(:sym)` symbol args** — `getter(:break) { ... }` (ast.cr): `SYMBOL_LITERAL` in `bare_property_arg`.
+  - **Known open gaps (verified legal, need deeper work)** — named args in index (`a[0, foo: 1]`), ternary in index (`a[b ? c : d]` — `range_expression` commits on `b`), space-call paren-first (`foo (1), 2`), bare-in-bare first arg (`exec new_request method, ...`), `union`-call with dot args, `case` without `when` over macro branches, `{% for %}` directly in case (illegal bare form vs legal `{% begin %}`-wrapped form).
+  - Whole-stdlib: 118 files / 134 errors → 85 files / 95 errors across 2172 files.
 
 
 

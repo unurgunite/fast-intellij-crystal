@@ -8,9 +8,18 @@ import com.intellij.psi.PsiElement;
 public interface CrystalArgument extends PsiElement {
 
   @Nullable
+  CrystalClassVarAccess getClassVarAccess();
+
+  @Nullable
   CrystalExpression getExpression();
 
   @Nullable
   CrystalInstanceVarAccess getInstanceVarAccess();
+
+  @Nullable
+  CrystalMacroControl getMacroControl();
+
+  @Nullable
+  CrystalMacroInterpolation getMacroInterpolation();
 
 }

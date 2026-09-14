@@ -18,18 +18,19 @@ import io.github.unurgunite.crystal.psi.CrystalNamespaceReference
  * part of the namespace path is the prevSibling in the flattened postfix_expression
  * sequence; the reference walks prevSibling to reconstruct the full path.
  */
-abstract class CrystalNamespaceAccessMixin(node: ASTNode) :
-    ASTWrapperPsiElement(node), CrystalNamespaceAccess {
-
+abstract class CrystalNamespaceAccessMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    CrystalNamespaceAccess {
     override fun getReference(): PsiReference? {
-        val constantNode = node.findChildByType(io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT)
-            ?: return null
+        val constantNode =
+            node.findChildByType(io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT)
+                ?: return null
         val name = constantNode.text
         if (name.isBlank()) return null
         val startOffset = constantNode.startOffset - node.startOffset
         return CrystalNamespaceReference(this, name, startOffset, constantNode.textLength)
     }
 
-    override fun getReferences(): Array<PsiReference> =
-        reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
+    override fun getReferences(): Array<PsiReference> = reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
 }

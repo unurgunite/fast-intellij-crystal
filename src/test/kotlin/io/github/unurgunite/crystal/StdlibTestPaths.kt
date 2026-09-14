@@ -25,10 +25,15 @@ object StdlibTestPaths {
 
     private fun runCrystalEnv(): String? {
         return try {
-            val process = ProcessBuilder("crystal", "env", "CRYSTAL_PATH")
-                .redirectErrorStream(true)
-                .start()
-            val output = process.inputStream.bufferedReader().readText().trim()
+            val process =
+                ProcessBuilder("crystal", "env", "CRYSTAL_PATH")
+                    .redirectErrorStream(true)
+                    .start()
+            val output =
+                process.inputStream
+                    .bufferedReader()
+                    .readText()
+                    .trim()
             if (process.waitFor() != 0 || output.isBlank()) return null
             // CRYSTAL_PATH is colon-separated ("lib:/.../share/crystal"); the
             // absolute entry is the stdlib root, its src/ holds the .cr files.

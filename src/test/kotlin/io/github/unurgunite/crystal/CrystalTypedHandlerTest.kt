@@ -3,13 +3,15 @@ package io.github.unurgunite.crystal
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalTypedHandlerTest : BasePlatformTestCase() {
-
     fun testAutoCloseInterpolationInString() {
         myFixture.configureByText("test.cr", "x = \"hello #<caret>\"")
         myFixture.type("{")
         val text = myFixture.editor.document.text
-        assertTrue("Should auto-insert closing }", text.contains("#{}")
-            || text.contains("#{}\""))
+        assertTrue(
+            "Should auto-insert closing }",
+            text.contains("#{}") ||
+                text.contains("#{}\""),
+        )
     }
 
     fun testNoAutoCloseOutsideString() {

@@ -5,8 +5,8 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
-import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarReference
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
@@ -14,15 +14,19 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * Implements PsiNamedElement so Find Usages works via the standard platform mechanism.
  * Every @name occurrence has a PsiReference that resolves to the first @name in the same class.
  */
-abstract class CrystalInstanceVarAccessMixin(node: ASTNode) : ASTWrapperPsiElement(node), CrystalInstanceVarAccess {
-
+abstract class CrystalInstanceVarAccessMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    CrystalInstanceVarAccess {
     override fun getName(): String = text
 
     override fun setName(name: String): PsiElement {
         val identNode = node.findChildByType(CrystalTypes.INSTANCE_VAR) ?: return this
         val bareName = name.removePrefix("@").removePrefix("@")
         val fixedName = "@$bareName"
-        val newNode = io.github.unurgunite.crystal.psi.createLeafFromText(project, fixedName, CrystalTypes.INSTANCE_VAR) ?: return this
+        val newNode =
+            io.github.unurgunite.crystal.psi
+                .createLeafFromText(project, fixedName, CrystalTypes.INSTANCE_VAR) ?: return this
         identNode.treeParent.replaceChild(identNode, newNode)
         return this
     }

@@ -29,6 +29,12 @@ public class CrystalClassBodyImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @NotNull
+  public List<CrystalAbstractMethodDefinition> getAbstractMethodDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAbstractMethodDefinition.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalAliasDefinition> getAliasDefinitionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAliasDefinition.class);
   }
@@ -67,6 +73,12 @@ public class CrystalClassBodyImpl extends ASTWrapperPsiElement implements Crysta
   @NotNull
   public List<CrystalIncludeStatement> getIncludeStatementList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalIncludeStatement.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalLibDefinition> getLibDefinitionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalLibDefinition.class);
   }
 
   @Override

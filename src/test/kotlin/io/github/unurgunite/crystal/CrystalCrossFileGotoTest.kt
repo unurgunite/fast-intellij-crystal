@@ -4,7 +4,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.navigation.CrystalGotoDeclarationHandler
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
 
 /**
  * Tests for cross-file Go to Definition — definitions in one file, usages in another.
@@ -16,7 +18,6 @@ import io.github.unurgunite.crystal.psi.*
  *    (resolves to self.new > record > initialize).
  */
 class CrystalCrossFileGotoTest : BasePlatformTestCase() {
-
     /**
      * Resolves the DOT-call at the caret using the same path as the IDE:
      * leaf element → parent (CrystalDotCallAccess) → reference → resolve.
@@ -33,12 +34,15 @@ class CrystalCrossFileGotoTest : BasePlatformTestCase() {
     }
 
     fun testDotCallResolvesToSelfMethodInOtherFile() {
-        myFixture.addFileToProject("apfel.cr", """
+        myFixture.addFileToProject(
+            "apfel.cr",
+            """
             class Apfel
               def self.tanzen
               end
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         myFixture.configureByText("main.cr", "Apfel.tan<caret>zen")
 
         val targets = dotCallTargets()
@@ -50,16 +54,22 @@ class CrystalCrossFileGotoTest : BasePlatformTestCase() {
     }
 
     fun testDotCallResolvesToInstanceMethodInOtherFile() {
-        myFixture.addFileToProject("apfel.cr", """
+        myFixture.addFileToProject(
+            "apfel.cr",
+            """
             class Apfel
               def essen
               end
             end
-        """.trimIndent())
-        myFixture.configureByText("main.cr", """
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "main.cr",
+            """
             a = Apfel.new
             a.es<caret>sen
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val targets = dotCallTargets()
 
@@ -71,10 +81,13 @@ class CrystalCrossFileGotoTest : BasePlatformTestCase() {
     // ==================== Direct call cross-file (CrystalReference via mixin) ====================
 
     fun testDirectCallResolvesToMethodInOtherFile() {
-        myFixture.addFileToProject("helpers.cr", """
+        myFixture.addFileToProject(
+            "helpers.cr",
+            """
             def greet
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         myFixture.configureByText("main.cr", "greet")
 
         val varRefs = PsiTreeUtil.findChildrenOfType(myFixture.file, CrystalVariableReference::class.java)
@@ -89,10 +102,13 @@ class CrystalCrossFileGotoTest : BasePlatformTestCase() {
     }
 
     fun testClassReferenceResolvesAcrossFiles() {
-        myFixture.addFileToProject("models.cr", """
+        myFixture.addFileToProject(
+            "models.cr",
+            """
             class Apfel
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         myFixture.configureByText("main.cr", "x = Apfel.new")
 
         val varRefs = PsiTreeUtil.findChildrenOfType(myFixture.file, CrystalVariableReference::class.java)
@@ -109,12 +125,15 @@ class CrystalCrossFileGotoTest : BasePlatformTestCase() {
     // ==================== Module/Struct cross-file ====================
 
     fun testModuleReferenceResolvesAcrossFiles() {
-        myFixture.addFileToProject("utils.cr", """
+        myFixture.addFileToProject(
+            "utils.cr",
+            """
             module Utils
               def self.helper
               end
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         myFixture.configureByText("main.cr", "Utils.hel<caret>per")
 
         val targets = dotCallTargets()

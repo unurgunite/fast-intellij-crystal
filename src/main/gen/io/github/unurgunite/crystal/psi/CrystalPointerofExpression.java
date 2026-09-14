@@ -8,34 +8,37 @@ import com.intellij.psi.PsiElement;
 public interface CrystalPointerofExpression extends PsiElement {
 
   @NotNull
-  List<CrystalArgumentList> getArgumentListList();
+  List<CrystalArgument> getArgumentList();
 
-  @Nullable
-  CrystalArrayLiteral getArrayLiteral();
+  @NotNull
+  List<CrystalArrayLiteral> getArrayLiteralList();
 
-  @Nullable
-  CrystalAsmExpression getAsmExpression();
+  @NotNull
+  List<CrystalAsmExpression> getAsmExpressionList();
 
-  @Nullable
-  CrystalBareCommandExpression getBareCommandExpression();
+  @NotNull
+  List<CrystalAssignment> getAssignmentList();
 
-  @Nullable
-  CrystalBeginStatement getBeginStatement();
+  @NotNull
+  List<CrystalBareCommandExpression> getBareCommandExpressionList();
+
+  @NotNull
+  List<CrystalBeginStatement> getBeginStatementList();
 
   @NotNull
   List<CrystalBlock> getBlockList();
 
-  @Nullable
-  CrystalBreakExpression getBreakExpression();
+  @NotNull
+  List<CrystalBreakExpression> getBreakExpressionList();
 
-  @Nullable
-  CrystalCaseStatement getCaseStatement();
+  @NotNull
+  List<CrystalCaseStatement> getCaseStatementList();
 
-  @Nullable
-  CrystalClassVarAccess getClassVarAccess();
+  @NotNull
+  List<CrystalClassVarAccess> getClassVarAccessList();
 
-  @Nullable
-  CrystalCommandExpression getCommandExpression();
+  @NotNull
+  List<CrystalCommandExpression> getCommandExpressionList();
 
   @NotNull
   List<CrystalDotCallAccess> getDotCallAccessList();
@@ -43,91 +46,91 @@ public interface CrystalPointerofExpression extends PsiElement {
   @NotNull
   List<CrystalExpression> getExpressionList();
 
-  @Nullable
-  CrystalGroupedExpression getGroupedExpression();
+  @NotNull
+  List<CrystalGroupedExpression> getGroupedExpressionList();
 
-  @Nullable
-  CrystalHashLiteral getHashLiteral();
+  @NotNull
+  List<CrystalHashLiteral> getHashLiteralList();
 
-  @Nullable
-  CrystalHeredocLiteral getHeredocLiteral();
+  @NotNull
+  List<CrystalHeredocLiteral> getHeredocLiteralList();
 
-  @Nullable
-  CrystalIfStatement getIfStatement();
+  @NotNull
+  List<CrystalIfStatement> getIfStatementList();
 
-  @Nullable
-  CrystalImplicitObjectCall getImplicitObjectCall();
+  @NotNull
+  List<CrystalImplicitObjectCall> getImplicitObjectCallList();
 
-  @Nullable
-  CrystalInstanceSizeofExpression getInstanceSizeofExpression();
+  @NotNull
+  List<CrystalInstanceSizeofExpression> getInstanceSizeofExpressionList();
 
-  @Nullable
-  CrystalInstanceVarAccess getInstanceVarAccess();
+  @NotNull
+  List<CrystalInstanceVarAccess> getInstanceVarAccessList();
 
-  @Nullable
-  CrystalMacroControl getMacroControl();
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
 
-  @Nullable
-  CrystalMacroInterpolation getMacroInterpolation();
+  @NotNull
+  List<CrystalMacroInterpolation> getMacroInterpolationList();
 
-  @Nullable
-  CrystalMethodCallExpression getMethodCallExpression();
+  @NotNull
+  List<CrystalMethodCallExpression> getMethodCallExpressionList();
 
   @NotNull
   List<CrystalNamespaceAccess> getNamespaceAccessList();
 
-  @Nullable
-  CrystalNextExpression getNextExpression();
+  @NotNull
+  List<CrystalNextExpression> getNextExpressionList();
 
-  @Nullable
-  CrystalOffsetofExpression getOffsetofExpression();
+  @NotNull
+  List<CrystalOffsetofExpression> getOffsetofExpressionList();
 
-  @Nullable
-  CrystalPercentLiteral getPercentLiteral();
+  @NotNull
+  List<CrystalPercentLiteral> getPercentLiteralList();
 
-  @Nullable
-  CrystalPointerofExpression getPointerofExpression();
+  @NotNull
+  List<CrystalPointerofExpression> getPointerofExpressionList();
 
-  @Nullable
-  CrystalProcLiteral getProcLiteral();
+  @NotNull
+  List<CrystalProcLiteral> getProcLiteralList();
 
-  @Nullable
-  CrystalRegexExpression getRegexExpression();
+  @NotNull
+  List<CrystalRegexExpression> getRegexExpressionList();
 
-  @Nullable
-  CrystalReturnExpression getReturnExpression();
+  @NotNull
+  List<CrystalReturnExpression> getReturnExpressionList();
 
-  @Nullable
-  CrystalSizeofExpression getSizeofExpression();
+  @NotNull
+  List<CrystalSizeofExpression> getSizeofExpressionList();
 
-  @Nullable
-  CrystalStringExpression getStringExpression();
+  @NotNull
+  List<CrystalStringExpression> getStringExpressionList();
 
-  @Nullable
-  CrystalSymbolStringExpression getSymbolStringExpression();
+  @NotNull
+  List<CrystalSymbolStringExpression> getSymbolStringExpressionList();
 
-  @Nullable
-  CrystalTupleLiteral getTupleLiteral();
+  @NotNull
+  List<CrystalTupleLiteral> getTupleLiteralList();
 
-  @Nullable
-  CrystalTypeReceiverExpression getTypeReceiverExpression();
+  @NotNull
+  List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList();
 
   @NotNull
   List<CrystalTypeReference> getTypeReferenceList();
 
-  @Nullable
-  CrystalTypeofExpression getTypeofExpression();
+  @NotNull
+  List<CrystalTypeofExpression> getTypeofExpressionList();
 
-  @Nullable
-  CrystalUninitializedExpression getUninitializedExpression();
+  @NotNull
+  List<CrystalUninitializedExpression> getUninitializedExpressionList();
 
-  @Nullable
-  CrystalUnlessStatement getUnlessStatement();
+  @NotNull
+  List<CrystalUnlessStatement> getUnlessStatementList();
 
-  @Nullable
-  CrystalVariableReference getVariableReference();
+  @NotNull
+  List<CrystalVariableReference> getVariableReferenceList();
 
-  @Nullable
-  CrystalYieldExpression getYieldExpression();
+  @NotNull
+  List<CrystalYieldExpression> getYieldExpressionList();
 
 }

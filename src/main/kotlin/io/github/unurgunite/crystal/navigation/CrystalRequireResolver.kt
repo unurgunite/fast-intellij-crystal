@@ -21,8 +21,10 @@ import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
  * main files like `lib/colorize/src/colorize.cr`).
  */
 object CrystalRequireResolver {
-
-    fun resolve(requireStatement: CrystalRequireStatement, project: Project): List<PsiFile> {
+    fun resolve(
+        requireStatement: CrystalRequireStatement,
+        project: Project,
+    ): List<PsiFile> {
         val raw = extractPath(requireStatement) ?: return emptyList()
         val psiManager = PsiManager.getInstance(project)
         val containingFile = requireStatement.containingFile
@@ -32,31 +34,7 @@ object CrystalRequireResolver {
             val base = containingFile.virtualFile?.parent
             if (base != null) collectCandidates(base, raw, candidates)
         } else {
-            val roots = com.intellij.openapi.roots.ProjectRootManager.getInstance(project)
-                .contentRoots
-                .toMutableList()
-            @Suppress("DEPRECATION")
-            project.baseDir?.let { if (!roots.contains(it)) roots.add(it) }
-            for (root in roots) {
-                collectCandidates(root, "src/$raw", candidates)
-                collectCandidates(root, raw, candidates)
-                val lib = root.findFileByRelativePath("lib")
-                if (lib != null) {
-                    val first = raw.substringBefore("/")
-                    val rest = raw.substringAfter("/", "")
-                    val shardSrc = lib.findFileByRelativePath("$first/src")
-                    if (shardSrc != null) {
-                        // Shards may lay out sources as `src/<rest>.cr` or
-                        // `src/<shard>/<rest>.cr` (a top-level dir matching the shard name).
-                        if (rest.isEmpty()) {
-                            collectCandidates(shardSrc, first, candidates)
-                        } else {
-                            collectCandidates(shardSrc, rest, candidates)
-                            collectCandidates(shardSrc, "$first/$rest", candidates)
-                        }
-                    }
-                }
-            }
+            collectFromProjectRoots(project, raw, candidates)
             val stdlib = CrystalStdlibResolver.resolveStdlibPath(project)
             if (stdlib != null) collectCandidates(stdlib, raw, candidates)
         }
@@ -64,10 +42,51 @@ object CrystalRequireResolver {
         return candidates.mapNotNull { psiManager.findFile(it) }
     }
 
+    /** Project content roots, own `src/`, then installed shards (`lib/<shard>/src`). */
+    private fun collectFromProjectRoots(
+        project: Project,
+        raw: String,
+        candidates: LinkedHashSet<com.intellij.openapi.vfs.VirtualFile>,
+    ) {
+        val roots =
+            com.intellij.openapi.roots.ProjectRootManager
+                .getInstance(project)
+                .contentRoots
+                .toMutableList()
+        @Suppress("DEPRECATION")
+        project.baseDir?.let { if (!roots.contains(it)) roots.add(it) }
+        for (root in roots) {
+            collectCandidates(root, "src/$raw", candidates)
+            collectCandidates(root, raw, candidates)
+            collectFromShards(root, raw, candidates)
+        }
+    }
+
+    /**
+     * Shard sources under `lib/<shard>/src`, in both layouts:
+     * `src/<rest>.cr` and `src/<shard>/<rest>.cr`.
+     */
+    private fun collectFromShards(
+        root: com.intellij.openapi.vfs.VirtualFile,
+        raw: String,
+        candidates: LinkedHashSet<com.intellij.openapi.vfs.VirtualFile>,
+    ) {
+        val lib = root.findFileByRelativePath("lib") ?: return
+        val first = raw.substringBefore("/")
+        val rest = raw.substringAfter("/", "")
+        val shardSrc = lib.findFileByRelativePath("$first/src") ?: return
+        if (rest.isEmpty()) {
+            collectCandidates(shardSrc, first, candidates)
+        } else {
+            collectCandidates(shardSrc, rest, candidates)
+            collectCandidates(shardSrc, "$first/$rest", candidates)
+        }
+    }
+
     private fun collectCandidates(
         base: com.intellij.openapi.vfs.VirtualFile,
         p: String,
-        out: MutableSet<com.intellij.openapi.vfs.VirtualFile>
+        out: MutableSet<com.intellij.openapi.vfs.VirtualFile>,
     ) {
         if (p.isEmpty()) return
         base.findFileByRelativePath("$p.cr")?.let { out.add(it) }

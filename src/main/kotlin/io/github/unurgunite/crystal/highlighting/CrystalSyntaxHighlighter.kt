@@ -12,7 +12,6 @@ import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
-
     companion object {
         val KEYWORD = createTextAttributesKey("CRYSTAL_KEYWORD", DefaultLanguageHighlighterColors.KEYWORD)
         val NUMBER = createTextAttributesKey("CRYSTAL_NUMBER", DefaultLanguageHighlighterColors.NUMBER)
@@ -27,7 +26,9 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
         val OPERATOR = createTextAttributesKey("CRYSTAL_OPERATOR", DefaultLanguageHighlighterColors.OPERATION_SIGN)
         val COMMA = createTextAttributesKey("CRYSTAL_COMMA", DefaultLanguageHighlighterColors.COMMA)
         val SEMICOLON = createTextAttributesKey("CRYSTAL_SEMICOLON", DefaultLanguageHighlighterColors.SEMICOLON)
+        val COLON = createTextAttributesKey("CRYSTAL_COLON", DefaultLanguageHighlighterColors.SEMICOLON)
         val DOT = createTextAttributesKey("CRYSTAL_DOT", DefaultLanguageHighlighterColors.DOT)
+        val DOUBLE_COLON = createTextAttributesKey("CRYSTAL_DOUBLE_COLON", DefaultLanguageHighlighterColors.DOT)
         val PARENTHESES = createTextAttributesKey("CRYSTAL_PARENTHESES", DefaultLanguageHighlighterColors.PARENTHESES)
         val BRACKETS = createTextAttributesKey("CRYSTAL_BRACKETS", DefaultLanguageHighlighterColors.BRACKETS)
         val BRACES = createTextAttributesKey("CRYSTAL_BRACES", DefaultLanguageHighlighterColors.BRACES)
@@ -43,13 +44,19 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
         val TODO_COMMENT = createTextAttributesKey("CRYSTAL_TODO_COMMENT", DefaultLanguageHighlighterColors.NUMBER)
         val HEREDOC_DELIMITER = createTextAttributesKey("CRYSTAL_HEREDOC_DELIMITER", DefaultLanguageHighlighterColors.PARAMETER)
 
-        // Re-use IntelliJ's built-in RegExp colors so regex sub-patterns match RubyMine exactly
-        val REGEXP_CHAR_CLASS = createTextAttributesKey("REGEXP.CHAR_CLASS", DefaultLanguageHighlighterColors.STRING)
-        val REGEXP_ESC_CHARACTER = createTextAttributesKey("REGEXP.ESC_CHARACTER", DefaultLanguageHighlighterColors.VALID_STRING_ESCAPE)
-        val REGEXP_QUANTIFIER = createTextAttributesKey("REGEXP.QUANTIFIER", DefaultLanguageHighlighterColors.NUMBER)
-        val REGEXP_UNION = createTextAttributesKey("REGEXP.UNION", DefaultLanguageHighlighterColors.OPERATION_SIGN)
-        val REGEXP_PARENTHS = createTextAttributesKey("REGEXP.PARENTHS", DefaultLanguageHighlighterColors.PARENTHESES)
-        val REGEXP_META = createTextAttributesKey("REGEXP.META", DefaultLanguageHighlighterColors.KEYWORD)
+        // Crystal's own RegExp sub-pattern colors. These deliberately live in the
+        // CRYSTAL_REGEXP.* namespace (not REGEXP.*): the platform's RegExpHighlighter
+        // registers the same REGEXP.* external names with different fallbacks, and
+        // whoever initializes second crashes in TextAttributesKey.mergeKeys
+        // (broke CI verifyPlugin's buildSearchableOptions, order-dependent).
+        // Fallbacks mirror RubyMine's RegExp colors so sub-patterns look identical.
+        val REGEXP_CHAR_CLASS = createTextAttributesKey("CRYSTAL_REGEXP.CHAR_CLASS", DefaultLanguageHighlighterColors.STRING)
+        val REGEXP_ESC_CHARACTER =
+            createTextAttributesKey("CRYSTAL_REGEXP.ESC_CHARACTER", DefaultLanguageHighlighterColors.VALID_STRING_ESCAPE)
+        val REGEXP_QUANTIFIER = createTextAttributesKey("CRYSTAL_REGEXP.QUANTIFIER", DefaultLanguageHighlighterColors.NUMBER)
+        val REGEXP_UNION = createTextAttributesKey("CRYSTAL_REGEXP.UNION", DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        val REGEXP_PARENTHS = createTextAttributesKey("CRYSTAL_REGEXP.PARENTHS", DefaultLanguageHighlighterColors.PARENTHESES)
+        val REGEXP_META = createTextAttributesKey("CRYSTAL_REGEXP.META", DefaultLanguageHighlighterColors.KEYWORD)
 
         private val KEYWORD_KEYS = arrayOf(KEYWORD)
         private val NUMBER_KEYS = arrayOf(NUMBER)
@@ -64,7 +71,9 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
         private val OPERATOR_KEYS = arrayOf(OPERATOR)
         private val COMMA_KEYS = arrayOf(COMMA)
         private val SEMICOLON_KEYS = arrayOf(SEMICOLON)
+        private val COLON_KEYS = arrayOf(COLON)
         private val DOT_KEYS = arrayOf(DOT)
+        private val DOUBLE_COLON_KEYS = arrayOf(DOUBLE_COLON)
         private val PARENTHESES_KEYS = arrayOf(PARENTHESES)
         private val BRACKETS_KEYS = arrayOf(BRACKETS)
         private val BRACES_KEYS = arrayOf(BRACES)
@@ -79,43 +88,92 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
 
     override fun getHighlightingLexer(): Lexer = CrystalLexerAdapter()
 
-    override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> {
-        return when {
+    override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> =
+        when {
             tokenType == null -> EMPTY_KEYS
-            CrystalTokenTypes.KEYWORDS.contains(tokenType) -> KEYWORD_KEYS
-            CrystalTokenTypes.NUMBERS.contains(tokenType) -> NUMBER_KEYS
-            tokenType == CrystalTypes.STRING_LITERAL -> STRING_KEYS
-            tokenType == CrystalTypes.STRING_ESCAPE -> STRING_ESCAPE_KEYS
-            tokenType == CrystalTypes.CHAR_LITERAL -> CHAR_KEYS
-            tokenType == CrystalTypes.COMMAND_LITERAL -> STRING_KEYS
-            tokenType == CrystalTypes.HEREDOC_CONTENT -> STRING_KEYS
-            tokenType == CrystalTypes.HEREDOC_START || tokenType == CrystalTypes.HEREDOC_END -> HEREDOC_DELIMITER_KEYS
-            tokenType == CrystalTypes.PERCENT_LITERAL_BEGIN || tokenType == CrystalTypes.PERCENT_LITERAL_END -> STRING_KEYS
-            tokenType == CrystalTypes.PERCENT_SYMBOL_BEGIN || tokenType == CrystalTypes.PERCENT_SYMBOL_END -> SYMBOL_KEYS
-            tokenType == CrystalTypes.REGEX_LITERAL -> REGEX_KEYS
-            tokenType == CrystalTypes.SYMBOL_LITERAL -> SYMBOL_KEYS
-            tokenType == CrystalTypes.SYMBOL_COLON -> SYMBOL_KEYS
-            tokenType == CrystalTypes.STRING_INTERPOLATION_BEGIN || tokenType == CrystalTypes.STRING_INTERPOLATION_END -> INTERPOLATION_KEYS
-            tokenType == CrystalTypes.MACRO_INTERPOLATION_BEGIN || tokenType == CrystalTypes.MACRO_INTERPOLATION_END -> INTERPOLATION_KEYS
-            tokenType == CrystalTypes.MACRO_CONTROL_BEGIN || tokenType == CrystalTypes.MACRO_CONTROL_END -> INTERPOLATION_KEYS
-            tokenType == CrystalTypes.MACRO_BODY_CONTENT -> STRING_KEYS
-            tokenType == CrystalTypes.MACRO_FRESH_VAR -> arrayOf(MACRO_FRESH_VAR)
-            tokenType == CrystalTypes.LINE_COMMENT -> COMMENT_KEYS
-            // IDENTIFIER and CONSTANT are handled by the Annotator (context-sensitive)
-            tokenType == CrystalTypes.IDENTIFIER -> EMPTY_KEYS
-            tokenType == CrystalTypes.CONSTANT -> EMPTY_KEYS
-            tokenType == CrystalTypes.INSTANCE_VAR -> INSTANCE_VAR_KEYS
-            tokenType == CrystalTypes.CLASS_VAR -> CLASS_VAR_KEYS
-            tokenType == CrystalTypes.GLOBAL_VAR -> GLOBAL_VAR_KEYS
-            CrystalTokenTypes.OPERATORS.contains(tokenType) -> OPERATOR_KEYS
-            tokenType == CrystalTypes.COMMA -> COMMA_KEYS
-            tokenType == CrystalTypes.SEMICOLON -> SEMICOLON_KEYS
-            tokenType == CrystalTypes.DOT -> DOT_KEYS
-            tokenType == CrystalTypes.LPAREN || tokenType == CrystalTypes.RPAREN -> PARENTHESES_KEYS
-            tokenType == CrystalTypes.LBRACKET || tokenType == CrystalTypes.RBRACKET -> BRACKETS_KEYS
-            tokenType == CrystalTypes.LBRACE || tokenType == CrystalTypes.RBRACE -> BRACES_KEYS
-            tokenType == CrystalTokenTypes.BAD_CHARACTER -> BAD_CHARACTER_KEYS
-            else -> EMPTY_KEYS
+            tokenType in CrystalTokenTypes.KEYWORDS -> KEYWORD_KEYS
+            tokenType in CrystalTokenTypes.NUMBERS -> NUMBER_KEYS
+            tokenType in singletonHighlights -> singletonHighlights.getValue(tokenType)
+            tokenType in multiTokenHighlights -> multiTokenHighlights.getValue(tokenType)
+            tokenType in CrystalTokenTypes.OPERATORS -> OPERATOR_KEYS
+            else -> highlightsForPunctuation(tokenType)
+        }
+
+    /**
+     * One token type → one key. Table-driven so adding a token is one map entry
+     * instead of another `when` branch.
+     */
+    private val singletonHighlights: Map<IElementType, Array<TextAttributesKey>> by lazy {
+        mapOf(
+            CrystalTypes.STRING_ESCAPE to STRING_ESCAPE_KEYS,
+            CrystalTypes.CHAR_LITERAL to CHAR_KEYS,
+            CrystalTypes.SYMBOL_LITERAL to SYMBOL_KEYS,
+            CrystalTypes.SYMBOL_COLON to SYMBOL_KEYS,
+            CrystalTypes.MACRO_FRESH_VAR to arrayOf(MACRO_FRESH_VAR),
+            CrystalTypes.LINE_COMMENT to COMMENT_KEYS,
+            CrystalTypes.INSTANCE_VAR to INSTANCE_VAR_KEYS,
+            CrystalTypes.CLASS_VAR to CLASS_VAR_KEYS,
+            CrystalTypes.GLOBAL_VAR to GLOBAL_VAR_KEYS,
+            CrystalTypes.COMMA to COMMA_KEYS,
+            CrystalTypes.SEMICOLON to SEMICOLON_KEYS,
+            CrystalTypes.COLON to COLON_KEYS,
+            CrystalTypes.DOT to DOT_KEYS,
+            CrystalTypes.DOUBLE_COLON to DOUBLE_COLON_KEYS,
+            CrystalTypes.LPAREN to PARENTHESES_KEYS,
+            CrystalTypes.RPAREN to PARENTHESES_KEYS,
+            CrystalTypes.LBRACKET to BRACKETS_KEYS,
+            CrystalTypes.RBRACKET to BRACKETS_KEYS,
+            CrystalTypes.LBRACE to BRACES_KEYS,
+            CrystalTypes.RBRACE to BRACES_KEYS,
+        )
+    }
+
+    /**
+     * Several token types share one key (string-ish, symbol-ish, interpolation
+     * delimiters). Grouped by key so the mapping reads as what-it-highlights-as.
+     */
+    private val multiTokenHighlights: Map<IElementType, Array<TextAttributesKey>> by lazy {
+        buildMap {
+            val stringish =
+                listOf(
+                    CrystalTypes.STRING_LITERAL,
+                    CrystalTypes.COMMAND_LITERAL,
+                    CrystalTypes.HEREDOC_CONTENT,
+                    CrystalTypes.PERCENT_LITERAL_BEGIN,
+                    CrystalTypes.PERCENT_LITERAL_END,
+                    CrystalTypes.MACRO_BODY_CONTENT,
+                )
+            for (type in stringish) put(type, STRING_KEYS)
+            put(CrystalTypes.HEREDOC_START, HEREDOC_DELIMITER_KEYS)
+            put(CrystalTypes.HEREDOC_END, HEREDOC_DELIMITER_KEYS)
+            val symbolish =
+                listOf(
+                    CrystalTypes.PERCENT_SYMBOL_BEGIN,
+                    CrystalTypes.PERCENT_SYMBOL_END,
+                )
+            for (type in symbolish) put(type, SYMBOL_KEYS)
+            val interpolationish =
+                listOf(
+                    CrystalTypes.STRING_INTERPOLATION_BEGIN,
+                    CrystalTypes.STRING_INTERPOLATION_END,
+                    CrystalTypes.MACRO_INTERPOLATION_BEGIN,
+                    CrystalTypes.MACRO_INTERPOLATION_END,
+                    CrystalTypes.MACRO_CONTROL_BEGIN,
+                    CrystalTypes.MACRO_CONTROL_END,
+                )
+            for (type in interpolationish) put(type, INTERPOLATION_KEYS)
         }
     }
+
+    private fun highlightsForPunctuation(tokenType: IElementType): Array<TextAttributesKey> =
+        when (tokenType) {
+            // IDENTIFIER and CONSTANT are handled by the Annotator (context-sensitive)
+            CrystalTypes.IDENTIFIER, CrystalTypes.CONSTANT -> EMPTY_KEYS
+
+            CrystalTypes.REGEX_LITERAL -> REGEX_KEYS
+
+            CrystalTokenTypes.BAD_CHARACTER -> BAD_CHARACTER_KEYS
+
+            else -> EMPTY_KEYS
+        }
 }

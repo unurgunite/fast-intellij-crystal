@@ -3,11 +3,13 @@ package io.github.unurgunite.crystal
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.highlighting.CrystalHighlightUsagesHandlerFactory
 import io.github.unurgunite.crystal.highlighting.CrystalHighlightUsagesHandler
-import io.github.unurgunite.crystal.navigation.CrystalFindUsagesHandlerFactory
+import io.github.unurgunite.crystal.highlighting.CrystalHighlightUsagesHandlerFactory
 import io.github.unurgunite.crystal.navigation.CrystalFindUsagesHandler
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.navigation.CrystalFindUsagesHandlerFactory
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
 
 /**
  * Tests for bidirectional name resolution:
@@ -15,15 +17,18 @@ import io.github.unurgunite.crystal.psi.*
  * - Find Usages / Rename from definition name
  */
 class CrystalHighlightUsagesTest : BasePlatformTestCase() {
-
     // ==================== Highlight Usages Factory Detection ====================
 
     fun testFactoryCreatesHandlerForModuleName() {
-        val file = myFixture.configureByText("test.cr", """
-            module Kann
-            end
-            Kann
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                module Kann
+                end
+                Kann
+                """.trimIndent(),
+            )
         val moduleDef = PsiTreeUtil.findChildOfType(file, CrystalModuleDefinition::class.java)!!
         val nameId = moduleDef.nameIdentifier!!
         myFixture.editor.caretModel.moveToOffset(nameId.textRange.startOffset)
@@ -31,16 +36,22 @@ class CrystalHighlightUsagesTest : BasePlatformTestCase() {
         val factory = CrystalHighlightUsagesHandlerFactory()
         val handler = factory.createHighlightUsagesHandler(myFixture.editor, file)
         assertNotNull("Should create handler for module definition name", handler)
-        assertTrue("Handler should be CrystalHighlightUsagesHandler",
-            handler is CrystalHighlightUsagesHandler)
+        assertTrue(
+            "Handler should be CrystalHighlightUsagesHandler",
+            handler is CrystalHighlightUsagesHandler,
+        )
     }
 
     fun testFactoryCreatesHandlerForClassName() {
-        val file = myFixture.configureByText("test.cr", """
-            class Foo
-            end
-            x = Foo.new
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                class Foo
+                end
+                x = Foo.new
+                """.trimIndent(),
+            )
         val classDef = PsiTreeUtil.findChildOfType(file, CrystalClassDefinition::class.java)!!
         val nameId = classDef.nameIdentifier!!
         myFixture.editor.caretModel.moveToOffset(nameId.textRange.startOffset)
@@ -51,11 +62,15 @@ class CrystalHighlightUsagesTest : BasePlatformTestCase() {
     }
 
     fun testFactoryCreatesHandlerForMethodName() {
-        val file = myFixture.configureByText("test.cr", """
-            def hello
-            end
-            hello
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def hello
+                end
+                hello
+                """.trimIndent(),
+            )
         val methodDef = PsiTreeUtil.findChildOfType(file, CrystalMethodDefinition::class.java)!!
         val nameId = methodDef.nameIdentifier!!
         myFixture.editor.caretModel.moveToOffset(nameId.textRange.startOffset)
@@ -75,10 +90,14 @@ class CrystalHighlightUsagesTest : BasePlatformTestCase() {
     }
 
     fun testFactoryReturnsNullOnNonDefinition() {
-        val file = myFixture.configureByText("test.cr", """
-            x = 1
-            puts x
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                x = 1
+                puts x
+                """.trimIndent(),
+            )
         myFixture.editor.caretModel.moveToOffset(0) // on "x"
 
         val factory = CrystalHighlightUsagesHandlerFactory()
@@ -89,11 +108,15 @@ class CrystalHighlightUsagesTest : BasePlatformTestCase() {
     // ==================== Handler Targets ====================
 
     fun testHandlerTargetsReturnDefinition() {
-        val file = myFixture.configureByText("test.cr", """
-            module Kann
-            end
-            Kann
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                module Kann
+                end
+                Kann
+                """.trimIndent(),
+            )
         val moduleDef = PsiTreeUtil.findChildOfType(file, CrystalModuleDefinition::class.java)!!
         val nameId = moduleDef.nameIdentifier!!
         myFixture.editor.caretModel.moveToOffset(nameId.textRange.startOffset)
@@ -139,41 +162,63 @@ class CrystalHighlightUsagesTest : BasePlatformTestCase() {
         val factory = CrystalFindUsagesHandlerFactory()
         val handler = factory.createFindUsagesHandler(classDef, false)
         assertNotNull("Should create handler", handler)
-        assertTrue("Handler should be CrystalFindUsagesHandler",
-            handler is CrystalFindUsagesHandler)
+        assertTrue(
+            "Handler should be CrystalFindUsagesHandler",
+            handler is CrystalFindUsagesHandler,
+        )
     }
 
     fun testFindUsagesFromDefinitionFindsReferences() {
-        val file = myFixture.configureByText("test.cr", """
-            module Kann
-            end
-            Kann
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                module Kann
+                end
+                Kann
+                """.trimIndent(),
+            )
         val moduleDef = PsiTreeUtil.findChildOfType(file, CrystalModuleDefinition::class.java)!!
 
         val factory = CrystalFindUsagesHandlerFactory()
         val handler = factory.createFindUsagesHandler(moduleDef, false) as CrystalFindUsagesHandler
 
         val usages = mutableListOf<com.intellij.usageView.UsageInfo>()
-        handler.processElementUsages(moduleDef, { usages.add(it); true },
-            handler.findUsagesOptions)
+        handler.processElementUsages(
+            moduleDef,
+            {
+                usages.add(it)
+                true
+            },
+            handler.findUsagesOptions,
+        )
         assertTrue("Should find at least one usage", usages.isNotEmpty())
     }
 
     fun testFindUsagesMethodFromDefinition() {
-        val file = myFixture.configureByText("test.cr", """
-            def greet
-            end
-            greet
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def greet
+                end
+                greet
+                """.trimIndent(),
+            )
         val methodDef = PsiTreeUtil.findChildOfType(file, CrystalMethodDefinition::class.java)!!
 
         val factory = CrystalFindUsagesHandlerFactory()
         val handler = factory.createFindUsagesHandler(methodDef, false) as CrystalFindUsagesHandler
 
         val usages = mutableListOf<com.intellij.usageView.UsageInfo>()
-        handler.processElementUsages(methodDef, { usages.add(it); true },
-            handler.findUsagesOptions)
+        handler.processElementUsages(
+            methodDef,
+            {
+                usages.add(it)
+                true
+            },
+            handler.findUsagesOptions,
+        )
         assertTrue("Should find at least one usage of method", usages.isNotEmpty())
     }
 }

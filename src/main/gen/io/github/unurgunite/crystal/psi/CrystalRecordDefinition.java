@@ -8,9 +8,6 @@ import com.intellij.psi.PsiElement;
 public interface CrystalRecordDefinition extends PsiElement {
 
   @Nullable
-  CrystalBlock getBlock();
-
-  @Nullable
   CrystalClassBody getClassBody();
 
   @NotNull

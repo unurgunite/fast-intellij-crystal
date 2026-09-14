@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class CrystalEnterHandlerTest : BasePlatformTestCase() {
-
     fun testEndInsertedAfterDef() {
         myFixture.configureByText("test.cr", "def foo<caret>")
         myFixture.type("\n")
@@ -71,7 +70,15 @@ class CrystalEnterHandlerTest : BasePlatformTestCase() {
         myFixture.type("\n")
         val text = myFixture.editor.document.text
         // end should be at indent 0, aligned with 'if'
-        assertEquals("end should be at indent 0", "end", text.trim().lines().last().trim())
+        assertEquals(
+            "end should be at indent 0",
+            "end",
+            text
+                .trim()
+                .lines()
+                .last()
+                .trim(),
+        )
     }
 
     fun testEndInsertedAfterWhile() {
@@ -312,7 +319,8 @@ class CrystalEnterHandlerTest : BasePlatformTestCase() {
         // Simulate a large file with existing def/end pairs.
         // Adding a new top-level def should still insert its own end,
         // even though another def/end pair exists below.
-        val content = """
+        val content =
+            """
 def existing_method
   "hello"
 end
@@ -322,7 +330,7 @@ def sample<caret>
 def another_method
   42
 end
-""".trimIndent()
+            """.trimIndent()
         myFixture.configureByText("test.cr", content)
         myFixture.type("\n")
         val text = myFixture.editor.document.text

@@ -10,6 +10,7 @@ import io.github.unurgunite.crystal.psi.impl.*;
 
 public interface CrystalTypes {
 
+  IElementType ABSTRACT_METHOD_DEFINITION = new CrystalElementType("ABSTRACT_METHOD_DEFINITION");
   IElementType ALIAS_DEFINITION = new CrystalElementType("ALIAS_DEFINITION");
   IElementType ANNOTATION_DEFINITION = new CrystalElementType("ANNOTATION_DEFINITION");
   IElementType ANNOTATION_USAGE = new CrystalElementType("ANNOTATION_USAGE");
@@ -294,7 +295,10 @@ public interface CrystalTypes {
   class Factory {
     public static PsiElement createElement(ASTNode node) {
       IElementType type = node.getElementType();
-      if (type == ALIAS_DEFINITION) {
+      if (type == ABSTRACT_METHOD_DEFINITION) {
+        return new CrystalAbstractMethodDefinitionImpl(node);
+      }
+      else if (type == ALIAS_DEFINITION) {
         return new CrystalAliasDefinitionImpl(node);
       }
       else if (type == ANNOTATION_DEFINITION) {
