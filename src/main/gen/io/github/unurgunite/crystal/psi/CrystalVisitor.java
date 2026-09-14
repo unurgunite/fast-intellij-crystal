@@ -91,6 +91,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitNamedElement(o);
   }
 
+  public void visitClassMember(@NotNull CrystalClassMember o) {
+    visitPsiElement(o);
+  }
+
   public void visitClassVarAccess(@NotNull CrystalClassVarAccess o) {
     visitNamedElement(o);
   }

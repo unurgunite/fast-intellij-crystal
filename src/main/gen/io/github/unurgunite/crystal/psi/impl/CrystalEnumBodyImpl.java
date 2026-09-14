@@ -35,14 +35,38 @@ public class CrystalEnumBodyImpl extends ASTWrapperPsiElement implements Crystal
 
   @Override
   @NotNull
+  public List<CrystalClassVarAccess> getClassVarAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalClassVarAccess.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalEnumConstant> getEnumConstantList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalEnumConstant.class);
   }
 
   @Override
   @NotNull
+  public List<CrystalExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalMethodDefinition> getMethodDefinitionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMethodDefinition.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalVisibilityModifier> getVisibilityModifierList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalVisibilityModifier.class);
   }
 
 }

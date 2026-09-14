@@ -114,14 +114,10 @@ object CrystalTypeInference {
         project: Project,
         depth: Int,
     ): List<String> {
-        val identNode =
-            assignment.node.findChildByType(CrystalTypes.IDENTIFIER)
-                ?: assignment.firstChild?.node?.findChildByType(CrystalTypes.IDENTIFIER)
-        val instanceVarAccess = assignment.instanceVarAccess
-        val varName = identNode?.text ?: instanceVarAccess?.text
-        if (varName != name && varName != "@$name") return emptyList()
+        val targetText = CrystalAssignmentTarget.targetText(assignment) ?: return emptyList()
+        if (targetText != name && targetText != "@$name") return emptyList()
         if (assignment.textOffset > context.textOffset) return emptyList()
-        val expr = assignment.expression ?: return emptyList()
+        val expr = CrystalAssignmentTarget.rhs(assignment) ?: return emptyList()
         return inferTypeFromExpressionList(expr, project, depth)
     }
 

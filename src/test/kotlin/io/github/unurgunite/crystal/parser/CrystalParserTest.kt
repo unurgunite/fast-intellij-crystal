@@ -444,4 +444,80 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testYamlSerialization() {
         doTest(true)
     }
+
+    fun testQualifiedTypeDef() {
+        doTest(true)
+    }
+
+    fun testRecordKeywordFields() {
+        doTest(true)
+    }
+
+    fun testMacroForAssign() {
+        doTest(true)
+    }
+
+    fun testEnumMacroCvar() {
+        doTest(true)
+    }
+
+    fun testProcDoBlock() {
+        doTest(true)
+    }
+
+    fun testCallAssignTargets() {
+        doTest(true)
+    }
+
+    fun testIndexAssignOp() {
+        doTest(true)
+    }
+
+    fun testTrailingCommaClose() {
+        doTest(true)
+    }
+
+    fun testMethodRescueElse() {
+        doTest(true)
+    }
+
+    fun testShorthandBareArgs() {
+        doTest(true)
+    }
+
+    fun testBangDotCall() {
+        doTest(true)
+    }
+
+    fun testWhenRegex() {
+        doTest(true)
+    }
+
+    fun testAbstractMemberDef() {
+        doTest(true)
+    }
+
+    fun testRegexWhenClause() {
+        doTest(true)
+    }
+
+    fun testRecordMacroFields() {
+        doTest(true)
+    }
+
+    fun testKeywordBareLabels() {
+        doTest(true)
+    }
+
+    fun testAssignOpArgument() {
+        doTest(true)
+    }
+
+    fun testOpenRangeIndex() {
+        doTest(true)
+    }
+
+    fun testBareMultilineArgs() {
+        doTest(true)
+    }
 }

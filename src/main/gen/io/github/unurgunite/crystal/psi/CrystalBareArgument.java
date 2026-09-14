@@ -8,7 +8,7 @@ import com.intellij.psi.PsiElement;
 public interface CrystalBareArgument extends PsiElement {
 
   @NotNull
-  List<CrystalArgumentList> getArgumentListList();
+  List<CrystalArgument> getArgumentList();
 
   @NotNull
   List<CrystalArrayLiteral> getArrayLiteralList();
@@ -17,10 +17,25 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalAsmExpression> getAsmExpressionList();
 
   @NotNull
+  List<CrystalAssignment> getAssignmentList();
+
+  @NotNull
+  List<CrystalBareCommandExpression> getBareCommandExpressionList();
+
+  @NotNull
   List<CrystalBareMethodCallExpression> getBareMethodCallExpressionList();
 
   @NotNull
+  List<CrystalBeginStatement> getBeginStatementList();
+
+  @NotNull
+  List<CrystalBlock> getBlockList();
+
+  @NotNull
   List<CrystalBreakExpression> getBreakExpressionList();
+
+  @NotNull
+  List<CrystalCaseStatement> getCaseStatementList();
 
   @NotNull
   List<CrystalClassVarAccess> getClassVarAccessList();
@@ -44,6 +59,9 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalHeredocLiteral> getHeredocLiteralList();
 
   @NotNull
+  List<CrystalIfStatement> getIfStatementList();
+
+  @NotNull
   List<CrystalImplicitObjectCall> getImplicitObjectCallList();
 
   @NotNull
@@ -53,7 +71,13 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
 
   @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
   List<CrystalMacroInterpolation> getMacroInterpolationList();
+
+  @NotNull
+  List<CrystalMethodCallExpression> getMethodCallExpressionList();
 
   @NotNull
   List<CrystalNamespaceAccess> getNamespaceAccessList();
@@ -104,6 +128,12 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalUninitializedExpression> getUninitializedExpressionList();
 
   @NotNull
+  List<CrystalUnlessStatement> getUnlessStatementList();
+
+  @NotNull
   List<CrystalVariableReference> getVariableReferenceList();
+
+  @NotNull
+  List<CrystalYieldExpression> getYieldExpressionList();
 
 }

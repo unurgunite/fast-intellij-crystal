@@ -97,9 +97,9 @@ internal object CrystalUnusedVarCollect {
     }
 
     private fun extractLocalAssignment(assignment: CrystalAssignment): AssignmentInfo? {
-        // Skip instance/class var assignments
-        if (assignment.instanceVarAccess != null) return null
-        if (assignment.classVarAccess != null) return null
+        // Skip instance/class var assignments (plain or as call-chain base)
+        if (assignment.instanceVarAccessList.isNotEmpty()) return null
+        if (assignment.classVarAccessList.isNotEmpty()) return null
 
         // Find the IDENTIFIER token (local variable name)
         val identifierNode = assignment.node.findChildByType(CrystalTypes.IDENTIFIER) ?: return null

@@ -49,7 +49,13 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
      */
     private fun isCausedByBadCharacter(element: PsiErrorElement): Boolean {
         var current: com.intellij.psi.PsiElement? = element
-        // Traverse up to MAX_CAUSE_WALK_UP_LEVELS levels looking for BAD_CHARACTER siblings
+        // Traverse up to MAX_CAUSE_WALK_UP_LEVELS levels looking for BAD_CHARACTER siblings.
+        // The error element itself may BE the BAD_CHARACTER-adjacent leaf's parent chain:
+        // for `e = 'hello world'` the PsiErrorElement sits directly under FILE with
+        // no BAD_CHARACTER sibling anywhere (the quote lexes inside INTERPOLATION-free
+        // STRING state) — so also treat an error whose own text is single-quoted
+        // multi-char content as single-quote fallout.
+        if (isSingleQuotedText(element.text)) return true
         repeat(MAX_CAUSE_WALK_UP_LEVELS) {
             current = current?.parent ?: return false
             var sibling = current.firstChild
@@ -62,6 +68,9 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
         }
         return false
     }
+
+    /** Multi-char single-quoted text (`'hello world'`) — the invalid-char-literal shape. */
+    private fun isSingleQuotedText(text: String): Boolean = text.length > 3 && text.startsWith("'") && text.endsWith("'")
 
     /**
      * Check if this PsiErrorElement is caused by a HEREDOC_START without matching HEREDOC_END.

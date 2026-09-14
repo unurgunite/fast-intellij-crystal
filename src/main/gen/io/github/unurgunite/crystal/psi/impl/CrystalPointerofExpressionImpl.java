@@ -29,32 +29,38 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
 
   @Override
   @NotNull
-  public List<CrystalArgumentList> getArgumentListList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArgumentList.class);
+  public List<CrystalArgument> getArgumentList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArgument.class);
   }
 
   @Override
-  @Nullable
-  public CrystalArrayLiteral getArrayLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalArrayLiteral.class);
+  @NotNull
+  public List<CrystalArrayLiteral> getArrayLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArrayLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalAsmExpression getAsmExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalAsmExpression.class);
+  @NotNull
+  public List<CrystalAsmExpression> getAsmExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAsmExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalBareCommandExpression getBareCommandExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalBareCommandExpression.class);
+  @NotNull
+  public List<CrystalAssignment> getAssignmentList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalAssignment.class);
   }
 
   @Override
-  @Nullable
-  public CrystalBeginStatement getBeginStatement() {
-    return PsiTreeUtil.getChildOfType(this, CrystalBeginStatement.class);
+  @NotNull
+  public List<CrystalBareCommandExpression> getBareCommandExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBareCommandExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalBeginStatement> getBeginStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBeginStatement.class);
   }
 
   @Override
@@ -64,27 +70,27 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
   }
 
   @Override
-  @Nullable
-  public CrystalBreakExpression getBreakExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalBreakExpression.class);
+  @NotNull
+  public List<CrystalBreakExpression> getBreakExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBreakExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalCaseStatement getCaseStatement() {
-    return PsiTreeUtil.getChildOfType(this, CrystalCaseStatement.class);
+  @NotNull
+  public List<CrystalCaseStatement> getCaseStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalCaseStatement.class);
   }
 
   @Override
-  @Nullable
-  public CrystalClassVarAccess getClassVarAccess() {
-    return PsiTreeUtil.getChildOfType(this, CrystalClassVarAccess.class);
+  @NotNull
+  public List<CrystalClassVarAccess> getClassVarAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalClassVarAccess.class);
   }
 
   @Override
-  @Nullable
-  public CrystalCommandExpression getCommandExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalCommandExpression.class);
+  @NotNull
+  public List<CrystalCommandExpression> getCommandExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalCommandExpression.class);
   }
 
   @Override
@@ -100,63 +106,63 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
   }
 
   @Override
-  @Nullable
-  public CrystalGroupedExpression getGroupedExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalGroupedExpression.class);
+  @NotNull
+  public List<CrystalGroupedExpression> getGroupedExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalGroupedExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalHashLiteral getHashLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalHashLiteral.class);
+  @NotNull
+  public List<CrystalHashLiteral> getHashLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalHashLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalHeredocLiteral getHeredocLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalHeredocLiteral.class);
+  @NotNull
+  public List<CrystalHeredocLiteral> getHeredocLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalHeredocLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalIfStatement getIfStatement() {
-    return PsiTreeUtil.getChildOfType(this, CrystalIfStatement.class);
+  @NotNull
+  public List<CrystalIfStatement> getIfStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalIfStatement.class);
   }
 
   @Override
-  @Nullable
-  public CrystalImplicitObjectCall getImplicitObjectCall() {
-    return PsiTreeUtil.getChildOfType(this, CrystalImplicitObjectCall.class);
+  @NotNull
+  public List<CrystalImplicitObjectCall> getImplicitObjectCallList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalImplicitObjectCall.class);
   }
 
   @Override
-  @Nullable
-  public CrystalInstanceSizeofExpression getInstanceSizeofExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalInstanceSizeofExpression.class);
+  @NotNull
+  public List<CrystalInstanceSizeofExpression> getInstanceSizeofExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceSizeofExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalInstanceVarAccess getInstanceVarAccess() {
-    return PsiTreeUtil.getChildOfType(this, CrystalInstanceVarAccess.class);
+  @NotNull
+  public List<CrystalInstanceVarAccess> getInstanceVarAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceVarAccess.class);
   }
 
   @Override
-  @Nullable
-  public CrystalMacroControl getMacroControl() {
-    return PsiTreeUtil.getChildOfType(this, CrystalMacroControl.class);
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }
 
   @Override
-  @Nullable
-  public CrystalMacroInterpolation getMacroInterpolation() {
-    return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
+  @NotNull
+  public List<CrystalMacroInterpolation> getMacroInterpolationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroInterpolation.class);
   }
 
   @Override
-  @Nullable
-  public CrystalMethodCallExpression getMethodCallExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalMethodCallExpression.class);
+  @NotNull
+  public List<CrystalMethodCallExpression> getMethodCallExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMethodCallExpression.class);
   }
 
   @Override
@@ -166,75 +172,75 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
   }
 
   @Override
-  @Nullable
-  public CrystalNextExpression getNextExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalNextExpression.class);
+  @NotNull
+  public List<CrystalNextExpression> getNextExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalNextExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalOffsetofExpression getOffsetofExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalOffsetofExpression.class);
+  @NotNull
+  public List<CrystalOffsetofExpression> getOffsetofExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalOffsetofExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalPercentLiteral getPercentLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalPercentLiteral.class);
+  @NotNull
+  public List<CrystalPercentLiteral> getPercentLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalPercentLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalPointerofExpression getPointerofExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalPointerofExpression.class);
+  @NotNull
+  public List<CrystalPointerofExpression> getPointerofExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalPointerofExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalProcLiteral getProcLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalProcLiteral.class);
+  @NotNull
+  public List<CrystalProcLiteral> getProcLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalProcLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalRegexExpression getRegexExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalRegexExpression.class);
+  @NotNull
+  public List<CrystalRegexExpression> getRegexExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalRegexExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalReturnExpression getReturnExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalReturnExpression.class);
+  @NotNull
+  public List<CrystalReturnExpression> getReturnExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalReturnExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalSizeofExpression getSizeofExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalSizeofExpression.class);
+  @NotNull
+  public List<CrystalSizeofExpression> getSizeofExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalSizeofExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalStringExpression getStringExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalStringExpression.class);
+  @NotNull
+  public List<CrystalStringExpression> getStringExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalStringExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalSymbolStringExpression getSymbolStringExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalSymbolStringExpression.class);
+  @NotNull
+  public List<CrystalSymbolStringExpression> getSymbolStringExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalSymbolStringExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalTupleLiteral getTupleLiteral() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTupleLiteral.class);
+  @NotNull
+  public List<CrystalTupleLiteral> getTupleLiteralList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTupleLiteral.class);
   }
 
   @Override
-  @Nullable
-  public CrystalTypeReceiverExpression getTypeReceiverExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTypeReceiverExpression.class);
+  @NotNull
+  public List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReceiverExpression.class);
   }
 
   @Override
@@ -244,33 +250,33 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
   }
 
   @Override
-  @Nullable
-  public CrystalTypeofExpression getTypeofExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTypeofExpression.class);
+  @NotNull
+  public List<CrystalTypeofExpression> getTypeofExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeofExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalUninitializedExpression getUninitializedExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalUninitializedExpression.class);
+  @NotNull
+  public List<CrystalUninitializedExpression> getUninitializedExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalUninitializedExpression.class);
   }
 
   @Override
-  @Nullable
-  public CrystalUnlessStatement getUnlessStatement() {
-    return PsiTreeUtil.getChildOfType(this, CrystalUnlessStatement.class);
+  @NotNull
+  public List<CrystalUnlessStatement> getUnlessStatementList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalUnlessStatement.class);
   }
 
   @Override
-  @Nullable
-  public CrystalVariableReference getVariableReference() {
-    return PsiTreeUtil.getChildOfType(this, CrystalVariableReference.class);
+  @NotNull
+  public List<CrystalVariableReference> getVariableReferenceList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalVariableReference.class);
   }
 
   @Override
-  @Nullable
-  public CrystalYieldExpression getYieldExpression() {
-    return PsiTreeUtil.getChildOfType(this, CrystalYieldExpression.class);
+  @NotNull
+  public List<CrystalYieldExpression> getYieldExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalYieldExpression.class);
   }
 
 }

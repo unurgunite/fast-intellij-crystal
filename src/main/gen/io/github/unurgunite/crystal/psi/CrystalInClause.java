@@ -10,10 +10,13 @@ public interface CrystalInClause extends PsiElement {
   @Nullable
   CrystalExpression getExpression();
 
-  @NotNull
+  @Nullable
   CrystalExpressionList getExpressionList();
 
   @NotNull
   CrystalStatementList getStatementList();
+
+  @Nullable
+  CrystalTupleLiteral getTupleLiteral();
 
 }
