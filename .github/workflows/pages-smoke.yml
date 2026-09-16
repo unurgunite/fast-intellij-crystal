@@ -1,0 +1,24 @@
+name: Pages Smoke Test
+on:
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    steps:
+      - run: |
+          mkdir -p site
+          echo "<h1>pages smoke $(date -u +%FT%TZ)</h1>" > site/index.html
+          ls -la site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/
+      - id: deployment
+        uses: actions/deploy-pages@v4
