@@ -78,6 +78,16 @@ internal object CrystalStdlibTextScan {
             } catch (_: Throwable) {
                 return
             }
+        scanText(relPath, text, symbols, hasCanonical)
+    }
+
+    /** Pure text scan (no VFS) — unit-testable without the IDE. */
+    fun scanText(
+        relPath: String,
+        text: String,
+        symbols: MutableMap<String, SymbolLoc>,
+        hasCanonical: MutableSet<String>,
+    ) {
         val state = ScanState(relPath, symbols, hasCanonical)
         var pos = 0
         for (raw in text.lines()) {
@@ -203,8 +213,13 @@ private fun handleDefLine(
     addMethodSymbol(state.symbols, state.relPath, offset, ns, mname)
     // A method body owns its own `end`/`}`; push an "other" frame (and balance
     // a same-line close) so the enclosing type's namespace frame survives it.
-    state.openKinds.addLast("other")
-    repeat(state.closeCount(raw)) { state.popOpen() }
+    // Bodiless `abstract def` owns NO close — pushing a frame here would eat
+    // the next `end` (the enclosing type's or the next def's) and drift the
+    // namespace stack for the rest of the file.
+    if (!abstractDefRe.containsMatchIn(raw)) {
+        state.openKinds.addLast("other")
+        repeat(state.closeCount(raw)) { state.popOpen() }
+    }
     return true
 }
 
@@ -303,5 +318,10 @@ private val endRe = Regex("""\bend\b""")
 private val typeRe = Regex("""^\s*(?:(?:abstract|final|private)\s+)*(?:class|struct|module|enum|lib|annotation)\s+([A-Z][\w:]*)""")
 private val aliasRe = Regex("""^\s*alias\s+([A-Z]\w*(?:::[A-Z]\w*)*)""")
 private val constRe = Regex("""^\s*([A-Z][A-Z0-9_]*)\s*=""")
-private val defRe = Regex("""^\s*(?:def|macro)\s+((?:self\.)?(?:[A-Z][\w:]*)?\.?[a-zA-Z_]\w*[!?]?|\[[\]=]?|<=>)""")
+private val defRe =
+    Regex("""^\s*(?:(?:private|protected|abstract)\s+)*(?:def|macro)\s+((?:self\.)?(?:[A-Z][\w:]*)?\.?[a-zA-Z_]\w*[!?]?|\[[\]=]?|<=>)""")
+
+// Bodiless `abstract def` (optionally after private/protected): owns no
+// `end`, so handleDefLine must not push a balance frame for it.
+private val abstractDefRe = Regex("""^\s*(?:(?:private|protected)\s+)*abstract\s+(?:def|macro)\b""")
 private val genRe = Regex("""^\s*(getter|setter|property)\b\s*(.+)$""")

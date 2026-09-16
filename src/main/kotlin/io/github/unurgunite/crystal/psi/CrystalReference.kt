@@ -16,6 +16,7 @@ import io.github.unurgunite.crystal.CrystalFile
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalConstantIndex
+import io.github.unurgunite.crystal.stubs.CrystalMacroIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 import java.util.ArrayDeque
 
@@ -78,11 +79,15 @@ class CrystalReference(
         return resolveStdlibSymbol(element.project, name)
     }
 
-    /** Project StubIndex hits: classes, methods, then project constants. */
+    /** Project StubIndex hits: classes, methods, macros, then project constants. */
     private fun resolveProjectStub(): PsiElement? {
         val scope = indexScopeWithStdlib(element.project)
         return firstUsableStub(CrystalClassIndex.KEY, scope, CrystalNamedElement::class.java)
             ?: firstUsableStub(CrystalMethodIndex.KEY, scope, CrystalMethodDefinition::class.java)
+            // Macro calls (`interpret_check_args { }`) resolve through the
+            // macro index — macros are not in CrystalMethodIndex. After methods
+            // (a `def` and a `macro` may share a name; the def wins as before).
+            ?: firstUsableStub(CrystalMacroIndex.KEY, scope, CrystalMacroDefinition::class.java)
             // Constant lookup (project constants only — stdlib constants are handled
             // by the bounded stdlib cache below, since their stubs are skipped).
             ?: firstUsableStub(CrystalConstantIndex.KEY, scope, CrystalConstantAssignment::class.java)

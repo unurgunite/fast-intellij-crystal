@@ -125,6 +125,33 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         )
     }
 
+    fun testPrivateMacroCallResolvesToMacroDefinition() {
+        // `private macro` + bare call in the same file: resolves through
+        // CrystalMacroIndex (macros are not in CrystalMethodIndex).
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                private macro my_helper(x)
+                  foo
+                end
+                my_helper(1)
+                """.trimIndent(),
+            )
+        val calls = PsiTreeUtil.findChildrenOfType(file, CrystalMethodCallExpression::class.java)
+        val helperCall = calls.find { it.text.startsWith("my_helper(1)") }
+        assertNotNull("Should find macro call expression", helperCall)
+        val reference = findReference(helperCall!!)
+        assertNotNull("macro call expression should have a CrystalReference", reference)
+        val resolved = reference!!.resolve()
+        assertNotNull("Should resolve to the macro definition", resolved)
+        assertTrue(
+            "Should resolve to CrystalMacroDefinition",
+            resolved is CrystalMacroDefinition,
+        )
+        assertEquals("my_helper", (resolved as CrystalMacroDefinition).name)
+    }
+
     fun testTypePathResolvesToClass() {
         // In "Foo.new", Foo is parsed as variable_reference (CONSTANT), not type_path
         val file =
