@@ -8,6 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface CrystalVariableReference extends PsiElement {
 
   @Nullable
+  CrystalFreshVar getFreshVar();
+
+  @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
 
 }

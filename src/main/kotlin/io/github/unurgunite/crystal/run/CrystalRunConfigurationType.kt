@@ -10,36 +10,56 @@ import javax.swing.Icon
 
 class CrystalRunConfigurationType : ConfigurationType {
     override fun getDisplayName(): String = "Crystal"
+
     override fun getConfigurationTypeDescription(): String = "Crystal run configuration"
+
     override fun getIcon(): Icon = CrystalIcons.FILE
+
     override fun getId(): String = "CrystalRunConfiguration"
-    override fun getConfigurationFactories(): Array<ConfigurationFactory> = arrayOf(
-        CrystalRunFactory(this),
-        CrystalBuildFactory(this),
-        CrystalSpecFactory(this),
-    )
+
+    override fun getConfigurationFactories(): Array<ConfigurationFactory> =
+        arrayOf(
+            CrystalRunFactory(this),
+            CrystalBuildFactory(this),
+            CrystalSpecFactory(this),
+        )
 }
 
-class CrystalRunFactory(type: ConfigurationType) : ConfigurationFactory(type) {
+class CrystalRunFactory(
+    type: ConfigurationType,
+) : ConfigurationFactory(type) {
     override fun getId(): String = "Crystal Run"
+
     override fun getName(): String = "Run"
+
     override fun getOptionsClass(): Class<out BaseState> = CrystalRunConfigurationOptions::class.java
+
     override fun createTemplateConfiguration(project: Project): RunConfiguration =
         CrystalRunConfiguration(project, this, "Crystal Run", CrystalCommand.RUN)
 }
 
-class CrystalBuildFactory(type: ConfigurationType) : ConfigurationFactory(type) {
+class CrystalBuildFactory(
+    type: ConfigurationType,
+) : ConfigurationFactory(type) {
     override fun getId(): String = "Crystal Build"
+
     override fun getName(): String = "Build"
+
     override fun getOptionsClass(): Class<out BaseState> = CrystalRunConfigurationOptions::class.java
+
     override fun createTemplateConfiguration(project: Project): RunConfiguration =
         CrystalRunConfiguration(project, this, "Crystal Build", CrystalCommand.BUILD)
 }
 
-class CrystalSpecFactory(type: ConfigurationType) : ConfigurationFactory(type) {
+class CrystalSpecFactory(
+    type: ConfigurationType,
+) : ConfigurationFactory(type) {
     override fun getId(): String = "Crystal Spec"
+
     override fun getName(): String = "Spec"
+
     override fun getOptionsClass(): Class<out BaseState> = CrystalRunConfigurationOptions::class.java
+
     override fun createTemplateConfiguration(project: Project): RunConfiguration =
         CrystalRunConfiguration(project, this, "Crystal Spec", CrystalCommand.SPEC)
 }

@@ -29,6 +29,18 @@ public class CrystalMacroBodyImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @NotNull
+  public List<CrystalBareCommandExpression> getBareCommandExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBareCommandExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExpression.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalMacroControl> getMacroControlList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }

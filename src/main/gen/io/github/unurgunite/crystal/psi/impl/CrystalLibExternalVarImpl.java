@@ -76,6 +76,12 @@ public class CrystalLibExternalVarImpl extends ASTWrapperPsiElement implements C
   }
 
   @Override
+  @NotNull
+  public List<CrystalExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExpression.class);
+  }
+
+  @Override
   @Nullable
   public CrystalGroupedExpression getGroupedExpression() {
     return PsiTreeUtil.getChildOfType(this, CrystalGroupedExpression.class);
@@ -119,8 +125,14 @@ public class CrystalLibExternalVarImpl extends ASTWrapperPsiElement implements C
 
   @Override
   @Nullable
-  public CrystalMacroControl getMacroControl() {
-    return PsiTreeUtil.getChildOfType(this, CrystalMacroControl.class);
+  public CrystalMacroArrayTail getMacroArrayTail() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroArrayTail.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }
 
   @Override
@@ -215,8 +227,8 @@ public class CrystalLibExternalVarImpl extends ASTWrapperPsiElement implements C
 
   @Override
   @NotNull
-  public CrystalTypeReference getTypeReference() {
-    return notNullChild(PsiTreeUtil.getChildOfType(this, CrystalTypeReference.class));
+  public List<CrystalTypeReference> getTypeReferenceList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReference.class);
   }
 
   @Override

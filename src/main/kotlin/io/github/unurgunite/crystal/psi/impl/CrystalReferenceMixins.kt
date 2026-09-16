@@ -5,7 +5,10 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin classes for PSI elements that need Go to Definition support.
@@ -20,9 +23,10 @@ private fun createCrystalReference(element: ASTWrapperPsiElement): CrystalRefere
     val grandParent = parent?.parent
     if (grandParent is CrystalNamedElement) return null
 
-    val identNode = element.node.findChildByType(CrystalTypes.IDENTIFIER)
-        ?: element.node.findChildByType(CrystalTypes.CONSTANT)
-        ?: return null
+    val identNode =
+        element.node.findChildByType(CrystalTypes.IDENTIFIER)
+            ?: element.node.findChildByType(CrystalTypes.CONSTANT)
+            ?: return null
 
     val name = identNode.text
     if (name.isBlank()) return null
@@ -44,14 +48,17 @@ private fun createCrystalReference(element: ASTWrapperPsiElement): CrystalRefere
  *
  * getNameIdentifier() returns the IDENTIFIER or CONSTANT leaf child.
  */
-abstract class CrystalVariableReferenceMixin(node: ASTNode) : ASTWrapperPsiElement(node), PsiNameIdentifierOwner {
+abstract class CrystalVariableReferenceMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    PsiNameIdentifierOwner {
     override fun getReference(): PsiReference? = createCrystalReference(this)
+
     override fun getReferences(): Array<PsiReference> = reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
 
-    override fun getNameIdentifier(): PsiElement? {
-        return node.findChildByType(CrystalTypes.IDENTIFIER)?.psi
+    override fun getNameIdentifier(): PsiElement? =
+        node.findChildByType(CrystalTypes.IDENTIFIER)?.psi
             ?: node.findChildByType(CrystalTypes.CONSTANT)?.psi
-    }
 
     override fun getName(): String? = nameIdentifier?.text
 
@@ -59,29 +66,39 @@ abstract class CrystalVariableReferenceMixin(node: ASTNode) : ASTWrapperPsiEleme
         val ident = nameIdentifier ?: return this
         val tokenType = ident.node.elementType
         val bareName = name.removePrefix("@").removePrefix("@")
-        val fixedName = when (tokenType) {
-            CrystalTypes.INSTANCE_VAR -> "@$bareName"
-            CrystalTypes.CLASS_VAR -> "@@$bareName"
-            else -> bareName
-        }
+        val fixedName =
+            when (tokenType) {
+                CrystalTypes.INSTANCE_VAR -> "@$bareName"
+                CrystalTypes.CLASS_VAR -> "@@$bareName"
+                else -> bareName
+            }
         val newNode = createLeafFromText(project, fixedName, tokenType) ?: return this
         ident.node.treeParent.replaceChild(ident.node, newNode)
         return this
     }
 }
 
-abstract class CrystalMethodCallExpressionMixin(node: ASTNode) : ASTWrapperPsiElement(node) {
+abstract class CrystalMethodCallExpressionMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node) {
     override fun getReference(): PsiReference? = createCrystalReference(this)
+
     override fun getReferences(): Array<PsiReference> = reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
 }
 
-abstract class CrystalBareMethodCallExpressionMixin(node: ASTNode) : ASTWrapperPsiElement(node) {
+abstract class CrystalBareMethodCallExpressionMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node) {
     override fun getReference(): PsiReference? = createCrystalReference(this)
+
     override fun getReferences(): Array<PsiReference> = reference?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY
 }
 
-abstract class CrystalTypePathMixin(node: ASTNode) : ASTWrapperPsiElement(node) {
+abstract class CrystalTypePathMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node) {
     override fun getReferences(): Array<PsiReference> = createCrystalTypeReferences(this)
+
     override fun getReference(): PsiReference? = references.firstOrNull()
 }
 

@@ -8,6 +8,12 @@ import com.intellij.psi.PsiElement;
 public interface CrystalMacroBody extends PsiElement {
 
   @NotNull
+  List<CrystalBareCommandExpression> getBareCommandExpressionList();
+
+  @NotNull
+  List<CrystalExpression> getExpressionList();
+
+  @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
   @NotNull

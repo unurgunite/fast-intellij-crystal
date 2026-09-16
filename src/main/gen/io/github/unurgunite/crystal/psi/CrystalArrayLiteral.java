@@ -8,9 +8,12 @@ import com.intellij.psi.PsiElement;
 public interface CrystalArrayLiteral extends PsiElement {
 
   @Nullable
-  CrystalExpressionList getExpressionList();
+  CrystalArrayOfTail getArrayOfTail();
 
   @Nullable
-  CrystalTypeReference getTypeReference();
+  CrystalExpressionList getExpressionList();
+
+  @NotNull
+  List<CrystalTypeReference> getTypeReferenceList();
 
 }

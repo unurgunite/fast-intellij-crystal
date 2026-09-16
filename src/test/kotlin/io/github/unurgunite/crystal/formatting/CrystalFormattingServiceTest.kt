@@ -1,9 +1,9 @@
 package io.github.unurgunite.crystal.formatting
 
 import junit.framework.TestCase
+import org.junit.Assume
 
 class CrystalFormattingServiceTest : TestCase() {
-
     private val service = CrystalFormattingService()
 
     fun testParseFormatErrorWithValidSyntaxError() {
@@ -35,5 +35,39 @@ class CrystalFormattingServiceTest : TestCase() {
         val result = service.parseFormatError(stderr, "foo.cr")
         assertTrue("Should contain real file name", result.contains("foo.cr"))
         assertFalse("Should not contain STDIN", result.contains("STDIN"))
+    }
+
+    fun testFormatStdinRoundTripWithRealCrystal() {
+        val crystal = findCrystal()
+        Assume.assumeTrue("Requires installed Crystal binary", crystal != null)
+        val formatted = service.formatStdin(crystal!!, "x     =     1\n", System.getProperty("java.io.tmpdir"))
+        assertNotNull("Formatting should succeed, error was: ${service.lastFormatError}", formatted)
+        assertEquals("x = 1\n", formatted)
+    }
+
+    fun testFormatStdinSyntaxErrorReturnsNull() {
+        val crystal = findCrystal()
+        Assume.assumeTrue("Requires installed Crystal binary", crystal != null)
+        val formatted = service.formatStdin(crystal!!, "def broken(((\n", System.getProperty("java.io.tmpdir"))
+        assertNull("Syntax errors must yield null", formatted)
+        assertNotNull("Error details must be recorded", service.lastFormatError)
+    }
+
+    fun testFormatStdinBogusBinaryReturnsNull() {
+        val formatted = service.formatStdin("/nonexistent-dir-xyz/crystal", "x = 1\n", System.getProperty("java.io.tmpdir"))
+        assertNull(formatted)
+        assertNotNull(service.lastFormatError)
+    }
+
+    private fun findCrystal(): String? {
+        for (candidate in listOf("/opt/homebrew/bin/crystal", "/usr/bin/crystal", "/usr/local/bin/crystal")) {
+            if (java.io.File(candidate).canExecute()) return candidate
+        }
+        return System
+            .getenv("PATH")
+            ?.split(":")
+            ?.map { java.io.File(it, "crystal") }
+            ?.firstOrNull { it.canExecute() }
+            ?.absolutePath
     }
 }

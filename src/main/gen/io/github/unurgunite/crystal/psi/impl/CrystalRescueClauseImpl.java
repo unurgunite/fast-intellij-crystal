@@ -29,6 +29,12 @@ public class CrystalRescueClauseImpl extends ASTWrapperPsiElement implements Cry
 
   @Override
   @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
   public CrystalStatementList getStatementList() {
     return notNullChild(PsiTreeUtil.getChildOfType(this, CrystalStatementList.class));
   }

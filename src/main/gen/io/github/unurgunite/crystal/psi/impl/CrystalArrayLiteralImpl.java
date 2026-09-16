@@ -29,14 +29,20 @@ public class CrystalArrayLiteralImpl extends ASTWrapperPsiElement implements Cry
 
   @Override
   @Nullable
+  public CrystalArrayOfTail getArrayOfTail() {
+    return PsiTreeUtil.getChildOfType(this, CrystalArrayOfTail.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalExpressionList getExpressionList() {
     return PsiTreeUtil.getChildOfType(this, CrystalExpressionList.class);
   }
 
   @Override
-  @Nullable
-  public CrystalTypeReference getTypeReference() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTypeReference.class);
+  @NotNull
+  public List<CrystalTypeReference> getTypeReferenceList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReference.class);
   }
 
 }

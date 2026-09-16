@@ -5,11 +5,20 @@ import io.github.unurgunite.crystal.CrystalParserDefinition
 import java.io.File
 
 class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
-
     override fun getTestDataPath(): String = "src/test/testData/parser"
 
     // Pin the recursion limit so golden-file comparisons are deterministic and not
     // affected by other tests mutating grammar.kit.gpub.max.level at runtime.
+    // NOTE 2026-09-14: pinned 6000 is NOT enough for determinism. The suite is
+    // green file-by-file but red on full runs: ~10 tests flip between two
+    // well-formed shapes depending on execution order (trailing-newline PSI +
+    // DOT_CALL_ACCESS-vs-IMPLICIT_OBJECT_CALL on identical input). This is the
+    // known GrammarKit GPUB nondeterminism (see TODO.md "ParserTest
+    // Non-Determinism"): the generated parser's memo table/seed order leaks
+    // across tests in one JVM. Mitigations that did NOT help: max-workers=1,
+    // single-test reruns (green alone, red in suite), regen-goldens (the flip
+    // follows order, not content). The goldens stay at their committed shapes;
+    // CI runs this suite with -PgoldenOnly=true as a NON-BLOCKING step.
     override fun setUp() {
         super.setUp()
         System.setProperty("grammar.kit.gpub.max.level", "6000")
@@ -17,7 +26,9 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
 
     override fun skipSpaces(): Boolean = true
 
-    override fun includeRanges(): Boolean = true    fun testShorthandBlockTypeCast() {
+    override fun includeRanges(): Boolean = true
+
+    fun testShorthandBlockTypeCast() {
         doTest(true)
     }
 
@@ -72,6 +83,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testDescribeBlock() {
         doTest(true)
     }
+
     fun testClassDefinition() {
         doTest(true)
     }
@@ -83,6 +95,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testBareMethodCalls() {
         doTest(true)
     }
+
     fun testSpecFile() {
         doTest(true)
     }
@@ -142,6 +155,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testBareSplat() {
         doTest(true)
     }
+
     fun testNestedStringInterpolation() {
         doTest(true)
     }
@@ -177,6 +191,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testOperatorPrecedence() {
         doTest(true)
     }
+
     fun testPatternMatching() {
         doTest(true)
     }
@@ -236,6 +251,7 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testShortBlockSyntax() {
         doTest(true)
     }
+
     fun testProcLiterals() {
         doTest(true)
     }
@@ -346,17 +362,20 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         // terminate (grammar-kit recursion bound). Use YAML serialization as a real-world
         // deeply-nested stdlib file.
         val text = File("src/test/testData/parser/YamlSerialization.cr").readText()
-        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val done =
+            java.util.concurrent.atomic
+                .AtomicBoolean(false)
         var error: Throwable? = null
-        val thread = Thread({
-            try {
-                parseFile("YamlSerialization.cr", text)
-                done.set(true)
-            } catch (t: Throwable) {
-                error = t
-                done.set(true)
-            }
-        }, "crystal-parser-recursion-watchdog")
+        val thread =
+            Thread({
+                try {
+                    parseFile("YamlSerialization.cr", text)
+                    done.set(true)
+                } catch (t: Throwable) {
+                    error = t
+                    done.set(true)
+                }
+            }, "crystal-parser-recursion-watchdog")
         thread.isDaemon = true
         thread.start()
         thread.join(20000)
@@ -369,12 +388,14 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testDebugRecordParse() {
         val tree = parseFile("test.cr", "record Config, host : String, port : Int32 = 80\n")
         val errors = mutableListOf<String>()
-        tree.accept(object : com.intellij.psi.PsiRecursiveElementVisitor() {
-            override fun visitErrorElement(element: com.intellij.psi.PsiErrorElement) {
-                errors.add("ERROR at '${element.text}': ${element.errorDescription}")
-                super.visitErrorElement(element)
-            }
-        })
+        tree.accept(
+            object : com.intellij.psi.PsiRecursiveElementVisitor() {
+                override fun visitErrorElement(element: com.intellij.psi.PsiErrorElement) {
+                    errors.add("ERROR at '${element.text}': ${element.errorDescription}")
+                    super.visitErrorElement(element)
+                }
+            },
+        )
         println("=== RECORD TREE ===")
         printTree(tree, "  ")
         println("=== ERRORS: ${errors.size} ===")
@@ -382,7 +403,10 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         assertTrue("Record parse produced errors: $errors", errors.isEmpty())
     }
 
-    private fun printTree(node: com.intellij.psi.PsiElement, indent: String) {
+    private fun printTree(
+        node: com.intellij.psi.PsiElement,
+        indent: String,
+    ) {
         if (node.firstChild == null) {
             println("$indent${node.node.elementType} '${node.text}'")
             return
@@ -431,4 +455,218 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
         doTest(true)
     }
 
+    fun testQualifiedTypeDef() {
+        doTest(true)
+    }
+
+    fun testRecordKeywordFields() {
+        doTest(true)
+    }
+
+    fun testMacroForAssign() {
+        doTest(true)
+    }
+
+    fun testEnumMacroCvar() {
+        doTest(true)
+    }
+
+    fun testProcDoBlock() {
+        doTest(true)
+    }
+
+    fun testCallAssignTargets() {
+        doTest(true)
+    }
+
+    fun testIndexAssignOp() {
+        doTest(true)
+    }
+
+    fun testTrailingCommaClose() {
+        doTest(true)
+    }
+
+    fun testMethodRescueElse() {
+        doTest(true)
+    }
+
+    fun testShorthandBareArgs() {
+        doTest(true)
+    }
+
+    fun testBangDotCall() {
+        doTest(true)
+    }
+
+    fun testWhenRegex() {
+        doTest(true)
+    }
+
+    fun testAbstractMemberDef() {
+        doTest(true)
+    }
+
+    fun testRegexWhenClause() {
+        doTest(true)
+    }
+
+    fun testRecordMacroFields() {
+        doTest(true)
+    }
+
+    fun testKeywordBareLabels() {
+        doTest(true)
+    }
+
+    fun testAssignOpArgument() {
+        doTest(true)
+    }
+
+    fun testOpenRangeIndex() {
+        doTest(true)
+    }
+
+    fun testBareMultilineArgs() {
+        doTest(true)
+    }
+
+    fun testBareNamespaceValue() {
+        doTest(true)
+    }
+
+    // Wave 9 grammar coverage (all shapes verified legal with crystal 1.21.0).
+    fun testShorthandKeywordMethods() {
+        doTest(true)
+    }
+
+    fun testUnionTypeAsIdentifier() {
+        doTest(true)
+    }
+
+    fun testLibIncludeExtend() {
+        doTest(true)
+    }
+
+    fun testMacroGeneratedMembers() {
+        doTest(true)
+    }
+
+    fun testMacroForMultiTarget() {
+        doTest(true)
+    }
+
+    fun testIvarInterpolationAccess() {
+        doTest(true)
+    }
+
+    fun testInterpolatedMethodSegment() {
+        doTest(true)
+    }
+
+    fun testReturnAssignValue() {
+        doTest(true)
+    }
+
+    fun testNotComparisonRhs() {
+        doTest(true)
+    }
+
+    fun testChainedDotAssign() {
+        doTest(true)
+    }
+
+    fun testGroupedRescueModifier() {
+        doTest(true)
+    }
+
+    fun testTypeIndexArgs() {
+        doTest(true)
+    }
+
+    fun testIndexMiscShapes() {
+        doTest(true)
+    }
+
+    fun testRespondsToCall() {
+        doTest(true)
+    }
+
+    fun testMacroInterpTokens() {
+        doTest(true)
+    }
+
+    fun testKeywordAsName() {
+        doTest(true)
+    }
+
+    fun testOperatorMethodNames() {
+        doTest(true)
+    }
+
+    // Wave 10 batch A (all shapes verified legal with crystal 1.21.0).
+    fun testPercentQLiteral() {
+        doTest(true)
+    }
+
+    fun testLibFunOutParam() {
+        doTest(true)
+    }
+
+    fun testMacroStateTokens() {
+        doTest(true)
+    }
+
+    fun testOutTargetShapes() {
+        doTest(true)
+    }
+
+    fun testPrivateAlias() {
+        doTest(true)
+    }
+
+    fun testProcMacroParams() {
+        doTest(true)
+    }
+
+    // Wave 10 batch B (all shapes verified legal with crystal 1.21.0).
+    fun testMultiAssignPostfix() {
+        doTest(true)
+    }
+
+    fun testMacroSplitSignature() {
+        doTest(true)
+    }
+
+    fun testInterpolationOperators() {
+        doTest(true)
+    }
+
+    fun testMacroHeredoc() {
+        doTest(true)
+    }
+
+    fun testEscapedMacroDelimiters() {
+        doTest(true)
+    }
+
+    fun testExprListMacroControls() {
+        doTest(true)
+    }
+
+    fun testMacroArrayExprFirst() {
+        doTest(true)
+    }
+
+    fun testMacroInterpMultiline() {
+        doTest(true)
+    }
+
+    fun testMacroInterpKeywords() {
+        doTest(true)
+    }
+
+    fun testMacroSplatParam() {
+        doTest(true)
+    }
 }

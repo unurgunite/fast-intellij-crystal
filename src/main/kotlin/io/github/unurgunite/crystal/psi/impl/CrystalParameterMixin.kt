@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin for CrystalParameter PSI elements (e.g. `loud : Bool` in `def tanzen(loud : Bool)`).
@@ -14,8 +15,11 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * the CrystalParameter composite, enabling IntelliJ's TargetElementUtil to resolve
  * PSI_ELEMENT to a PsiNameIdentifierOwner for rename and other refactoring operations.
  */
-abstract class CrystalParameterMixin(node: ASTNode) : ASTWrapperPsiElement(node), CrystalParameter, PsiNameIdentifierOwner {
-
+abstract class CrystalParameterMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    CrystalParameter,
+    PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         // Walk children to find the name token (internal parameter name).
         // Crystal convention: `external internal : Type` — the LAST IDENTIFIER is the name.
@@ -28,6 +32,7 @@ abstract class CrystalParameterMixin(node: ASTNode) : ASTWrapperPsiElement(node)
                 CrystalTypes.IDENTIFIER -> {
                     lastIdent = child.psi
                 }
+
                 CrystalTypes.INSTANCE_VAR_ACCESS -> {
                     // instance_var_access wraps INSTANCE_VAR — find the leaf inside
                     val instanceVar = child.findChildByType(CrystalTypes.INSTANCE_VAR)
@@ -47,12 +52,13 @@ abstract class CrystalParameterMixin(node: ASTNode) : ASTWrapperPsiElement(node)
         // Strip any @/@@ prefix the user may have typed, then re-apply from original token type.
         // The variable type (instance var, class var, local var) never changes during rename.
         val bareName = name.removePrefix("@").removePrefix("@")
-        val fixedName = when (tokenType) {
-            CrystalTypes.INSTANCE_VAR -> "@$bareName"
-            CrystalTypes.CLASS_VAR -> "@@$bareName"
-            else -> bareName
-        }
-        val newNode = io.github.unurgunite.crystal.psi.createLeafFromText(project, fixedName, tokenType) ?: return this
+        val fixedName =
+            when (tokenType) {
+                CrystalTypes.INSTANCE_VAR -> "@$bareName"
+                CrystalTypes.CLASS_VAR -> "@@$bareName"
+                else -> bareName
+            }
+        val newNode = createLeafFromText(project, fixedName, tokenType) ?: return this
         ident.node.treeParent.replaceChild(ident.node, newNode)
         return this
     }

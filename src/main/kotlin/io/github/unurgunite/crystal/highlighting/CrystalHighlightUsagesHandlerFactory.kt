@@ -1,12 +1,12 @@
 package io.github.unurgunite.crystal.highlighting
 
-import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerFactory
 import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase
+import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerFactory
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
-import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
@@ -25,8 +25,10 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * in the current file.
  */
 class CrystalHighlightUsagesHandlerFactory : HighlightUsagesHandlerFactory {
-
-    override fun createHighlightUsagesHandler(editor: Editor, psiFile: PsiFile): HighlightUsagesHandlerBase<*>? {
+    override fun createHighlightUsagesHandler(
+        editor: Editor,
+        psiFile: PsiFile,
+    ): HighlightUsagesHandlerBase<*>? {
         val offset = editor.caretModel.offset
         val element = psiFile.findElementAt(offset) ?: return null
 
@@ -65,7 +67,10 @@ class CrystalHighlightUsagesHandlerFactory : HighlightUsagesHandlerFactory {
      * Verify that the clicked leaf is the actual name of the definition,
      * not a keyword like `class`, `def`, `module`, etc.
      */
-    private fun isNameLeaf(element: com.intellij.psi.PsiElement, definition: CrystalNamedElement): Boolean {
+    private fun isNameLeaf(
+        element: com.intellij.psi.PsiElement,
+        definition: CrystalNamedElement,
+    ): Boolean {
         val nameId = definition.nameIdentifier ?: return false
         return element === nameId
     }

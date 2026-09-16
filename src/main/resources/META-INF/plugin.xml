@@ -11,7 +11,7 @@
 
 <p>
   <b>Early Beta</b> — This plugin is under active development and bugs are to be expected.
-  If you encounter a problem, please <a href="https://github.com/unurgunite/intellij-crystal/issues/new/choose">open a GitHub issue</a>
+  If you encounter a problem, please <a href="https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose">open a GitHub issue</a>
   with a minimal reproduction — that helps us fix it faster than a negative review would.
 </p>
 
@@ -106,6 +106,11 @@
 ]]></description>
 
     <change-notes><![CDATA[
+<h3>1.0.0</h3>
+<ul>
+  <li><b>Fast Crystal Plugin 1.0.0</b> — first release of the independent project: indexing stall fixes (ternary parse 191s→94ms, type-inference StackOverflow guard, <code>def Type.name</code> parse), full project navigation via StubIndex, and 60+ inspections/completions documented in the changelog below</li>
+</ul>
+
 <h3>0.1.17</h3>
 <ul>
   <li><b>Keyword block highlighting</b> — cursor on structural keywords highlights all related keywords of the enclosing block</li>
@@ -160,14 +165,14 @@
   <li><b>Changed</b> — Force Re-index shows background progress bar with status updates</li>
 </ul>
 
-<h3>1.1.15</h3>
+<h3>0.1.15</h3>
 <ul>
   <li><b>Parameter info (Ctrl+P)</b> for <code>ClassName.new</code> — now shows <code>initialize</code> method parameters when calling <code>new</code> on a class</li>
   <li><b>Type check for <code>ClassName.new</code></b> — argument type validation now works for <code>new</code> calls, resolving to <code>initialize</code> parameters</li>
   <li><b>Bug fix</b> — <code>findTypeByName</code> now prefers the class from the current file when multiple classes with the same name exist in the project</li>
 </ul>
 
-<h3>1.1.13</h3>
+<h3>0.1.13</h3>
 <ul>
   <li><b>Code folding</b> — multi-line arrays (<code>[...]</code>) and hashes (<code>{...}</code>) can now be collapsed, matching RubyMine behavior</li>
   <li><b>Code folding</b> — all block constructs keep keyword and signature visible when collapsed; placeholder shows <code> ... end</code> (or <code>[ ... ]</code> / <code>{ ... }</code> for arrays/hashes), matching RubyMine behavior</li>
@@ -238,19 +243,19 @@
 
         <lang.commenter
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalCommenter"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalCommenter"/>
 
         <lang.braceMatcher
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalBraceMatcher"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalBraceMatcher"/>
 
         <codeBlockSupportHandler
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalCodeBlockSupportHandler"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalCodeBlockSupportHandler"/>
 
         <lang.foldingBuilder
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalFoldingBuilder"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalFoldingBuilder"/>
 
         <lang.documentationProvider
                 language="Crystal"
@@ -261,13 +266,13 @@
 
         <lang.quoteHandler
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalQuoteHandler"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalQuoteHandler"/>
 
         <typedHandler
-                implementation="io.github.unurgunite.crystal.CrystalTypedHandler"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalTypedHandler"/>
 
         <enterHandlerDelegate
-                implementation="io.github.unurgunite.crystal.CrystalEnterHandler"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalEnterHandler"/>
 
         <annotator
                 language="Crystal"
@@ -328,7 +333,7 @@
                 shortName="CrystalSingleQuoteString"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalSingleQuoteStringInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -350,7 +355,7 @@
 
         <todoIndexer
                 filetype="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalTodoIndexer"/>
+                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalTodoIndexer"/>
 
         <lang.psiStructureViewFactory
                 language="Crystal"
@@ -373,7 +378,7 @@
 
         <liveTemplateContext
                 contextId="CRYSTAL"
-                implementation="io.github.unurgunite.crystal.CrystalTemplateContextType"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalTemplateContextType"/>
 
         <formattingService
                 implementation="io.github.unurgunite.crystal.formatting.CrystalFormattingService"/>
@@ -414,11 +419,11 @@
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.navigation.CrystalParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoHandler"/>
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.navigation.CrystalAsmParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.parameterinfo.CrystalAsmParameterInfoHandler"/>
 
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodIndex"/>
@@ -428,8 +433,6 @@
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalConstantIndex"/>
 
         <stubElementTypeHolder class="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeHolder"/>
-
-        <languageStubDefinition language="Crystal" implementationClass="io.github.unurgunite.crystal.stubs.CrystalLanguageStubDefinition"/>
 
         <additionalTextAttributes scheme="Default" file="colorSchemes/CrystalDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/CrystalDarcula.xml"/>
@@ -448,6 +451,11 @@
 
         <projectService serviceImplementation="io.github.unurgunite.crystal.sdk.CrystalSettings"/>
 
+        <!-- Debug state factory: run/ depends on the interface only (no run→debugger import) -->
+        <applicationService
+                serviceInterface="io.github.unurgunite.crystal.run.CrystalDebugStateFactory"
+                serviceImplementation="io.github.unurgunite.crystal.debugger.CrystalDebuggerStateFactory"/>
+
         <completion.contributor
                 language="Crystal"
                 implementationClass="io.github.unurgunite.crystal.completion.CrystalCompletionContributor"/>
@@ -457,11 +465,7 @@
                 implementation="io.github.unurgunite.crystal.CrystalIconProvider"/>
 
         <postStartupActivity
-                implementation="io.github.unurgunite.crystal.CrystalSpecSourceRootConfigurator"/>
-
-        <!-- Builds the stdlib symbol cache in the background after initial indexing -->
-        <postStartupActivity
-                implementation="io.github.unurgunite.crystal.CrystalStdlibCacheWarmup"/>
+                implementation="io.github.unurgunite.crystal.project.CrystalSpecSourceRootConfigurator"/>
 
         <!-- Crystal stdlib as indexed source library.
              NOTE: getAdditionalProjectLibraries must NOT read the workspace model

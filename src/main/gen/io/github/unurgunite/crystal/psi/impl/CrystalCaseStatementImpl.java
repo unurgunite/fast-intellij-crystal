@@ -53,6 +53,12 @@ public class CrystalCaseStatementImpl extends ASTWrapperPsiElement implements Cr
 
   @Override
   @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalWhenClause> getWhenClauseList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalWhenClause.class);
   }

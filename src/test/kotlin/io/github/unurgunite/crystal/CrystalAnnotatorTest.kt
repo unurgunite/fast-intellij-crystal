@@ -2,60 +2,66 @@ package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.highlighting.CrystalSyntaxHighlighter
+import io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection
 
 /**
  * Tests for CrystalAnnotator — semantic highlighting of type declarations,
  * method declarations, and parameter highlighting (definition + usage).
  */
 class CrystalAnnotatorTest : BasePlatformTestCase() {
-
     // ==================== Type declaration highlighting ====================
 
     fun testClassNameHighlightedInDefinition() {
         myFixture.configureByText("test.cr", "class Apfel\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "Apfel" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val h =
+            highlights.find {
+                it.text == "Apfel" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Class name 'Apfel' should be highlighted as CONSTANT", h)
     }
 
     fun testModuleNameHighlightedInDefinition() {
         myFixture.configureByText("test.cr", "module Utils\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "Utils" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val h =
+            highlights.find {
+                it.text == "Utils" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Module name 'Utils' should be highlighted as CONSTANT", h)
     }
 
     fun testStructNameHighlightedInDefinition() {
         myFixture.configureByText("test.cr", "struct Point\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "Point" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val h =
+            highlights.find {
+                it.text == "Point" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Struct name 'Point' should be highlighted as CONSTANT", h)
     }
 
     fun testEnumNameHighlightedInDefinition() {
         myFixture.configureByText("test.cr", "enum Color\nRed\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "Color" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val h =
+            highlights.find {
+                it.text == "Color" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Enum name 'Color' should be highlighted as CONSTANT", h)
     }
 
     fun testNamespacedClassNameHighlighted() {
         myFixture.configureByText("test.cr", "class Foo::Bar\nend")
         val highlights = myFixture.doHighlighting()
-        val fooH = highlights.find {
-            it.text == "Foo" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
-        val barH = highlights.find {
-            it.text == "Bar" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val fooH =
+            highlights.find {
+                it.text == "Foo" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
+        val barH =
+            highlights.find {
+                it.text == "Bar" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Namespace 'Foo' should be highlighted as CONSTANT", fooH)
         assertNotNull("Class 'Bar' should be highlighted as CONSTANT", barH)
     }
@@ -65,9 +71,10 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
     fun testConstantReferenceHighlightedAsConstant() {
         myFixture.configureByText("test.cr", "class Apfel\nend\nx = Apfel.new")
         val highlights = myFixture.doHighlighting()
-        val constH = highlights.filter {
-            it.text == "Apfel" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val constH =
+            highlights.filter {
+                it.text == "Apfel" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertTrue("'Apfel' references should be highlighted as CONSTANT", constH.size >= 2)
     }
 
@@ -76,101 +83,126 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
     fun testParameterHighlightedInDefinition() {
         myFixture.configureByText("test.cr", "def greet(name)\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val h =
+            highlights.find {
+                it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertNotNull("Parameter 'name' should be highlighted as PARAMETER", h)
     }
 
     fun testMultipleParametersHighlighted() {
         myFixture.configureByText("test.cr", "def add(a, b)\nend")
         val highlights = myFixture.doHighlighting()
-        val aH = highlights.find {
-            it.text == "a" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
-        val bH = highlights.find {
-            it.text == "b" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val aH =
+            highlights.find {
+                it.text == "a" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
+        val bH =
+            highlights.find {
+                it.text == "b" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertNotNull("Parameter 'a' should be highlighted as PARAMETER", aH)
         assertNotNull("Parameter 'b' should be highlighted as PARAMETER", bH)
     }
 
     fun testParameterUsageHighlightedInMethodBody() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
             def greet(name)
               puts name
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val highlights = myFixture.doHighlighting()
-        val paramUsages = highlights.filter {
-            it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val paramUsages =
+            highlights.filter {
+                it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertTrue(
             "Parameter 'name' should be highlighted in both definition and usage, found ${paramUsages.size}",
-            paramUsages.size >= 2
+            paramUsages.size >= 2,
         )
     }
 
     fun testNonParameterIdentifierNotHighlightedAsParameter() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
             def greet(name)
               x = 1
               puts x
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val highlights = myFixture.doHighlighting()
-        val xAsParam = highlights.filter {
-            it.text == "x" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val xAsParam =
+            highlights.filter {
+                it.text == "x" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertTrue("Local variable 'x' should NOT be highlighted as PARAMETER", xAsParam.isEmpty())
     }
 
     fun testParameterNotHighlightedOutsideMethod() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
             def greet(name)
             end
             puts name
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val highlights = myFixture.doHighlighting()
-        val paramHighlights = highlights.filter {
-            it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val paramHighlights =
+            highlights.filter {
+                it.text == "name" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertEquals(
             "Only the parameter definition should be highlighted, not usage outside method",
-            1, paramHighlights.size
+            1,
+            paramHighlights.size,
         )
     }
 
     fun testBlockParameterUsageHighlighted() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
             3.times do |i|
               puts i
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val highlights = myFixture.doHighlighting()
-        val iParamUsages = highlights.filter {
-            it.text == "i" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val iParamUsages =
+            highlights.filter {
+                it.text == "i" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertTrue(
             "Block parameter 'i' should be highlighted in both definition and usage, found ${iParamUsages.size}",
-            iParamUsages.size >= 2
+            iParamUsages.size >= 2,
         )
     }
 
     fun testBlockParameterMultipleParams() {
-        myFixture.configureByText("test.cr", """
+        myFixture.configureByText(
+            "test.cr",
+            """
             [1, 2].each_with_index do |elem, idx|
               puts elem
               puts idx
             end
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val highlights = myFixture.doHighlighting()
-        val elemHighlights = highlights.filter {
-            it.text == "elem" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
-        val idxHighlights = highlights.filter {
-            it.text == "idx" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
-        }
+        val elemHighlights =
+            highlights.filter {
+                it.text == "elem" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
+        val idxHighlights =
+            highlights.filter {
+                it.text == "idx" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.PARAMETER
+            }
         assertTrue("Block parameter 'elem' should be highlighted (def + usage)", elemHighlights.size >= 2)
         assertTrue("Block parameter 'idx' should be highlighted (def + usage)", idxHighlights.size >= 2)
     }
@@ -180,9 +212,10 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
     fun testMethodNameHighlighted() {
         myFixture.configureByText("test.cr", "def greet\nend")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "greet" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
-        }
+        val h =
+            highlights.find {
+                it.text == "greet" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.CONSTANT
+            }
         assertNotNull("Method name 'greet' should be highlighted as CONSTANT", h)
     }
 
@@ -191,9 +224,10 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
     fun testLocalVariableHighlightedAsIdentifier() {
         myFixture.configureByText("test.cr", "x = 1")
         val highlights = myFixture.doHighlighting()
-        val h = highlights.find {
-            it.text == "x" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.IDENTIFIER
-        }
+        val h =
+            highlights.find {
+                it.text == "x" && it.forcedTextAttributesKey == CrystalSyntaxHighlighter.IDENTIFIER
+            }
         assertNotNull("Local variable 'x' should be highlighted as IDENTIFIER", h)
     }
 
@@ -309,7 +343,10 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         val highlights = myFixture.doHighlighting()
         val errors = highlights.filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
         val indentError = errors.find { it.description?.contains("indented too deeply") == true }
-        assertNull("End delimiter at same indent as minimum content line should be valid. Got: ${errors.map { it.description }}", indentError)
+        assertNull(
+            "End delimiter at same indent as minimum content line should be valid. Got: ${errors.map { it.description }}",
+            indentError,
+        )
     }
 
     fun testHeredocWithInterpolationIndent() {
@@ -325,10 +362,13 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
     // ==================== Single-quote string validation ====================
 
     fun testInvalidSingleQuoteString() {
-        myFixture.enableInspections(io.github.unurgunite.crystal.highlighting.CrystalSingleQuoteStringInspection())
+        myFixture.enableInspections(
+            io.github.unurgunite.crystal.inspections
+                .CrystalSingleQuoteStringInspection(),
+        )
         myFixture.configureByText("test.cr", "e = 'hello world'")
         val highlights = myFixture.doHighlighting()
-        
+
         val errors = highlights.filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
         val singleQuoteError = errors.find { it.description?.contains("single quotes can only contain one character") == true }
         assertNotNull("Should report invalid single-quote string. Got: ${errors.map { it.description }}", singleQuoteError)

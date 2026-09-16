@@ -8,6 +8,15 @@ import com.intellij.psi.PsiElement;
 public interface CrystalProcLiteral extends PsiElement {
 
   @Nullable
+  CrystalClassVarAccess getClassVarAccess();
+
+  @Nullable
+  CrystalInstanceVarAccess getInstanceVarAccess();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @Nullable
   CrystalParameterList getParameterList();
 
   @Nullable

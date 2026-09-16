@@ -1,10 +1,12 @@
 package io.github.unurgunite.crystal.project
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CrystalDirectoryProjectGeneratorTest {
-
     @Test
     fun testProjectSettingsDefaults() {
         val settings = CrystalProjectSettings()
@@ -27,5 +29,45 @@ class CrystalDirectoryProjectGeneratorTest {
         val settings = peer.getSettings()
         assertEquals("app", settings.projectType)
         assertEquals("", settings.crystalPath)
+    }
+
+    @Test
+    fun testResolveCrystalPathPrefersExplicitSetting() {
+        assertEquals(
+            "/custom/crystal",
+            CrystalDirectoryProjectGenerator.resolveCrystalPath(
+                CrystalProjectSettings(projectType = "app", crystalPath = "/custom/crystal"),
+            ),
+        )
+    }
+
+    @Test
+    fun testResolveCrystalPathFallsBackToDetector() {
+        val resolved =
+            CrystalDirectoryProjectGenerator.resolveCrystalPath(
+                CrystalProjectSettings(projectType = "app", crystalPath = ""),
+            )
+        assertTrue("Fallback must be non-blank, got: '$resolved'", resolved.isNotBlank())
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesBothMissing() {
+        val additions = CrystalDirectoryProjectGenerator.missingGitignoreEntries("*.cr\n")
+        assertTrue(".idea/" in additions)
+        assertTrue("*.iml" in additions)
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesPartial() {
+        val additions = CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.cr\n")
+        assertFalse(".idea/" in additions.replace("*.iml", ""))
+        assertTrue("*.iml" in additions)
+    }
+
+    @Test
+    fun testMissingGitignoreEntriesNoneMissing() {
+        assertTrue(
+            CrystalDirectoryProjectGenerator.missingGitignoreEntries(".idea/\n*.iml\n").isBlank(),
+        )
     }
 }

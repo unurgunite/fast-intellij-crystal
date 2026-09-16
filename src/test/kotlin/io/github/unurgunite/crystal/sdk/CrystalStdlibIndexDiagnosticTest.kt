@@ -2,8 +2,8 @@ package io.github.unurgunite.crystal.sdk
 
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.psi.CrystalNamespaceReference
-import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.references.CrystalNamespaceReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 
 /**
  * Regression tests for stdlib Go to Definition.
@@ -15,7 +15,6 @@ import io.github.unurgunite.crystal.psi.CrystalReference
  * [CrystalNamespaceReference], which is what these tests exercise.
  */
 class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
-
     override fun getTestDataPath(): String = "src/test/testData"
 
     override fun setUp() {
@@ -25,7 +24,8 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
         // of the test so constants/classes (DEFAULT_CREATE_PERMISSIONS, Math::PI,
         // File) resolve into the real stdlib.
         io.github.unurgunite.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)?.path?.let {
-            com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess.allowRootAccess(testRootDisposable, it)
+            com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
+                .allowRootAccess(testRootDisposable, it)
         }
     }
 
@@ -34,7 +34,9 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
     }
 
     fun testStdlibPathResolves() {
-        val path = io.github.unurgunite.crystal.sdk.CrystalStdlibResolver.resolveStdlibPath(project)
+        val path =
+            io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
+                .resolveStdlibPath(project)
         assertNotNull("Stdlib path should resolve", path)
     }
 
@@ -43,18 +45,19 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
         myFixture.configureByText("test.cr", "x : String\ny = File.new")
         val allRefs = PsiTreeUtil.collectElements(myFixture.file) { it.reference is CrystalReference }
         for ((name, expectedFile) in listOf("String" to "string.cr", "File" to "file.cr")) {
-            val ref = allRefs.firstOrNull { it.text == name }
-                ?: throw AssertionError("Expected a CrystalReference named '$name'")
+            val ref =
+                allRefs.firstOrNull { it.text == name }
+                    ?: throw AssertionError("Expected a CrystalReference named '$name'")
             val resolved = (ref.reference as CrystalReference).resolve()
             assertNotNull("Stdlib '$name' should resolve to a definition", resolved)
             val path = resolved!!.containingFile.virtualFile.path
             assertTrue(
                 "Stdlib '$name' should resolve into the Crystal stdlib, not the project",
-                path.contains("share/crystal/src")
+                path.contains("share/crystal/src"),
             )
             assertTrue(
                 "Stdlib '$name' should resolve to its canonical file $expectedFile, got: $path",
-                path.endsWith("/$expectedFile")
+                path.endsWith("/$expectedFile"),
             )
         }
     }
@@ -65,8 +68,9 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
         setupProject()
         myFixture.configureByText("test.cr", "x = DEFAULT_CREATE_PERMISSIO<caret>NS")
         val allRefs = PsiTreeUtil.collectElements(myFixture.file) { it.reference is CrystalReference }
-        val ref = allRefs.firstOrNull { it.text == "DEFAULT_CREATE_PERMISSIONS" }
-            ?: throw AssertionError("Expected a CrystalReference named 'DEFAULT_CREATE_PERMISSIONS'")
+        val ref =
+            allRefs.firstOrNull { it.text == "DEFAULT_CREATE_PERMISSIONS" }
+                ?: throw AssertionError("Expected a CrystalReference named 'DEFAULT_CREATE_PERMISSIONS'")
         val resolved = (ref.reference as CrystalReference).resolve()
         assertNotNull("DEFAULT_CREATE_PERMISSIONS should resolve to a stdlib definition", resolved)
         val path = resolved!!.containingFile.virtualFile.path
@@ -80,8 +84,9 @@ class CrystalStdlibIndexDiagnosticTest : BasePlatformTestCase() {
         myFixture.configureByText("test.cr", "x = Math::PI")
         val allRefs = PsiTreeUtil.collectElements(myFixture.file) { it.reference is CrystalNamespaceReference }
         assertTrue("Expected a CrystalNamespaceReference for Math::PI", allRefs.isNotEmpty())
-        val piRef = allRefs.firstOrNull { it.text.contains("PI") }
-            ?: throw AssertionError("Expected the ::PI namespace reference")
+        val piRef =
+            allRefs.firstOrNull { it.text.contains("PI") }
+                ?: throw AssertionError("Expected the ::PI namespace reference")
         val resolved = (piRef.reference as CrystalNamespaceReference).resolve()
         assertNotNull("Math::PI should resolve to its stdlib definition", resolved)
         val path = resolved!!.containingFile.virtualFile.path

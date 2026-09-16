@@ -45,6 +45,12 @@ public class CrystalMethodDefinitionImpl extends CrystalStubbedMethodDefinitionI
   }
 
   @Override
+  @NotNull
+  public List<CrystalMethodVariantHeader> getMethodVariantHeaderList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMethodVariantHeader.class);
+  }
+
+  @Override
   @Nullable
   public CrystalParameterList getParameterList() {
     return PsiTreeUtil.getChildOfType(this, CrystalParameterList.class);

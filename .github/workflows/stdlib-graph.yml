@@ -1,0 +1,84 @@
+name: Stdlib Graph
+
+# Rebuilds the whole-stdlib resolution graph (stdlib-graph/index.html) and
+# publishes it to GitHub Pages. Runs on master pushes and on demand.
+# NOTE: first deploy requires enabling Pages once in repo settings
+# (Settings → Pages → Source: "GitHub Actions").
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+concurrency:
+  group: stdlib-graph-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CRYSTAL_VERSION: 1.21.0
+  JAVA_VERSION: 21
+
+jobs:
+  build-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ env.CRYSTAL_VERSION }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build stdlib graph
+        run: ./gradlew stdlibParseErrors stdlibBuildGraph stdlibStructure
+
+      - name: Assemble Pages site
+        # index.html is self-contained (data inlined, no external fetches);
+        # ship it plus the human-readable summaries only — the multi-MB
+        # *.jsonl/*.json dumps stay local (runnable via the same tasks).
+        run: |
+          mkdir -p site
+          cp stdlib-graph/index.html site/
+          cp stdlib-graph/*_summary.txt stdlib-graph/parse_errors.tsv site/
+          ls -la site/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/
+
+  deploy:
+    needs: build-graph
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

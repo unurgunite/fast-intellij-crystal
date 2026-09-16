@@ -6,10 +6,10 @@ import com.intellij.ide.wizard.language.LanguageGeneratorNewProjectWizard
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.ui.components.JBRadioButton
@@ -21,18 +21,16 @@ import javax.swing.ButtonGroup
 import javax.swing.Icon
 
 class CrystalNewProjectWizard : LanguageGeneratorNewProjectWizard {
-
     override val icon: Icon = CrystalIcons.FILE
     override val name: String = "Crystal"
     override val ordinal: Int = 500
 
-    override fun createStep(parent: NewProjectWizardStep): NewProjectWizardStep {
-        return CrystalNewProjectStep(parent)
-    }
+    override fun createStep(parent: NewProjectWizardStep): NewProjectWizardStep = CrystalNewProjectStep(parent)
 }
 
-class CrystalNewProjectStep(parent: NewProjectWizardStep) : AbstractNewProjectWizardStep(parent) {
-
+class CrystalNewProjectStep(
+    parent: NewProjectWizardStep,
+) : AbstractNewProjectWizardStep(parent) {
     private val appRadio = JBRadioButton("Application", true)
     private val libRadio = JBRadioButton("Library", false)
     private val crystalPathField = TextFieldWithBrowseButton()
@@ -44,10 +42,11 @@ class CrystalNewProjectStep(parent: NewProjectWizardStep) : AbstractNewProjectWi
 
         crystalPathField.addBrowseFolderListener(
             TextBrowseFolderListener(
-                FileChooserDescriptorFactory.singleFile()
+                FileChooserDescriptorFactory
+                    .singleFile()
                     .withTitle("Select Crystal Executable")
-                    .withDescription("Path to the Crystal compiler executable")
-            )
+                    .withDescription("Path to the Crystal compiler executable"),
+            ),
         )
 
         val detected = CrystalSdkDetector.detect()
@@ -89,9 +88,10 @@ class CrystalNewProjectStep(parent: NewProjectWizardStep) : AbstractNewProjectWi
 
     override fun setupProject(project: Project) {
         val projectType = if (appRadio.isSelected) "app" else "lib"
-        val crystalPath = crystalPathField.text.ifBlank {
-            CrystalSdkDetector.detect() ?: "crystal"
-        }
+        val crystalPath =
+            crystalPathField.text.ifBlank {
+                CrystalSdkDetector.detect() ?: "crystal"
+            }
 
         // Save crystal path to settings
         if (crystalPathField.text.isNotBlank()) {
@@ -112,10 +112,11 @@ class CrystalNewProjectStep(parent: NewProjectWizardStep) : AbstractNewProjectWi
         // Run crystal init on background thread, then refresh VFS
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
-                val process = ProcessBuilder(crystalPath, "init", projectType, projectName)
-                    .directory(java.io.File(basePath).parentFile)
-                    .redirectErrorStream(true)
-                    .start()
+                val process =
+                    ProcessBuilder(crystalPath, "init", projectType, projectName)
+                        .directory(java.io.File(basePath).parentFile)
+                        .redirectErrorStream(true)
+                        .start()
                 process.inputStream.bufferedReader().readText()
                 process.waitFor()
 
@@ -123,10 +124,11 @@ class CrystalNewProjectStep(parent: NewProjectWizardStep) : AbstractNewProjectWi
                 val gitignore = java.io.File(basePath, ".gitignore")
                 if (gitignore.exists()) {
                     val content = gitignore.readText()
-                    val additions = buildString {
-                        if (!content.contains(".idea/")) appendLine(".idea/")
-                        if (!content.contains("*.iml")) appendLine("*.iml")
-                    }
+                    val additions =
+                        buildString {
+                            if (!content.contains(".idea/")) appendLine(".idea/")
+                            if (!content.contains("*.iml")) appendLine("*.iml")
+                        }
                     if (additions.isNotBlank()) {
                         gitignore.appendText("\n# IDE\n$additions")
                     }

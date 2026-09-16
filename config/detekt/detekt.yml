@@ -1,0 +1,22 @@
+# Minimal detekt config. Default rule set applies on top (see build.gradle.kts:
+# `buildUponDefaultConfig = true`). Only two rules deviate from detekt defaults,
+# both aligned with ktlint (spotless) so the two linters never contradict:
+# - ReturnCount max 5 (detekt default 2 fights idiomatic guard-clause Kotlin)
+# - MaxLineLength 140 (ktlint's limit; verified by probe)
+style:
+  ReturnCount:
+    active: true
+    max: 5
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+
+complexity:
+  CyclomaticComplexMethod:
+    active: true
+
+empty-blocks:
+  EmptyFunctionBlock:
+    active: true
+    # Platform listener/property overrides must exist but are intentionally empty.
+    ignoreOverridden: true

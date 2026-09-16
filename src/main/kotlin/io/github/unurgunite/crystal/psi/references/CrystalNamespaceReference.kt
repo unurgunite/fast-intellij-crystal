@@ -1,0 +1,159 @@
+package io.github.unurgunite.crystal.psi.references
+
+import com.intellij.lang.ASTNode
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiReferenceBase
+import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.stubs.StubIndex
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+
+/**
+ * Reference from a `namespace_access` element (e.g. `::Unterklasse` in `Oberklasse::Unterklasse`)
+ * to the class/module/struct/enum definition.
+ *
+ * Reconstructs the full namespace path by walking left through prevSibling elements:
+ * - `Oberklasse::Unterklasse` → looks up `"Oberklasse::Unterklasse"` then falls back to `"Unterklasse"`
+ * - `A::B::C` → looks up `"A::B::C"` then falls back to `"C"`
+ * - `::Foo` → looks up `"Foo"` (no preceding namespace part)
+ *
+ * The fallback to the simple name handles lexically-nested classes (e.g. `class A; class B; end; end`)
+ * where `CrystalClassIndex` is keyed by the simple name `"B"`, not the full path.
+ */
+class CrystalNamespaceReference(
+    element: PsiElement,
+    private val simpleName: String,
+    rangeStart: Int,
+    rangeLength: Int,
+) : PsiReferenceBase<PsiElement>(element, TextRange(rangeStart, rangeStart + rangeLength), true) {
+    override fun resolve(): PsiElement? {
+        val project = element.project
+        val scope = GlobalSearchScope.allScope(project)
+        val fullName = buildFullName()
+
+        // 1. Try full path first (for namespace-defined classes: `class A::B`)
+        val byFullName =
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                fullName,
+                project,
+                scope,
+                CrystalNamedElement::class.java,
+            )
+        if (byFullName.isNotEmpty()) return byFullName.first()
+
+        // 2. Fall back to filtered simple-name lookup (for lexically-nested classes).
+        //    Filter by qualified name to disambiguate: Foo::Sub vs Bar::Sub.
+        if (fullName != simpleName) {
+            val candidates =
+                StubIndex.getElements(
+                    CrystalClassIndex.KEY,
+                    simpleName,
+                    project,
+                    scope,
+                    CrystalNamedElement::class.java,
+                )
+            val filtered =
+                candidates
+                    .filter { candidate ->
+                        CrystalPsiUtils.buildQualifiedName(candidate) == fullName
+                    }.firstOrNull()
+            if (filtered != null) return filtered
+        }
+
+        // 3. Simple name only (e.g., `::Foo` — no preceding path)
+        val simple =
+            StubIndex
+                .getElements(
+                    CrystalClassIndex.KEY,
+                    simpleName,
+                    project,
+                    scope,
+                    CrystalNamedElement::class.java,
+                ).firstOrNull()
+        if (simple != null) return simple
+
+        // 4. Stdlib fallback. Constants (e.g. `Crystal::VERSION`) and macros are not in
+        //    the StubIndex (their roots live under an internal SyntheticLibrary scope), so
+        //    fall back to the cached stdlib scan. Prefer the full qualified name, then the
+        //    simple name (matches the class-index fallback above).
+        val stdlibFull = CrystalReference.resolveStdlibSymbol(project, fullName)
+        if (stdlibFull != null) return stdlibFull
+        return CrystalReference.resolveStdlibSymbol(project, simpleName)
+    }
+
+    /**
+     * Walks left through prevSibling elements to reconstruct the full namespace path.
+     * Collects CONSTANT names from preceding [CrystalNamespaceAccess] and
+     * [CrystalVariableReference] elements, joining them with `::`.
+     *
+     * Example: for `A::B::C`, when called on the `::C` element, returns `"A::B::C"`.
+     */
+    private fun buildFullName(): String {
+        val parts = mutableListOf(simpleName)
+        var current: PsiElement? = element.prevSibling
+
+        while (current != null && collectNamespacePart(current, parts)) {
+            current = current.prevSibling
+        }
+
+        return parts.joinToString("::")
+    }
+
+    /**
+     * Collects one CONSTANT segment from [current] into [parts].
+     * Returns false at the path start (leading variable reference) or at any
+     * non-namespace element, ending the walk without a jump statement.
+     */
+    private fun collectNamespacePart(
+        current: PsiElement,
+        parts: MutableList<String>,
+    ): Boolean {
+        if (current is PsiWhiteSpace || current.node?.elementType == CrystalTypes.NEWLINE) return true
+        if (current is CrystalNamespaceAccess) {
+            // Another namespace_access — get its CONSTANT
+            current.node
+                .findChildByType(CrystalTypes.CONSTANT)
+                ?.text
+                ?.let { parts.add(0, it) }
+            return true
+        }
+        if (current is CrystalVariableReference) {
+            // The leading variable_reference — get its CONSTANT, then stop
+            current.node
+                .findChildByType(CrystalTypes.CONSTANT)
+                ?.text
+                ?.let { parts.add(0, it) }
+        }
+        return false
+    }
+
+    override fun handleElementRename(newElementName: String): PsiElement {
+        val constantNode = element.node.findChildByType(CrystalTypes.CONSTANT) ?: return element
+        val newLeaf = createLeafFromText(element.project, newElementName) ?: return element
+        constantNode.treeParent.replaceChild(constantNode, newLeaf)
+        return element
+    }
+
+    override fun getVariants(): Array<Any> = emptyArray()
+
+    companion object {
+        private fun createLeafFromText(
+            project: com.intellij.openapi.project.Project,
+            text: String,
+        ): ASTNode? {
+            val file =
+                PsiFileFactory
+                    .getInstance(project)
+                    .createFileFromText("dummy.cr", io.github.unurgunite.crystal.CrystalLanguage, text)
+            return file.firstChild?.node?.firstChildNode
+        }
+    }
+}

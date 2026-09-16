@@ -14,6 +14,9 @@ public interface CrystalCondition extends PsiElement {
   CrystalExpression getExpression();
 
   @Nullable
+  CrystalFreshVar getFreshVar();
+
+  @Nullable
   CrystalInstanceVarAccess getInstanceVarAccess();
 
   @Nullable

@@ -8,13 +8,16 @@ import com.intellij.psi.PsiElement;
 public interface CrystalExpression extends PsiElement {
 
   @NotNull
-  List<CrystalArgumentList> getArgumentListList();
+  List<CrystalArgument> getArgumentList();
 
   @NotNull
   List<CrystalArrayLiteral> getArrayLiteralList();
 
   @NotNull
   List<CrystalAsmExpression> getAsmExpressionList();
+
+  @NotNull
+  List<CrystalAssignment> getAssignmentList();
 
   @NotNull
   List<CrystalBareCommandExpression> getBareCommandExpressionList();
@@ -63,6 +66,9 @@ public interface CrystalExpression extends PsiElement {
 
   @NotNull
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
+
+  @NotNull
+  List<CrystalMacroArrayTail> getMacroArrayTailList();
 
   @NotNull
   List<CrystalMacroControl> getMacroControlList();

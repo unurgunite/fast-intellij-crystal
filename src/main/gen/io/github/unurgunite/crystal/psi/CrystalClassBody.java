@@ -8,6 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface CrystalClassBody extends PsiElement {
 
   @NotNull
+  List<CrystalAbstractMethodDefinition> getAbstractMethodDefinitionList();
+
+  @NotNull
   List<CrystalAliasDefinition> getAliasDefinitionList();
 
   @NotNull
@@ -29,10 +32,16 @@ public interface CrystalClassBody extends PsiElement {
   List<CrystalIncludeStatement> getIncludeStatementList();
 
   @NotNull
+  List<CrystalLibDefinition> getLibDefinitionList();
+
+  @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
   @NotNull
   List<CrystalMacroDefinition> getMacroDefinitionList();
+
+  @NotNull
+  List<CrystalMacroDefinitionOpen> getMacroDefinitionOpenList();
 
   @NotNull
   List<CrystalMethodDefinition> getMethodDefinitionList();

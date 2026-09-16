@@ -7,11 +7,14 @@ import com.intellij.psi.PsiElement;
 
 public interface CrystalYieldStatement extends PsiElement {
 
-  @Nullable
-  CrystalArgumentList getArgumentList();
+  @NotNull
+  List<CrystalArgument> getArgumentList();
 
   @Nullable
   CrystalBareArgumentList getBareArgumentList();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
 
   @Nullable
   CrystalPostfixModifier getPostfixModifier();

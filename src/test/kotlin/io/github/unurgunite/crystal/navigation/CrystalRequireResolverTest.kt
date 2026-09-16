@@ -7,17 +7,22 @@ import io.github.unurgunite.crystal.psi.CrystalRequireStatement
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 class CrystalRequireResolverTest : BasePlatformTestCase() {
-
     override fun setUp() {
         super.setUp()
-        CrystalStdlibResolver.resolveStdlibPath(project)?.path
+        CrystalStdlibResolver
+            .resolveStdlibPath(project)
+            ?.path
             ?.let { VfsRootAccess.allowRootAccess(testRootDisposable, it) }
     }
 
-    private fun requireTargets(code: String, path: String): List<String> {
+    private fun requireTargets(
+        code: String,
+        path: String,
+    ): List<String> {
         val file = myFixture.addFileToProject(path, code)
         val targets = PsiTreeUtil.findChildrenOfType(file, CrystalRequireStatement::class.java)
-        return targets.flatMap { CrystalRequireResolver.resolve(it, project) }
+        return targets
+            .flatMap { CrystalRequireResolver.resolve(it, project) }
             .map { it.virtualFile?.path ?: it.name }
     }
 
@@ -39,15 +44,19 @@ class CrystalRequireResolverTest : BasePlatformTestCase() {
         myFixture.addFileToProject("lib/colorize/src/colorize.cr", "module Colorize; end")
         val targets = requireTargets("require \"colorize\"\n", "src/main.cr")
         assertNotEmpty(targets)
-        assertTrue("expected lib/colorize/src/colorize.cr, got $targets",
-            targets.any { it.endsWith("lib/colorize/src/colorize.cr") })
+        assertTrue(
+            "expected lib/colorize/src/colorize.cr, got $targets",
+            targets.any { it.endsWith("lib/colorize/src/colorize.cr") },
+        )
     }
 
     fun testShardNestedRequire() {
         myFixture.addFileToProject("lib/ameba/src/ameba/cli.cr", "module Ameba::Cli; end")
         val targets = requireTargets("require \"ameba/cli\"\n", "src/main.cr")
         assertNotEmpty(targets)
-        assertTrue("expected lib/ameba/src/ameba/cli.cr, got $targets",
-            targets.any { it.endsWith("lib/ameba/src/ameba/cli.cr") })
+        assertTrue(
+            "expected lib/ameba/src/ameba/cli.cr, got $targets",
+            targets.any { it.endsWith("lib/ameba/src/ameba/cli.cr") },
+        )
     }
 }

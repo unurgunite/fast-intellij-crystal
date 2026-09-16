@@ -11,9 +11,21 @@ public interface CrystalEnumBody extends PsiElement {
   List<CrystalAnnotationUsage> getAnnotationUsageList();
 
   @NotNull
+  List<CrystalClassVarAccess> getClassVarAccessList();
+
+  @NotNull
   List<CrystalEnumConstant> getEnumConstantList();
 
   @NotNull
+  List<CrystalExpression> getExpressionList();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
   List<CrystalMethodDefinition> getMethodDefinitionList();
+
+  @NotNull
+  List<CrystalVisibilityModifier> getVisibilityModifierList();
 
 }

@@ -12,21 +12,31 @@ class CrystalRunConfigurationOptions : RunConfigurationOptions() {
 
     var filePath: String?
         get() = _filePath.getValue(this)
-        set(value) { _filePath.setValue(this, value) }
+        set(value) {
+            _filePath.setValue(this, value)
+        }
 
     var arguments: String?
         get() = _arguments.getValue(this)
-        set(value) { _arguments.setValue(this, value) }
+        set(value) {
+            _arguments.setValue(this, value)
+        }
 
     var workingDirectory: String?
         get() = _workingDirectory.getValue(this)
-        set(value) { _workingDirectory.setValue(this, value) }
+        set(value) {
+            _workingDirectory.setValue(this, value)
+        }
 
     var environmentVariables: String?
         get() = _environmentVariables.getValue(this)
-        set(value) { _environmentVariables.setValue(this, value) }
+        set(value) {
+            _environmentVariables.setValue(this, value)
+        }
 
     var crystalPath: String?
         get() = _crystalPath.getValue(this)
-        set(value) { _crystalPath.setValue(this, value) }
+        set(value) {
+            _crystalPath.setValue(this, value)
+        }
 }

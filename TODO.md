@@ -1,204 +1,131 @@
 # TODO — IntelliJ Crystal Plugin
 
-## Rename Refactoring — Follow-up Tasks
+Open work, ordered by priority. History lives in git, not here: when an item
+is done, collapse it into one line under `Done` and delete the details.
 
-The scope-aware rename infrastructure is in place (PsiNameIdentifierOwner on
-CrystalVariableReference, CrystalParameter, CrystalAssignment; resolve() promotion
-logic; CrystalRefactoringSupportProvider). These follow-up tasks complete the work:
+## Open
 
-- [x] **Fix resolveLocal() to find variable assignments** — now uses recursive
-  `findAssignmentWithName()` that walks sibling subtrees to find `CrystalAssignment`
-  composites. Stops at method/macro/class boundaries to prevent cross-scope resolution.
+### P1 — Lexer: `def %` operator methods break stdlib parsing (correctness)
 
-- [x] **Add rename tests for PsiNameIdentifierOwner composites** — 18 tests in
-  `CrystalRenamePsiNameIdentifierOwnerTest` covering CrystalParameter, CrystalAssignment,
-  CrystalVariableReference PsiNameIdentifierOwner implementation, resolve() promotion,
-  and resolveLocal() scope boundary behavior.
+In `Crystal.flex` the bare percent-literal rule `"%" [\(\[\{<|]` turns `%(...)`
+into `PERCENT_LITERAL_BEGIN`, so `def %(other)` (e.g. `struct Float`'s
+`modulo`/`remainder` delegation) never reaches the `PERCENT` operator-method-name
+token. This aborts parsing of everything after `struct Float` in `float.cr`, so
+`struct Float64` / `Float64::INFINITY` are never captured (and `float.cr` gets no
+semantic highlighting). Crystal itself supports BOTH `def %` (operator) and bare
+`%(...)` percent literals, disambiguating by parser context — our JFlex lexer needs
+the equivalent: track "expecting method name after DEF/MACRO" and emit `PERCENT`
+(not `PERCENT_LITERAL_BEGIN`) for `%`+delimiter in that state. Regression surface:
+164 bare `%(...)` percent literals in the stdlib must keep working.
 
-- [x] **Update rename spec** — documented resolveLocal() fix (section 7), updated test
-  matrix (section 9.2), added known limitations. See openspec/specs/rename-refactoring/spec.md.
+### P1 — Audit remaining stdlib parse breaks
 
-- [x] **Fix handleElementRename() for INSTANCE_VAR/CLASS_VAR** — CrystalReference,
-  CrystalInstanceVarReference, and all setName() mixins now handle @/@@ prefixed tokens
-  and ensure the prefix is preserved during rename.
+After the `def %` fix, re-run a full stdlib VFS walk and report per-file symbol
+counts; fix any other operator methods (`[]`, `[]?`, `==`, `<<`, etc.) or constructs
+that still abort file parsing.
 
-- [x] **Fix CrystalParameterMixin for instance var parameters** — getNameIdentifier()
-  now recognizes INSTANCE_VAR_ACCESS composites (e.g. `def initialize(@x : Int32)`).
+Status 2026-09-16 (wave 10 + stdlib-scan follow-ups, uncommitted on
+`feature/ci-infrastructure`): parse errors 85 → 2 files (2172 files);
+reference-graph resolved 83% → 94% (120700 refs: 106068 → 113531;
+unresolved 13618 → 1968 actionable). Text table now indexes visibility-prefixed
+defs/macros (`private macro interpret_check_args`), `fun` bindings
+(`LibC#strlen` + bare, alias-aware, def-beats-fun), type fields
+(`Point#x`, type-body-only), and enum member predicates (`Color#red?`,
+CamelCase → `crystalUnderscore`, ALL-CAPS included, alias members included);
+`getter?`/`property?`/`!`/`class_*` expand per the exact object/properties.cr
+matrix (predicate-only readers, `property?` writer, `!` triple); lone-`end`
+anchored balance (no phantom closes from strings/same-line `end`), `}` never
+pops type frames (`CONST = {` literals), `; end` one-liners net to zero;
+bare `CrystalReference` resolves macro calls via `CrystalMacroIndex`,
+DOT-calls resolve `fun`/fields/enum predicates (same-file libs; stdlib via
+text table; `Color::Red.red?` via enclosing enum, bare `Color.red?` stays
+unresolved — invalid Crystal). Harness marks `asm`/`w` noise; aggregate and
+structure tests share one live parse-error walk (order-independent, no
+stale-TSV flake). Structure: 6921 types, 22251 methods, 102712 calls (95953
+resolved, 1562 unresolved). Remaining unresolved is FFI noise by construction
+(`icmp`, libc `fun`, LLVM primitives), macro-generated names, regex-harness
+blind spots (bare `nil_if_read`/`control_nest`/`arena` vs real `?`/qualified
+defs), and 2 EOF-at-length parse artifacts proven pre-existing on the
+pre-wave-10 HEAD. Full suite 958 green, spotless green, detekt green
+(2.0.0-alpha.6, Gradle 9.6.1; non-method matchers extracted to file level,
+`crystalUnderscore` → `CrystalNameUtils`, scan key emission → `ScanKeys`).
+Test-suite trim: `StdlibGraphToolTest` (0 asserts, diagnostic dump) excluded
+from `test`, stays runnable via manual `stdlib*` tasks; `CrossFileGoto` (5),
+`SyntaxHighlighterFactory` (1), `NavigationItem` (3) merged into their
+neighbours and deleted; 4 `ProvidersTest` dups removed (pipeline coverage in
+`TypeAnnotationTest` strengthened instead); new `DotCallReceiverTest` (8),
+`LocalScopeResolveTest` (5), `StdlibFileResolveTest` (7), `crystalUnderscore`
+moved to `PsiUtilsTest` + 4 cases, union/depth `inferTypeList` tests (2).
+Wave-10 grammar details in `docs/reports/wave-10-grammar.md`.
+Docs restructure: `docs/specs/` holds living behavior only (10 specs +
+`README.md` index); test conventions → `docs/TESTING.md` (count fixed,
+suite/golden layout documented); waves → `docs/reports/` (marked historical);
+code-style decision → `docs/decision-log/`; ECR tutorial deleted, IDE sketch →
+`docs/proposals/` as UNIMPLEMENTED; stale plans rewritten to behavior
+(string-interp matrix, type-inference Implemented-vs-roadmap, find-usages
+split out of block-highlighting, hover/completion deduped); CONTRIBUTING no
+longer cites untracked `AGENTS.md`; BNF wave comments point at `reports/`.
+Architecture waves 0–3: `editor/` + rehomed root files; `psi/{references,
+stdlib,util}` + `navigation/{parameterinfo}` (+ivar merged into `psi/`);
+leaf `type/` kernel (inference, resolvers, `MethodLookup`, `RecordLookup`,
+`extractParameterName`); cycles dead (`completion↔inspections`,
+`psi↔completion`, `psi↔navigation`, `run↔debugger` via application service);
+`ARCHITECTURE.md` module map + dependency-direction invariant updated.
 
-### Instance Variable Rename — Remaining Issues
+### P2 — Implement Members
 
-The `@`/`@@` prefix is always preserved from the original token type. The user
-only types the bare name. The prefix is never changed during rename.
-
-| Scenario | User types | Result | Status |
-|----------|-----------|--------|--------|
-| `@var` → `foo` | `foo` | `@foo` | ✅ Works |
-| `@var` → `@foo` | `@foo` | `@foo` | ✅ Works |
-| `@@var` → `cool` | `cool` | `@@cool` | ✅ Works |
-| `@@var` → `@cool` | `@cool` | `@@cool` | ✅ Works |
-| `my_var` → `@my_var` | — | Not supported | N/A (different types) |
-| `@var` → `var` | — | Not supported | N/A (different types) |
-
-Type changes (`IDENTIFIER` ↔ `INSTANCE_VAR` ↔ `CLASS_VAR`) are intentionally
-not supported — they are fundamentally different variable types.
-
-### Root Cause Analysis
-
-~~The core problem is that `CrystalNamesValidator.isIdentifier()` uses a simple~~
-~~character check that rejects `@`-prefixed names.~~ **Fixed**: validator now
-accepts `@`/`@@`-prefixed identifiers.
-
-~~The remaining issues (token type changes when adding/removing `@`) are deep~~
-~~structural problems~~ **Fixed**: `createLeafFromText()` helper now properly walks
-the parsed PSI tree to find the correct leaf token, instead of using `firstChildNode`
-which returned wrapper composites (statement/expression_statement).
-
-**Fixed**: All `setName()` and `handleElementRename()` methods now always strip
-any `@`/`@@` prefix from the user input and re-apply it from the original token
-type. This ensures consistent behavior regardless of what the user types.
-
-## Type Inference (Issue #1)
-
-- [x] **Extend CrystalTypeInference for literal assignments** — currently only
-  handles `Klasse.new`, `Klasse.method`, bare method_call. Add inference for
-  literal assignments (`x = "hello"` → String, `x = 1` → Int32, `x = :sym` → Symbol).
-- [x] **Add array/hash/named-tuple literal inference** — `x = [1, 2]` → Array(Int32)
-- [x] **Add control-flow union inference** — `x = cond ? 1 : nil` → Int32?
-- [x] **Union-aware dot-call resolution** — `CrystalTypeInference.inferTypeList` returns every
-  candidate type (union members + receiver-derived types); `CrystalDotCallReference`,
-  `CrystalCompletionContributor`, `CrystalExpressionTypeResolver`, and
-  `CrystalDocumentationProvider` resolve across all union members, so a union-typed
-  receiver (`x : Apfel | Banane`) resolves `x.foo` on each member. Receiver-method chains
-  (`x = obj.foo`) propagate the inferred receiver type.
-
-## Inlay Hints (Issue #2)
-
-- [ ] **Implement InlayHintsProvider** — show inferred types on variables inline
-  in the editor. Depends on type inference (Issue #1).
-
-## Crystal Shards (Issue #3)
-
-- [ ] **Parse shard.yml** — extract dependency declarations
-- [ ] **Index lib/ directory** — include shard sources in StubIndex
-- [ ] **Dependency-aware completion** — suggest types/methods from installed shards
-
-## Implement Members (Issue #5)
+Standard IDE expectation, moderate effort:
 
 - [ ] **Discover abstract methods** from parent classes/modules
 - [ ] **Generate implementing stubs** with correct method signatures
 - [ ] **Register OverrideImplement action** in plugin.xml
 
-## ParserTest Non-Determinism (environmental, NOT a grammar bug)
+### P3 — Inlay Hints
 
-`CrystalParserTest` golden-file tests are non-deterministic on this machine and
-**cannot be made green by editing the BNF**. Root cause confirmed by experiment:
+High visibility, moderate effort, inference already in place (literals,
+collections, unions):
 
-- A handful of fixtures (e.g. `ClassDefinition`, `SpecFile`, `ProcLiterals`,
-  `NestedStringInterpolation`, and under fixed method order `AbstractDef`,
-  `Generics`, `AliasUnion2`, `AliasUnion`, `AnnotationUsage`, `ImplicitObjectCallBlock`)
-  produce **different PSI trees between separate JVM launches**.
-- `pin=1`/`pin=2` on `proc_literal` made it *worse* (10 failures) → proves the
-  divergence is **not** an ambiguity in our grammar; it lives in grammar-kit /
-  IntelliJ-platform internals (lazy parser-table construction over a map whose
-  iteration order is seed-randomized on JDK 21).
-- `@Ignore` and `Assume.assumeTrue(false)` are **not honored** by the IntelliJ
-  Platform `BasePlatformTestCase` runner (they still count as failures / abort the
-  suite). Renaming the methods just exposes the *next* flaky test (rolling window),
-  because any parse after a "trigger" parse can diverge.
-- No fix available in this environment:
-  - `jdk.map.althashing.threshold=0` did not help.
-  - JDK 17 is not installed (only JDK 21) → downgrade impossible.
-  - grammar-kit `2024.x` is unavailable in the plugin repository (303 Not Found) →
-    upgrade impossible.
+- [ ] **Implement InlayHintsProvider** — show inferred types on variables inline
+  in the editor.
 
-**Decision:** leave `CrystalParserTest` as-is (matches `ideal-code`). The flaky
-subset is environmental. Real fixes require either JDK 17 for the test task or a
-newer grammar-kit. Do NOT chase these with BNF edits.
+### P4 — Crystal Shards support
 
-## Stdlib Parse Coverage (Go to Definition + Highlighting in stdlib)
+Large effort, needs index/scope design. Valuable, but correctness (P1) and
+standard IDE features (P2–P3) come first:
 
-Stdlib Go to Definition is served by a bounded VFS scan cache (CrystalReference /
-CrystalNamespaceReference) since stdlib roots live under an internal SyntheticLibrary
-scope that no GlobalSearchScope can query via StubIndex (and stdlib stub building is
-skipped to avoid CPU contention during first project open). Symbols are captured only
-for files that parse cleanly.
+- [ ] **Parse shard.yml** — extract dependency declarations
+- [ ] **Index lib/ directory** — include shard sources in StubIndex
+- [ ] **Dependency-aware completion** — suggest types/methods from installed shards
 
-- [ ] **Lexer: `def %` operator methods break stdlib parsing** — In
-  `Crystal.flex` the bare percent-literal rule `"%" [\(\[\{<|]` (line ~287) turns
-  `%(...)` into `PERCENT_LITERAL_BEGIN`, so `def %(other)` (e.g. `struct Float`'s
-  `modulo`/`remainder` delegation) never reaches the `PERCENT` operator-method-name
-  token. This aborts parsing of everything after `struct Float` in `float.cr`, so
-  `struct Float64` / `Float64::INFINITY` are never captured (and `float.cr` gets no
-  semantic highlighting). Crystal itself supports BOTH `def %` (operator) and bare
-  `%(...)` percent literals, disambiguating by parser context — our JFlex lexer needs
-  the equivalent: track "expecting method name after DEF/MACRO" and emit `PERCENT`
-  (not `PERCENT_LITERAL_BEGIN`) for `%`+delimiter in that state. Regression surface:
-  164 bare `%(...)` percent literals in the stdlib must keep working.
-- [ ] **Audit remaining stdlib parse breaks** — after the `def %` fix, re-run a full
-  stdlib VFS walk and report per-file symbol counts; fix any other operator methods
-  (`[]`, `[]?`, `==`, `<<`, etc.) or constructs that still abort file parsing.
-- [x] **Global HighlightErrorFilter scope fix** — `CrystalHighlightErrorFilter` was
-  registered globally and ran its Crystal-specific tree walk for every error element in
-  every file (incl. the Database plugin's `.groovy`), stalling "Analyzing project". Now
-  early-returns for non-Crystal files.
-- [x] **Background stdlib cache warmup** — `CrystalStdlibCacheWarmup` builds the stdlib
-  symbol cache after initial indexing so the first stdlib Ctrl+Click is instant instead
-  of blocking ~2 min on a one-time VFS scan.
-- [x] **Skip stdlib stub building** — `CrystalStubBuilder.isStdlibFile()` skips stdlib
-  files (their stubs are unretrievable anyway and the scan hogs CPU on first open).
+## Done
 
+- Scope-aware rename (35 tests in `CrystalRename{PsiNameIdentifierOwner,Resolve,BlockParameter}Test`;
+  `PsiNameIdentifierOwner` on variable references/parameters/assignments; resolve promotion;
+  `@`/`@@` prefix preserved; validator accepts prefixed identifiers).
+- Type inference: literals, array/hash/tuple shapes, control-flow unions;
+  union-aware dot-call resolution (`inferTypeList` across all members).
+- Stdlib Go to Definition via bounded VFS scan cache + background warmup
+  (`CrystalStdlibCacheWarmup`); platform default stub builder (hand-rolled lexer
+  stub builder removed — the platform never calls custom builders);
+  `CrystalHighlightErrorFilter` early-returns for non-Crystal files.
+- Parser performance: ternary triple-parse O(3^depth) → single alternative;
+  `def Type.name` PEG shadow fixed; whole-stdlib parse errors 509 → 136 files
+  with regression tests per sweep.
+- CI hygiene: `spotlessCheck` + `detekt` green (manual refactors, no threshold
+  tuning); large test classes split; parser goldens run non-blocking.
 
-## Stdlib Parse Coverage — Session Summary (2026-07-16)
+## Environment notes (not actionable, do not chase with code edits)
 
-Whole-stdlib parse errors reduced 509 → 226 files (~323 errors) via grammar fixes
-(see CHANGELOG [0.1.18] "Whole-stdlib parse coverage"). Parser regression tests added:
-`ShorthandBlockTypeCast`, `ConditionalAssignment`, `MacroSetter`, `VisibilityRecordEnum`,
-`SelfStarType`, plus regenerated `testPatternMatching`/`testAliasUnion` goldens.
-
-### Remaining buckets (aggregate, ~226 files)
-- `|` (31) — multi-alternative unions still deep-nested in some contexts (hit
-  GrammarKit `MAX_RECURSION_LEVEL`, a compile-time constant, cannot raise at runtime).
-- `do` (26) — mostly cascading from earlier errors in the same file.
-- `,` (20) / `(` (19) — remaining C-binding signatures / `fun` params / lib types.
-- `?` (16) / `struct` (16) — mostly `lib_c/*/c/winnt.cr` and Windows C-binding files
-  (`struct` keyword inside `lib` blocks); low priority, hard C-bindings.
-- `{{` (8) / `{%` (8) — macro interpolation / control still valid in a few contexts.
-- `next` / `||=` — a couple of operator/control forms.
-
-### Known hard limits (by design)
-- GrammarKit `MAX_RECURSION_LEVEL` (1000) is baked into the generated parser at
-  compile time; multi-alternative unions in deeply-nested defs/structs can still
-  exceed it. The flat `type_union_member` chain mitigates the common cases.
-- `def x` without `end` is only valid inside macro bodies (the closing `end` is
-  macro-generated); the grammar tolerates it by making the method body optional.
-
-### Misc parse fixes (second sweep, 2026-07-16)
-Whole-stdlib files-with-errors: 226 → 136 (~73% of the original 509 removed).
-New parser regression tests (consolidated): `RecordWithDoBlock`, `MultiValueReturnAndYield`, `PropertyGetterKeywordNames`, `ImplicitObjectCallBlock`, `TypeReceiverAndFunAlias`.
-`ReturnBare`, `YieldMulti`, `GetterParen`, `AmpBlock`, `CaseEqCall`, `TypeReceiverNew`,
-`FunExternalAlias`, `PointerMalloc`.
-
-### Remaining buckets (~136 files)
-- `|` (21) — multi-alt unions still hit GrammarKit `MAX_RECURSION_LEVEL` when deeply nested.
-- `struct` (16) — Windows C-binding `lib_c/*/c/winnt.cr` etc. (`struct` keyword in `lib` blocks).
-- `?` (15) — mixed (type `?` suffixes / symbol edge cases).
-- `do` (11) — `class_getter X : T do`, `yaml.mapping(...) do`, a few `.each do` call sites.
-- `(` (9) — `Hash(...).new` (type-as-receiver), `fun name = external(params)`, `Pointer(...).malloc`, `->(data) do` proc literal.
-- `{{`/`{%` (6/4) — macro interpolation/control in a few contexts.
-
-### Parser performance (fixed 2026-09-12 — was the 95-99% index stall)
-- **Ternary triple-parse (FIXED)** — `expression`/`bare_expression` had three
-  alternatives sharing the `or_expression`/`bare_or_expression` prefix, so PEG
-  parsed every expression node up to 3× (O(3^depth)). A 2.5KB hash-in-`do`-block-in-hash
-  file took 191s; now 94ms. Single-alternative with optional tail. Full index of
-  catalyst (522 `.cr` files) took 709s with 709/710 "very slow" responsiveness
-  samples before; re-measure after.
-- **`def Type.name` PEG shadow (FIXED)** — bare `CONSTANT` alternative matched before
-  `type_path DOT`, so `def Float64.new!(value) : Float64` broke (`float.cr` 1→0 errors).
-- **Residual: single zero-width error at `{` opening a large method-body hash**
-  (catalyst `formatters/json.cr`, also reproducible in isolation with a big
-  hash-in-`do`-block-in-hash shape; small hashes and both halves parse clean).
-  Deterministic, pre-existing on pristine grammar, parse now fast (~200ms).
-  Impact: one error node; surrounding definitions still indexed. Bisect with
-  `crystal tool format --check`-validated balanced fragments only — hand-cut
-  fragments with unbalanced `end`s produce misleading error positions.
+- `CrystalParserTest` golden files are non-deterministic on JDK 21 + grammar-kit
+  (lazy parser-table construction over seed-randomized map order; verified by
+  experiment — `pin` made it worse, JDK 17 unavailable, grammar-kit 2024.x not in
+  the plugin repo). CI runs them non-blocking. Real fix: JDK 17 for tests or newer
+  grammar-kit.
+- GrammarKit `MAX_RECURSION_LEVEL` (1000) is baked into the generated parser;
+  deeply-nested multi-alternative unions can still exceed it (flat
+  `type_union_member` chain mitigates the common cases).
+- `def x` without `end` is only valid inside macro bodies; the grammar tolerates it
+  via optional method body.
+- Residual: single zero-width error at `{` opening a very large method-body hash
+  (deterministic, pre-existing, fast). One error node; surrounding definitions
+  still indexed.
