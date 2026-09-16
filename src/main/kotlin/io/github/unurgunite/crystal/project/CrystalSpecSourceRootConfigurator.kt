@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.project
 
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService

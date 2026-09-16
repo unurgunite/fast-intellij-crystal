@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx

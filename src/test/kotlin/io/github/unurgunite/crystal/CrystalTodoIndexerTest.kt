@@ -4,6 +4,7 @@ import com.intellij.psi.impl.cache.impl.OccurrenceConsumer
 import com.intellij.psi.impl.cache.impl.id.IdDataConsumer
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.highlighting.CrystalTodoIndexer
 
 /**
  * Runs on BasePlatformTestCase (not a pure unit test): the filter lexer counts

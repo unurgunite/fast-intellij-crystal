@@ -1,6 +1,9 @@
 package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.editor.CrystalBraceMatcher
+import io.github.unurgunite.crystal.editor.CrystalCommenter
+import io.github.unurgunite.crystal.editor.CrystalFoldingBuilder
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import junit.framework.TestCase
 

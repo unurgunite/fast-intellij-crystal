@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 import com.intellij.codeInsight.editorActions.enter.EnterHandlerDelegate
 import com.intellij.openapi.editor.Document

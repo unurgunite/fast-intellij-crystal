@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 import com.intellij.codeInsight.highlighting.AbstractCodeBlockSupportHandler
 import com.intellij.psi.tree.IElementType

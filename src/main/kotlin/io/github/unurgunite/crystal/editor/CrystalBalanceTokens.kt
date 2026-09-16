@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 /**
  * Whole-document balance check for Enter handling: true when block openers

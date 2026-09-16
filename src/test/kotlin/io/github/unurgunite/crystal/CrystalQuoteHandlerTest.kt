@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal
 
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.editor.CrystalQuoteHandler
 
 class CrystalQuoteHandlerTest : BasePlatformTestCase() {
     private val handler = CrystalQuoteHandler()

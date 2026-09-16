@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal
 
+import io.github.unurgunite.crystal.editor.isWordChar
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -362,7 +362,7 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
 
     fun testInvalidSingleQuoteString() {
         myFixture.enableInspections(
-            io.github.unurgunite.crystal.highlighting
+            io.github.unurgunite.crystal.inspections
                 .CrystalSingleQuoteStringInspection(),
         )
         myFixture.configureByText("test.cr", "e = 'hello world'")

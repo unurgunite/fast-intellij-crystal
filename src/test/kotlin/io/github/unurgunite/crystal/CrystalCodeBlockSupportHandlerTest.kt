@@ -3,6 +3,7 @@ package io.github.unurgunite.crystal
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.editor.CrystalCodeBlockSupportHandler
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 class CrystalCodeBlockSupportHandlerTest : BasePlatformTestCase() {

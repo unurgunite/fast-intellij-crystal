@@ -243,19 +243,19 @@
 
         <lang.commenter
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalCommenter"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalCommenter"/>
 
         <lang.braceMatcher
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalBraceMatcher"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalBraceMatcher"/>
 
         <codeBlockSupportHandler
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalCodeBlockSupportHandler"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalCodeBlockSupportHandler"/>
 
         <lang.foldingBuilder
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalFoldingBuilder"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalFoldingBuilder"/>
 
         <lang.documentationProvider
                 language="Crystal"
@@ -266,13 +266,13 @@
 
         <lang.quoteHandler
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalQuoteHandler"/>
+                implementationClass="io.github.unurgunite.crystal.editor.CrystalQuoteHandler"/>
 
         <typedHandler
-                implementation="io.github.unurgunite.crystal.CrystalTypedHandler"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalTypedHandler"/>
 
         <enterHandlerDelegate
-                implementation="io.github.unurgunite.crystal.CrystalEnterHandler"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalEnterHandler"/>
 
         <annotator
                 language="Crystal"
@@ -333,7 +333,7 @@
                 shortName="CrystalSingleQuoteString"
                 enabledByDefault="true"
                 level="ERROR"
-                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalSingleQuoteStringInspection"/>
+                implementationClass="io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection"/>
 
         <localInspection
                 language="Crystal"
@@ -355,7 +355,7 @@
 
         <todoIndexer
                 filetype="Crystal"
-                implementationClass="io.github.unurgunite.crystal.CrystalTodoIndexer"/>
+                implementationClass="io.github.unurgunite.crystal.highlighting.CrystalTodoIndexer"/>
 
         <lang.psiStructureViewFactory
                 language="Crystal"
@@ -378,7 +378,7 @@
 
         <liveTemplateContext
                 contextId="CRYSTAL"
-                implementation="io.github.unurgunite.crystal.CrystalTemplateContextType"/>
+                implementation="io.github.unurgunite.crystal.editor.CrystalTemplateContextType"/>
 
         <formattingService
                 implementation="io.github.unurgunite.crystal.formatting.CrystalFormattingService"/>
@@ -460,11 +460,11 @@
                 implementation="io.github.unurgunite.crystal.CrystalIconProvider"/>
 
         <postStartupActivity
-                implementation="io.github.unurgunite.crystal.CrystalSpecSourceRootConfigurator"/>
+                implementation="io.github.unurgunite.crystal.project.CrystalSpecSourceRootConfigurator"/>
 
         <!-- Builds the stdlib symbol cache in the background after initial indexing -->
         <postStartupActivity
-                implementation="io.github.unurgunite.crystal.CrystalStdlibCacheWarmup"/>
+                implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibCacheWarmup"/>
 
         <!-- Crystal stdlib as indexed source library.
              NOTE: getAdditionalProjectLibraries must NOT read the workspace model

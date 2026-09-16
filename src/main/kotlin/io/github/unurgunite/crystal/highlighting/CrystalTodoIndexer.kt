@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.highlighting
 
 import com.intellij.lexer.Lexer
 import com.intellij.lexer.LexerPosition

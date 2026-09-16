@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.highlighting
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import junit.framework.TestCase
 

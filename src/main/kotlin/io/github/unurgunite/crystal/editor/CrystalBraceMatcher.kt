@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 import com.intellij.lang.BracePair
 import com.intellij.lang.PairedBraceMatcher

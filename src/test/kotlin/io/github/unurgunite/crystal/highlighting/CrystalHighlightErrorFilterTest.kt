@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal.highlighting
 
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection
 
 class CrystalHighlightErrorFilterTest : BasePlatformTestCase() {
     /**

@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal
+package io.github.unurgunite.crystal.editor
 
 /**
  * Block-opener detection for Enter handling: does a line end with a

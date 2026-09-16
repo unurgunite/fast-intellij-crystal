@@ -3,6 +3,7 @@ package io.github.unurgunite.crystal
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.project.CrystalSpecSourceRootConfigurator
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.jps.model.java.JavaSourceRootType
 

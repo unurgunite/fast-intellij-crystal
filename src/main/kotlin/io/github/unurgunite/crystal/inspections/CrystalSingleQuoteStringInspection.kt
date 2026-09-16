@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.highlighting
+package io.github.unurgunite.crystal.inspections
 
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder

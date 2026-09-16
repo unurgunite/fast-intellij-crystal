@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal
 
 import com.intellij.codeInsight.template.TemplateActionContext
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.editor.CrystalTemplateContextType
 
 class CrystalTemplateContextTypeTest : BasePlatformTestCase() {
     private val contextType = CrystalTemplateContextType()
