@@ -419,11 +419,11 @@
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.navigation.CrystalParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoHandler"/>
 
         <codeInsight.parameterInfo
                 language="Crystal"
-                implementationClass="io.github.unurgunite.crystal.navigation.CrystalAsmParameterInfoHandler"/>
+                implementationClass="io.github.unurgunite.crystal.navigation.parameterinfo.CrystalAsmParameterInfoHandler"/>
 
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodIndex"/>
