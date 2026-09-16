@@ -25,7 +25,6 @@ import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodBody
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex

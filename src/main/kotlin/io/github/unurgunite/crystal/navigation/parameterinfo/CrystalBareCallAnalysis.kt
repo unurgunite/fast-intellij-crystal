@@ -1,13 +1,13 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.isBlankSingleLineGap
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.isNameToken
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.prevMeaningfulLeaf
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.isBlankSingleLineGap
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.isNameToken
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.prevMeaningfulLeaf
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalTypes

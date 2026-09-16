@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.psi
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.references.CrystalLocalScopeResolve
 
 /**
  * Direct tests for [CrystalLocalScopeResolve] — the file-local half of bare

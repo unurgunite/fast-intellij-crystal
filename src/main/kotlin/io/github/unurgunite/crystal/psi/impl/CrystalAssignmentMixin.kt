@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin for CrystalAssignment PSI elements (e.g. `sas = Senf.new`, `x = 1`, `x += 1`).
@@ -48,9 +49,7 @@ abstract class CrystalAssignmentMixin(
                 CrystalTypes.CLASS_VAR -> "@@$bareName"
                 else -> bareName
             }
-        val newNode =
-            io.github.unurgunite.crystal.psi
-                .createLeafFromText(project, fixedName, tokenType) ?: return this
+        val newNode = createLeafFromText(project, fixedName, tokenType) ?: return this
         ident.node.treeParent.replaceChild(ident.node, newNode)
         return this
     }

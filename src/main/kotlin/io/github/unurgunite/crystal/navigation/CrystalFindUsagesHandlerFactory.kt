@@ -5,8 +5,8 @@ import com.intellij.find.findUsages.FindUsagesHandlerFactory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Factory for Crystal's Find Usages and Rename support for definition names.

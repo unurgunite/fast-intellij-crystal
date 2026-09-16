@@ -1,6 +1,9 @@
 package io.github.unurgunite.crystal.navigation
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoHandler
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoIndex
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoMethodName
 
 class CrystalParameterInfoIndexTest : BasePlatformTestCase() {
     private val handler = CrystalParameterInfoHandler()

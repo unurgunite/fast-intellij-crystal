@@ -2,6 +2,9 @@ package io.github.unurgunite.crystal.psi
 
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.util.CrystalNameUtils
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 class CrystalPsiUtilsTest : BasePlatformTestCase() {
     fun testIsTypeDefinition() {

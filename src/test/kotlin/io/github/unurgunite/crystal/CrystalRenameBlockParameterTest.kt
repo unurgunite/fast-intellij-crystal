@@ -3,8 +3,8 @@ package io.github.unurgunite.crystal
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.psi.CrystalParameter
-import io.github.unurgunite.crystal.psi.CrystalReference
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 
 /**
  * Tests for block-parameter rename and resolve, plus the default

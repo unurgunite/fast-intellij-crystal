@@ -1,11 +1,18 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.util.PsiTreeUtil
-import io.github.unurgunite.crystal.navigation.CrystalInstanceVarFinder
+import io.github.unurgunite.crystal.navigation.ivar.CrystalInstanceVarFinder
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
+import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
+import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
+import io.github.unurgunite.crystal.psi.CrystalStructDefinition
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Reference for instance variable (@name) and class variable (@@name) accesses.

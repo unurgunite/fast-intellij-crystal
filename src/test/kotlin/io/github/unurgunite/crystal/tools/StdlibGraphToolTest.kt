@@ -13,8 +13,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.CrystalLanguage
-import io.github.unurgunite.crystal.psi.CrystalReference
-import io.github.unurgunite.crystal.psi.SymbolLoc
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.util.ArrayDeque

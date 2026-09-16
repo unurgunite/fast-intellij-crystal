@@ -4,8 +4,8 @@ import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiReference
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
-import io.github.unurgunite.crystal.psi.CrystalDotCallReference
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.references.CrystalDotCallReference
 
 /**
  * Mixin for `dot_call_access` PSI elements (e.g. `.tanzen`, `.new(arg)`, `.method arg`).

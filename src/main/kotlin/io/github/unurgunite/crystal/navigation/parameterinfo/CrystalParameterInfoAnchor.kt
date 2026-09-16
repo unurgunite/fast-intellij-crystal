@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement

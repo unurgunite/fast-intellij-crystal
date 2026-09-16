@@ -7,7 +7,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * DOT-call completion: `CONSTANT.` (static methods + `new` fallbacks) and

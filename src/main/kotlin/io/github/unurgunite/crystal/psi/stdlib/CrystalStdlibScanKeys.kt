@@ -1,4 +1,6 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.stdlib
+
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
 
 /**
  * Symbol-table key registration for [CrystalStdlibTextScan]. Split out of the

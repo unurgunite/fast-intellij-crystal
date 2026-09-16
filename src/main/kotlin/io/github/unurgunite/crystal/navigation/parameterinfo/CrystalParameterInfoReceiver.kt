@@ -1,10 +1,10 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.isNameToken
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.prevMeaningfulLeaf
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.prevMeaningfulSibling
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.isNameToken
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.prevMeaningfulLeaf
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.prevMeaningfulSibling
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess

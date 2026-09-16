@@ -4,7 +4,7 @@ import com.intellij.lang.parameterInfo.CreateParameterInfoContext
 import com.intellij.lang.parameterInfo.ParameterInfoUIContext
 import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.navigation.CrystalAsmParameterInfoHandler
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalAsmParameterInfoHandler
 import io.github.unurgunite.crystal.psi.CrystalAsmExpression
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method

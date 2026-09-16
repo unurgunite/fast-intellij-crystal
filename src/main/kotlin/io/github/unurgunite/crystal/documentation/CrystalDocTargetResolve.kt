@@ -10,9 +10,9 @@ import io.github.unurgunite.crystal.psi.CrystalBareArgument
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 

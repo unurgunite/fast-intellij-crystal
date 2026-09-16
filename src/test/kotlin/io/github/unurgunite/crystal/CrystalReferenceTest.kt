@@ -11,10 +11,10 @@ import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
-import io.github.unurgunite.crystal.psi.CrystalReference
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypePath
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 /**

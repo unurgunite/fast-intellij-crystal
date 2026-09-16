@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.psi
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.util.CrystalDefinitionFinder
 
 class CrystalDefinitionFinderTest : BasePlatformTestCase() {
     fun testFindsClassByName() {

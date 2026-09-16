@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.ivar
 
 import com.intellij.psi.PsiElement
 

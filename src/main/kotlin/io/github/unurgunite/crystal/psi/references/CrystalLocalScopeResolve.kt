@@ -1,9 +1,15 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNameIdentifierOwner
+import io.github.unurgunite.crystal.psi.CrystalAssignment
+import io.github.unurgunite.crystal.psi.CrystalBlock
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Local-scope resolution for references: walks up the PSI tree (never crossing

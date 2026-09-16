@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.util.TextRange
@@ -8,6 +8,11 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 
 /**

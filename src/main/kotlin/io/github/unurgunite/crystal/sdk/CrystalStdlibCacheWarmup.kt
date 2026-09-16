@@ -3,7 +3,7 @@ package io.github.unurgunite.crystal.sdk
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
-import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 
 /**
  * Builds the stdlib symbol cache in the background after the initial indexing pass,

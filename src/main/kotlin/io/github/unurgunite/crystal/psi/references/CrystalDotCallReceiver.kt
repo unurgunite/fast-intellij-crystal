@@ -1,9 +1,13 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import io.github.unurgunite.crystal.completion.CrystalTypeInference
 import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver
+import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Receiver class name (for [CrystalMethodByClassIndex] lookup),

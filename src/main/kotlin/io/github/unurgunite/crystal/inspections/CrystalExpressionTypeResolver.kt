@@ -12,11 +12,11 @@ import io.github.unurgunite.crystal.psi.CrystalExpressionStatement
 import io.github.unurgunite.crystal.psi.CrystalGroupedExpression
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Resolves the type of a Crystal expression.

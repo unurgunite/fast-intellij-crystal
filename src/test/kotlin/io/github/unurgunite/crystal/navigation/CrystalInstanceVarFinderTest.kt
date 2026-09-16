@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.navigation
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.navigation.ivar.CrystalInstanceVarFinder
 
 class CrystalInstanceVarFinderTest : BasePlatformTestCase() {
     private fun contextAtCaret(): com.intellij.psi.PsiElement {

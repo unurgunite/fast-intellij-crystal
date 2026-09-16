@@ -6,9 +6,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiReference
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
-import io.github.unurgunite.crystal.psi.CrystalReference
 import io.github.unurgunite.crystal.psi.CrystalTypes
-import io.github.unurgunite.crystal.psi.createLeafFromText
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin classes for PSI elements that need Go to Definition support.

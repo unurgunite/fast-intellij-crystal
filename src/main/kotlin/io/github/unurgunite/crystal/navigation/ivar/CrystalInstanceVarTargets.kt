@@ -1,12 +1,12 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.ivar
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 import io.github.unurgunite.crystal.psi.CrystalPropertyDeclaration
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Class-body target collection for instance/class variables: property

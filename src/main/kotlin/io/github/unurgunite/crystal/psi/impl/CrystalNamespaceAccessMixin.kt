@@ -4,7 +4,7 @@ import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiReference
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
-import io.github.unurgunite.crystal.psi.CrystalNamespaceReference
+import io.github.unurgunite.crystal.psi.references.CrystalNamespaceReference
 
 /**
  * Mixin for `namespace_access` PSI elements (e.g. `::Unterklasse` in `Oberklasse::Unterklasse`).

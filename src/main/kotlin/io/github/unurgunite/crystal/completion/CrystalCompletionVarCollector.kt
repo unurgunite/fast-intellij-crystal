@@ -3,8 +3,8 @@ package io.github.unurgunite.crystal.completion
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * File-level `@instance` / `@@class` variable collection for completion.

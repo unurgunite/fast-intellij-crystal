@@ -1,6 +1,8 @@
 package io.github.unurgunite.crystal.psi
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
+import io.github.unurgunite.crystal.psi.stdlib.CrystalStdlibFileResolve
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 /**

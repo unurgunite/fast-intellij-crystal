@@ -1,7 +1,7 @@
 package io.github.unurgunite.crystal
 
-import io.github.unurgunite.crystal.psi.CrystalStdlibTextScan
-import io.github.unurgunite.crystal.psi.SymbolLoc
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
+import io.github.unurgunite.crystal.psi.stdlib.CrystalStdlibTextScan
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

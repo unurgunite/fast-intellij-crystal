@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.highlighting.CrystalSyntaxHighlighter
+import io.github.unurgunite.crystal.inspections.CrystalSingleQuoteStringInspection
 
 /**
  * Tests for CrystalAnnotator — semantic highlighting of type declarations,

@@ -10,8 +10,8 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.psi.CrystalReference
-import io.github.unurgunite.crystal.psi.SymbolLoc
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
 
 class StdlibReferenceGraphTest : BasePlatformTestCase() {
     override fun setUp() {

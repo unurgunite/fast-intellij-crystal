@@ -5,9 +5,10 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
-import io.github.unurgunite.crystal.psi.CrystalInstanceVarReference
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.references.CrystalInstanceVarReference
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin for class_var_access PSI elements (@@name).
@@ -23,9 +24,7 @@ abstract class CrystalClassVarAccessMixin(
         val identNode = node.findChildByType(CrystalTypes.CLASS_VAR) ?: return this
         val bareName = name.removePrefix("@").removePrefix("@")
         val fixedName = "@@$bareName"
-        val newNode =
-            io.github.unurgunite.crystal.psi
-                .createLeafFromText(project, fixedName, CrystalTypes.CLASS_VAR) ?: return this
+        val newNode = createLeafFromText(project, fixedName, CrystalTypes.CLASS_VAR) ?: return this
         identNode.treeParent.replaceChild(identNode, newNode)
         return this
     }

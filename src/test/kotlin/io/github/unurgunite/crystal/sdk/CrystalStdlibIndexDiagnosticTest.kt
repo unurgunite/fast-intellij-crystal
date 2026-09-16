@@ -2,8 +2,8 @@ package io.github.unurgunite.crystal.sdk
 
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.psi.CrystalNamespaceReference
-import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.references.CrystalNamespaceReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 
 /**
  * Regression tests for stdlib Go to Definition.

@@ -1,11 +1,11 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
-import io.github.unurgunite.crystal.navigation.CrystalBareCallScanner.MAX_BACKTRACK_TOKENS
+import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.MAX_BACKTRACK_TOKENS
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**

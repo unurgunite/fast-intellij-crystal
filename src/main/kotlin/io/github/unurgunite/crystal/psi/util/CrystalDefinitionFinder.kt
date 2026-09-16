@@ -1,9 +1,11 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.util
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 

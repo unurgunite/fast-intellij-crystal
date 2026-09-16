@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.stdlib
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
@@ -8,6 +8,11 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Precise per-file stdlib resolution: parses ONLY the file that conventionally

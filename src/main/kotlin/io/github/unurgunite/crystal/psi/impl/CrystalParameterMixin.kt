@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin for CrystalParameter PSI elements (e.g. `loud : Bool` in `def tanzen(loud : Bool)`).
@@ -57,9 +58,7 @@ abstract class CrystalParameterMixin(
                 CrystalTypes.CLASS_VAR -> "@@$bareName"
                 else -> bareName
             }
-        val newNode =
-            io.github.unurgunite.crystal.psi
-                .createLeafFromText(project, fixedName, tokenType) ?: return this
+        val newNode = createLeafFromText(project, fixedName, tokenType) ?: return this
         ident.node.treeParent.replaceChild(ident.node, newNode)
         return this
     }

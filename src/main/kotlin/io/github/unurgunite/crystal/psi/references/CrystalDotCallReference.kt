@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
@@ -9,6 +9,18 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
+import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
+import io.github.unurgunite.crystal.psi.CrystalFunDefinition
+import io.github.unurgunite.crystal.psi.CrystalLibDefinition
+import io.github.unurgunite.crystal.psi.CrystalLibField
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalPropertyDeclaration
+import io.github.unurgunite.crystal.psi.CrystalStatement
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalNameUtils
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex

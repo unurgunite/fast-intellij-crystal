@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.stubs.IStubElementType
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 import io.github.unurgunite.crystal.stubs.CrystalClassDefinitionStub
 import io.github.unurgunite.crystal.stubs.CrystalConstantAssignmentStub
 import io.github.unurgunite.crystal.stubs.CrystalEnumDefinitionStub
@@ -108,9 +109,7 @@ private fun setNameOnIdentifier(
             CrystalTypes.CLASS_VAR -> "@@$bareName"
             else -> bareName
         }
-    val newNode =
-        io.github.unurgunite.crystal.psi
-            .createLeafFromText(nameIdentifier.project, fixedName, tokenType) ?: return null
+    val newNode = createLeafFromText(nameIdentifier.project, fixedName, tokenType) ?: return null
     nameIdentifier.node.treeParent.replaceChild(nameIdentifier.node, newNode)
     return newNode.psi
 }

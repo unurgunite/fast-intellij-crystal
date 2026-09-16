@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.references
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
@@ -13,6 +13,19 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import io.github.unurgunite.crystal.CrystalFile
+import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
+import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
+import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.stdlib.CrystalStdlibFileResolve
+import io.github.unurgunite.crystal.psi.stdlib.CrystalStdlibTextScan
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalConstantIndex

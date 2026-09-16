@@ -2,8 +2,8 @@ package io.github.unurgunite.crystal.inspections
 
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.inspections.CrystalCallArguments.DotCallInfo
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * DOT-call shape scanning (`Receiver.method(args)` where the args holder is not

@@ -6,8 +6,8 @@ import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalClassDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalParameter
-import io.github.unurgunite.crystal.psi.CrystalReference
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 
 /**
  * Tests for CrystalReference.resolve() promotion and rename of locals,

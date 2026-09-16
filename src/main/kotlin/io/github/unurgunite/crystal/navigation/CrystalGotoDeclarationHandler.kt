@@ -8,6 +8,7 @@ import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
+import io.github.unurgunite.crystal.navigation.ivar.CrystalInstanceVarFinder
 import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition

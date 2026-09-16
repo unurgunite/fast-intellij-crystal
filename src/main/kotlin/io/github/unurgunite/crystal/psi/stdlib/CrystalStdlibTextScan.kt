@@ -1,9 +1,11 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.stdlib
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileVisitor
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
+import io.github.unurgunite.crystal.psi.util.CrystalNameUtils
 import java.util.ArrayDeque
 
 /**

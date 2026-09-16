@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.lang.parameterInfo.CreateParameterInfoContext
 import com.intellij.lang.parameterInfo.ParameterInfoHandler

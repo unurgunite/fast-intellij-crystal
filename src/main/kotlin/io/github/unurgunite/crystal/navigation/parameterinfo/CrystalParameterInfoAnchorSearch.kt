@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.navigation
+package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile

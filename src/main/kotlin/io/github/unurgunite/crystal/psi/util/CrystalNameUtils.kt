@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.util
 
 /**
  * String-shape helpers for Crystal names. Split out of [CrystalPsiUtils] (which

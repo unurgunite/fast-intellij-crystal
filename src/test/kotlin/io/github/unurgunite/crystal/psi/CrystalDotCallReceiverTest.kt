@@ -2,6 +2,8 @@ package io.github.unurgunite.crystal.psi
 
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.psi.references.CrystalDotCallReceiver
+import io.github.unurgunite.crystal.psi.references.ReceiverInfo
 
 /**
  * Direct tests for [CrystalDotCallReceiver] — the receiver half of DOT-call

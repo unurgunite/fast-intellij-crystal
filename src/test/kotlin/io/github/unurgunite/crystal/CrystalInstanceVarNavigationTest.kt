@@ -2,7 +2,7 @@ package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.navigation.CrystalGotoDeclarationHandler
-import io.github.unurgunite.crystal.navigation.CrystalInstanceVarFinder
+import io.github.unurgunite.crystal.navigation.ivar.CrystalInstanceVarFinder
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 import io.github.unurgunite.crystal.psi.CrystalTypes
 

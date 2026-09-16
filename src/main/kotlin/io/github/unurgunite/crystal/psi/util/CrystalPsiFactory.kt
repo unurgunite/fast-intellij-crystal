@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.psi
+package io.github.unurgunite.crystal.psi.util
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiFileFactory

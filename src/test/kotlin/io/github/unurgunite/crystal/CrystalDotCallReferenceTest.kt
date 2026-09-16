@@ -6,7 +6,9 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
-import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.references.CrystalDotCallReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.util.CrystalDefinitionFinder
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 /**

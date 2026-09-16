@@ -10,8 +10,8 @@ import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
  * Call-shape model shared by the argument-count and type-check inspections.
