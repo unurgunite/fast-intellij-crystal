@@ -18,6 +18,18 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   `crystalUnderscore` → new `CrystalNameUtils`; scan key emission
   (`addSymbol`/`addMethodSymbol`/`addGenKeys`/`directlyInType`/`parseDefSig`)
   → new `CrystalStdlibScanKeys`.
+- **Test-suite trim (945 → 958, all green)** — `StdlibGraphToolTest` (1072
+  lines, 0 asserts, diagnostic dump) excluded from `test`, stays runnable via
+  the manual `stdlibParseErrors`/`stdlibBuildGraph`/`stdlibStructure`/
+  `stdlibCheckFile` tasks; `CrystalCrossFileGotoTest` (5),
+  `CrystalSyntaxHighlighterFactoryTest` (1), `CrystalNavigationItemTest` (3)
+  merged into neighbouring files and deleted; 4 `CrystalProvidersTest` cases
+  duplicating the completion pipeline removed (pipeline assertions in
+  `CrystalCompletionTypeAnnotationTest` strengthened instead). New coverage
+  for previously indirect-only code: `CrystalDotCallReceiverTest` (8),
+  `CrystalLocalScopeResolveTest` (5), `CrystalStdlibFileResolveTest` (7),
+  `crystalUnderscore` moved to `CrystalPsiUtilsTest` (+4 edge cases), union
+  members + depth-budget `inferTypeList` tests (2).
 - **Stdlib parse breaks wave 10 (85 → 2 files, 2172 files)** — macro-heavy
   shapes, all verified legal with crystal 1.21.0: `**`/`<<`/`>>`/`//` in
   string interpolation (xml.cr); macro-split def signatures via

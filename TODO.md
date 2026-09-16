@@ -46,9 +46,16 @@ resolved, 1562 unresolved). Remaining unresolved is FFI noise by construction
 (`icmp`, libc `fun`, LLVM primitives), macro-generated names, regex-harness
 blind spots (bare `nil_if_read`/`control_nest`/`arena` vs real `?`/qualified
 defs), and 2 EOF-at-length parse artifacts proven pre-existing on the
-pre-wave-10 HEAD. Full suite 945 green, spotless green, detekt green
+pre-wave-10 HEAD. Full suite 958 green, spotless green, detekt green
 (2.0.0-alpha.6, Gradle 9.6.1; non-method matchers extracted to file level,
 `crystalUnderscore` → `CrystalNameUtils`, scan key emission → `ScanKeys`).
+Test-suite trim: `StdlibGraphToolTest` (0 asserts, diagnostic dump) excluded
+from `test`, stays runnable via manual `stdlib*` tasks; `CrossFileGoto` (5),
+`SyntaxHighlighterFactory` (1), `NavigationItem` (3) merged into their
+neighbours and deleted; 4 `ProvidersTest` dups removed (pipeline coverage in
+`TypeAnnotationTest` strengthened instead); new `DotCallReceiverTest` (8),
+`LocalScopeResolveTest` (5), `StdlibFileResolveTest` (7), `crystalUnderscore`
+moved to `PsiUtilsTest` + 4 cases, union/depth `inferTypeList` tests (2).
 Wave-10 grammar details in `docs/specs/wave-10-grammar.md`.
 
 ### P2 — Implement Members

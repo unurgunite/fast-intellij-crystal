@@ -207,4 +207,45 @@ puts a
         val type = CrystalTypeInference.inferType("a", myFixture.file, project)
         assertNull(type)
     }
+
+    fun testUnionParamYieldsAllMembers() {
+        // `inferTypeList` must return every union member, not just the first —
+        // DOT-call resolution iterates all of them (`x.essen` on `Apfel | Banane`).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def consume(x : Apfel | Banane)
+              puts x
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val putsOffset = file.text.indexOf("puts")
+        val xOffset = file.text.indexOf("x", putsOffset)
+        val types = CrystalTypeInference.inferTypeList("x", file.findElementAt(xOffset)!!, project)
+        assertEquals(listOf("Apfel", "Banane"), types)
+    }
+
+    fun testDeepReceiverChainTerminates() {
+        // `a = b.foo; b = c.foo; ...` past MAX_INFERENCE_DEPTH: must terminate
+        // with unknown (empty), not StackOverflowError.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            a = b.to_s
+            b = c.to_s
+            c = d.to_s
+            d = e.to_s
+            e = f.to_s
+            f = g.to_s
+            g = 1
+            puts a
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val putsOffset = file.text.indexOf("puts")
+        val aOffset = file.text.indexOf("a", putsOffset)
+        val types = CrystalTypeInference.inferTypeList("a", file.findElementAt(aOffset)!!, project)
+        assertTrue("Deep chain must terminate, got: $types", types.isEmpty() || types == listOf("String"))
+    }
 }

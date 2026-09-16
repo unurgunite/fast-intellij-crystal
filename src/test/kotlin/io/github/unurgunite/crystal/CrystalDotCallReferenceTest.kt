@@ -46,6 +46,21 @@ class CrystalDotCallReferenceTest : BasePlatformTestCase() {
         return dotCall.reference?.resolve()
     }
 
+    /** Same as [resolveAtCaret] but the definition lives in another project file (StubIndex path). */
+    private fun resolveCrossFileAtCaret(
+        defFile: String,
+        defCode: String,
+        usageCode: String,
+    ): PsiElement? {
+        myFixture.addFileToProject(defFile, defCode.trimIndent())
+        myFixture.configureByText("main.cr", usageCode.trimIndent())
+        val leaf = myFixture.file.findElementAt(myFixture.caretOffset) ?: return null
+        val dotCall =
+            PsiTreeUtil.getParentOfType(leaf, CrystalDotCallAccess::class.java, false)
+                ?: return null
+        return dotCall.reference?.resolve()
+    }
+
     // ==================== CONSTANT receiver (static class methods) ====================
 
     fun testStaticSelfMethodResolvesToDefinition() {
@@ -285,6 +300,59 @@ class CrystalDotCallReferenceTest : BasePlatformTestCase() {
         assertNotNull("\"hello\".upcase should resolve to String#upcase", resolved)
         val vfile = resolved!!.containingFile.virtualFile
         assertEquals("String#upcase should land in string.cr", "string.cr", vfile.name)
+    }
+
+    // ==================== cross-file (StubIndex path) ====================
+
+    fun testStaticSelfMethodResolvesAcrossFiles() {
+        val resolved =
+            resolveCrossFileAtCaret(
+                "apfel.cr",
+                """
+                class Apfel
+                  def self.tanzen
+                  end
+                end
+                """,
+                "Apfel.tan<caret>zen",
+            )
+        assertNotNull("Apfel.tanzen should resolve across files", resolved)
+        assertEquals("tanzen", (resolved as CrystalMethodDefinition).name)
+    }
+
+    fun testInstanceMethodResolvesAcrossFiles() {
+        val resolved =
+            resolveCrossFileAtCaret(
+                "apfel.cr",
+                """
+                class Apfel
+                  def essen
+                  end
+                end
+                """,
+                """
+                a = Apfel.new
+                a.es<caret>sen
+                """,
+            )
+        assertNotNull("a.essen should resolve across files", resolved)
+        assertEquals("essen", (resolved as CrystalMethodDefinition).name)
+    }
+
+    fun testModuleMethodResolvesAcrossFiles() {
+        val resolved =
+            resolveCrossFileAtCaret(
+                "utils.cr",
+                """
+                module Utils
+                  def self.helper
+                  end
+                end
+                """,
+                "Utils.hel<caret>per",
+            )
+        assertNotNull("Utils.helper should resolve across files", resolved)
+        assertEquals("helper", (resolved as CrystalMethodDefinition).name)
     }
 
     // ==================== .new constructor ====================

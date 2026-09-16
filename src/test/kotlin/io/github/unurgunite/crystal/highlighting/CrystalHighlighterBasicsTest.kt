@@ -142,3 +142,12 @@ class CrystalRegExpLanguageHostTest : BasePlatformTestCase() {
         assertTrue(host.supportsNamedGroupSyntax(group!!))
     }
 }
+
+class CrystalSyntaxHighlighterFactoryTest : BasePlatformTestCase() {
+    fun testCreatesHighlighter() {
+        val factory = CrystalSyntaxHighlighterFactory()
+        val highlighter = factory.getSyntaxHighlighter(project, null)
+        assertTrue(highlighter is CrystalSyntaxHighlighter)
+        assertNotNull(highlighter.highlightingLexer)
+    }
+}

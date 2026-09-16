@@ -320,6 +320,42 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         assertEquals("sahne", (resolved as CrystalMethodDefinition).name)
     }
 
+    // ==================== Cross-file (StubIndex path) ====================
+
+    fun testDirectCallResolvesToMethodInOtherFile() {
+        myFixture.addFileToProject(
+            "helpers.cr",
+            """
+            def greet
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.configureByText("main.cr", "greet")
+        val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
+        val greetRef = varRefs.find { it.text == "greet" }
+        assertNotNull("Should find greet variable reference", greetRef)
+        val resolved = findReference(greetRef!!)?.resolve()
+        assertNotNull("Should resolve greet across files", resolved)
+        assertTrue("Should be a method definition", resolved is CrystalMethodDefinition)
+    }
+
+    fun testClassReferenceResolvesAcrossFiles() {
+        myFixture.addFileToProject(
+            "models.cr",
+            """
+            class Apfel
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.configureByText("main.cr", "x = Apfel.new")
+        val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
+        val apfelRef = varRefs.find { it.text == "Apfel" }
+        assertNotNull("Should find Apfel variable reference", apfelRef)
+        val resolved = findReference(apfelRef!!)?.resolve()
+        assertNotNull("Should resolve Apfel class across files", resolved)
+        assertTrue("Should be a class definition", resolved is CrystalClassDefinition)
+    }
+
     // ==================== Constants ====================
 
     fun testConstantAssignmentIsNamedElement() {

@@ -164,6 +164,19 @@ end
         val last = accesses.last()
         assertEquals("Foo::Sub", CrystalPsiUtils.buildNamespacePath(last))
     }
+
+    fun testCrystalUnderscoreMatchesCompiler() {
+        // Verified against crystal 1.21.0 `String#underscore`.
+        assertEquals("dark_blue", CrystalNameUtils.crystalUnderscore("DarkBlue"))
+        assertEquals("io", CrystalNameUtils.crystalUnderscore("IO"))
+        assertEquals("u_int128x", CrystalNameUtils.crystalUnderscore("UInt128x"))
+        assertEquals("html_parser", CrystalNameUtils.crystalUnderscore("HTMLParser"))
+        assertEquals("io_error", CrystalNameUtils.crystalUnderscore("IOError"))
+        assertEquals("http_client", CrystalNameUtils.crystalUnderscore("HTTPClient"))
+        assertEquals("already_snake", CrystalNameUtils.crystalUnderscore("already_snake"))
+        assertEquals("a", CrystalNameUtils.crystalUnderscore("A"))
+        assertEquals("", CrystalNameUtils.crystalUnderscore(""))
+    }
 }
 
 class CrystalPsiFactoryTest : BasePlatformTestCase() {

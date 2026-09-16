@@ -1,6 +1,5 @@
 package io.github.unurgunite.crystal
 
-import io.github.unurgunite.crystal.psi.CrystalNameUtils
 import io.github.unurgunite.crystal.psi.CrystalStdlibTextScan
 import io.github.unurgunite.crystal.psi.SymbolLoc
 import org.junit.Assert.assertEquals
@@ -313,14 +312,8 @@ class CrystalStdlibTextScanTest {
         assertNull(symbols["Foo#red?"])
     }
 
-    @Test
-    fun `crystal underscore matches compiler`() {
-        assertEquals("dark_blue", CrystalNameUtils.crystalUnderscore("DarkBlue"))
-        assertEquals("io", CrystalNameUtils.crystalUnderscore("IO"))
-        assertEquals("u_int128x", CrystalNameUtils.crystalUnderscore("UInt128x"))
-        assertEquals("html_parser", CrystalNameUtils.crystalUnderscore("HTMLParser"))
-        assertEquals("io_error", CrystalNameUtils.crystalUnderscore("IOError"))
-    }
+    // NOTE: `crystalUnderscore` itself is covered in `CrystalPsiUtilsTest`
+    // (moved there with extra cases — the helper lives in `CrystalNameUtils`).
 
     @Test
     fun `question-marked getter generates predicate only`() {

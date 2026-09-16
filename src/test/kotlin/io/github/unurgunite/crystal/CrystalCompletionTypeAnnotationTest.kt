@@ -24,6 +24,9 @@ class CrystalCompletionTypeAnnotationTest : BasePlatformTestCase() {
         assertTrue("Should contain Int32", names.contains("Int32"))
         assertTrue("Should contain Array", names.contains("Array"))
         assertTrue("Should contain Bool", names.contains("Bool"))
+        assertTrue("Should contain Hash", names.contains("Hash"))
+        assertTrue("Should contain Nil", names.contains("Nil"))
+        assertTrue("Should contain Float64", names.contains("Float64"))
     }
 
     fun testTypeAnnotationFiltersByPrefix() {
@@ -216,6 +219,8 @@ class CrystalCompletionTypeAnnotationTest : BasePlatformTestCase() {
         assertTrue("Should contain Deprecated", names.contains("Deprecated"))
         assertTrue("Should contain JSON::Serializable", names.contains("JSON::Serializable"))
         assertTrue("Should contain Flags", names.contains("Flags"))
+        assertTrue("Should contain Link", names.contains("Link"))
+        assertTrue("Should contain YAML::Field", names.contains("YAML::Field"))
     }
 
     // ==================== Override method completion (def inside class) ====================

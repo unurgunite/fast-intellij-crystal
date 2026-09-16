@@ -126,4 +126,27 @@ end
         assertEquals(1, items.size)
         assertEquals("some_method", items[0].name)
     }
+
+    fun testNavigationItemPresentation() {
+        val file = myFixture.configureByText("test.cr", "class Foo\nend\n")
+        val def =
+            com.intellij.psi.util.PsiTreeUtil.findChildOfType(
+                file,
+                io.github.unurgunite.crystal.psi.CrystalClassDefinition::class.java,
+            )!!
+        val item = CrystalNavigationItem(CrystalSymbol("Foo", CrystalSymbolKind.CLASS, def))
+        assertEquals("Foo", item.name)
+        assertEquals("Foo", item.presentation.presentableText)
+        assertEquals("test.cr", item.presentation.locationString)
+        assertNotNull(item.presentation.getIcon(false))
+        assertTrue(item.canNavigate())
+        assertTrue(item.canNavigateToSource())
+    }
+
+    fun testSymbolKindsHaveLabels() {
+        for (kind in CrystalSymbolKind.values()) {
+            assertTrue(kind.label.isNotBlank())
+            assertNotNull(kind.icon)
+        }
+    }
 }

@@ -111,7 +111,11 @@ tasks {
     // CrystalParserTest golden files are environment-flaky (JDK 21 + grammar-kit,
     // see TODO.md "ParserTest Non-Determinism"). They are excluded from the default
     // ./gradlew test and run via ./gradlew test -PgoldenOnly=true instead
-    // (non-blocking CI step). The filter is set in doFirst so Test-task
+    // (non-blocking CI step). StdlibGraphToolTest is a diagnostic dump (println +
+    // stdlib-graph/ files, zero asserts), not a regression test — excluded from
+    // the suite as well; its 4 cases stay runnable via the manual stdlib* tasks
+    // below (stdlibParseErrors/stdlibBuildGraph/stdlibStructure/stdlibCheckFile).
+    // The filter is set in doFirst so Test-task
     // configuration stays lazy (keeps the configuration cache working); the flag
     // is read into a plain val so the closure captures no Project reference.
     val goldenOnly = providers.gradleProperty("goldenOnly").orNull == "true"
@@ -122,6 +126,7 @@ tasks {
                     includeTestsMatching("*CrystalParserTest*")
                 } else {
                     excludeTestsMatching("io.github.unurgunite.crystal.parser.CrystalParserTest")
+                    excludeTestsMatching("io.github.unurgunite.crystal.tools.StdlibGraphToolTest")
                 }
             }
         }
