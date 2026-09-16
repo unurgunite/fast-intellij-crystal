@@ -467,10 +467,6 @@
         <postStartupActivity
                 implementation="io.github.unurgunite.crystal.project.CrystalSpecSourceRootConfigurator"/>
 
-        <!-- Builds the stdlib symbol cache in the background after initial indexing -->
-        <postStartupActivity
-                implementation="io.github.unurgunite.crystal.sdk.CrystalStdlibCacheWarmup"/>
-
         <!-- Crystal stdlib as indexed source library.
              NOTE: getAdditionalProjectLibraries must NOT read the workspace model
              (ModuleManager/ModuleRootManager) — doing so re-enters the model under the

@@ -46,7 +46,7 @@ tokens): direct references → `CrystalReference`; `obj.method` → `CrystalDotC
 3. Stdlib: `CrystalStdlibFileResolve` parses only the conventional home file
    (`ClassName` → `class_name.cr`); else cached `SymbolLoc` table from
    `CrystalStdlibTextScan` (stdlib root only, materialized fresh each resolve).
-   Warmed post-startup by `CrystalStdlibCacheWarmup`.
+   Resolution is lazy and per-file, so there is no warmup step.
 
 ![Resolution pipeline](diagrams/resolution.svg)
 

@@ -53,8 +53,15 @@ object CrystalRequireResolver {
                 .getInstance(project)
                 .contentRoots
                 .toMutableList()
-        @Suppress("DEPRECATION")
-        project.baseDir?.let { if (!roots.contains(it)) roots.add(it) }
+        // `Project.baseDir` is deprecated; resolve the base path explicitly.
+        // `basePath` is a plain string (no model access), so this stays safe
+        // to call from anywhere `collectFromProjectRoots` runs.
+        project.basePath
+            ?.let {
+                com.intellij.openapi.vfs.LocalFileSystem
+                    .getInstance()
+                    .findFileByPath(it)
+            }?.let { if (!roots.contains(it)) roots.add(it) }
         for (root in roots) {
             collectCandidates(root, "src/$raw", candidates)
             collectCandidates(root, raw, candidates)

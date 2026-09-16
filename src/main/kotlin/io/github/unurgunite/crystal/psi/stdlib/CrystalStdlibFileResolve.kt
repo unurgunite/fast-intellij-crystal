@@ -1,6 +1,6 @@
 package io.github.unurgunite.crystal.psi.stdlib
 
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
@@ -53,13 +53,12 @@ internal object CrystalStdlibFileResolve {
         val file =
             VfsUtilCore
                 .findRelativeFile(relPath, root) ?: return null
-        @Suppress("DEPRECATION")
-        return ReadAction.compute<SymbolLoc?, Throwable> {
+        return runReadAction<SymbolLoc?> {
             val psi =
                 PsiManager
                     .getInstance(project)
-                    .findFile(file) ?: return@compute null
-            val off = findOffsetInPsi(psi, className, memberName) ?: return@compute null
+                    .findFile(file) ?: return@runReadAction null
+            val off = findOffsetInPsi(psi, className, memberName) ?: return@runReadAction null
             SymbolLoc(relPath, off)
         }
     }
@@ -134,16 +133,15 @@ internal object CrystalStdlibFileResolve {
         val file =
             VfsUtilCore
                 .findRelativeFile(loc.relPath, root) ?: return null
-        @Suppress("DEPRECATION")
-        return ReadAction.compute<PsiElement?, Throwable> {
+        return runReadAction<PsiElement?> {
             val psi =
                 PsiManager
                     .getInstance(project)
-                    .findFile(file) ?: return@compute null
-            val leaf = psi.findElementAt(loc.offset) ?: return@compute null
+                    .findFile(file) ?: return@runReadAction null
+            val leaf = psi.findElementAt(loc.offset) ?: return@runReadAction null
             if (leaf !is PsiNameIdentifierOwner) {
                 val p = leaf.parent
-                if (p is PsiNameIdentifierOwner) return@compute p
+                if (p is PsiNameIdentifierOwner) return@runReadAction p
             }
             leaf
         }

@@ -303,10 +303,6 @@ class CrystalReference(
             }
         }
 
-        /** No-op: resolution is lazy and per-file, so there is nothing to warm up. */
-        @Suppress("EmptyFunctionBlock")
-        fun warmStdlibCache() {}
-
         /** Expose the bounded stdlib text-symbol table (name → stable [SymbolLoc]) for the
          * reference-graph harness, so it can classify references without materializing PSI. */
         internal fun getStdlibSymbolTable(project: Project): Map<String, SymbolLoc> {

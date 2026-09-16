@@ -14,7 +14,6 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
         private val libCache = java.util.concurrent.ConcurrentHashMap<Project, CrystalStdlibLibrary>()
         private val lock = Any()
 
-        @Suppress("unused")
         internal fun clearCache() = libCache.clear()
     }
 
