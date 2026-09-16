@@ -2,6 +2,18 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **Docs follow the new package layout** — `README.md` Architecture section
+  names the `type/` kernel and `editor/` package; all five mermaid diagrams
+  re-rendered (`architecture` now shows the one-way `type/` ← consumers graph
+  and the `run/` → `debugger/` service edge; `completion`/`inspections`
+  nodes point at `type/` classes; `spec-run` shows the
+  `CrystalDebugStateFactory` service; stale warmup node removed from
+  `resolution`).
+
 ## [1.0.0] — 2026-09-13
 
 ### Fixed

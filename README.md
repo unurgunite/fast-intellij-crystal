@@ -273,6 +273,8 @@ To run a development IDE instance:
 Crystal.flex (JFlex)     →  Lexer (tokenization, highlighting)
 Crystal.bnf (GrammarKit) →  Parser (PSI tree, structure)
 Stubs                    →  StubIndex (project-wide search, Go to Definition)
+type/                    →  Type kernel (inference + resolvers; leaf for completion, inspections, navigation)
+editor/                  →  Editor behaviors (enter/brace/folding, commenter, typed)
 ```
 
 ![Package architecture](docs/diagrams/architecture.svg)

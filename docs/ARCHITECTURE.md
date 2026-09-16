@@ -13,7 +13,7 @@ diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` rendered — re-render with
 | `editor/` | Editor behaviors | `CrystalEnterHandler` (+`Blocks`/`Brackets`/`Heredoc`), `CrystalFoldingBuilder`, `CrystalBraceMatcher`, `CrystalCommenter`, `CrystalQuoteHandler`, `CrystalTypedHandler`, `CrystalCodeBlockSupportHandler` |
 | `lexer/` | JFlex tokenizer | `Crystal.flex`, `CrystalTokenTypes` |
 | `parser/` | GrammarKit PEG grammar | `Crystal.bnf` (output committed in `src/main/gen/`) |
-| `psi/` + `psi/references/` + `psi/stdlib/` + `psi/util/` | References, resolution, mixins | `CrystalReference`, `CrystalDotCallReference`/`CrystalDotCallReceiver`, `CrystalNamespaceReference`, `CrystalLocalScopeResolve`, `CrystalPsiUtils`, stdlib resolvers |
+| `psi/` + `psi/references/` + `psi/stdlib/` + `psi/util/` | References, resolution, mixins | `CrystalReference`, `CrystalDotCallReference`/`CrystalDotCallReceiver`, `CrystalNamespaceReference`, `CrystalLocalScopeResolve`, `CrystalInstanceVarFinder`, `CrystalPsiUtils`, stdlib resolvers |
 | `type/` | Type-system kernel (leaf: psi/stubs only) | `CrystalTypeInference`, `CrystalExpressionTypeResolver`, `CrystalMethodLookup`, `CrystalRecordLookup`, `CrystalTypeCompatibility`, call-shape model |
 | `stubs/` | Stub serialization + StubIndex | `CrystalClassIndex`, `CrystalMethodIndex`, `CrystalMethodByClassIndex`, `CrystalConstantIndex`, … |
 | `completion/` | Dispatch + lookup builders | `CrystalCompletionContributor` → `CrystalCompletionCases` → `CrystalDotCompletion`/`CrystalScopeCompletion`; `CrystalTypeHierarchy`, `CrystalLookupBuilders`, `CrystalCompletionHelper` |
@@ -23,7 +23,7 @@ diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` rendered — re-render with
 | `documentation/` | Hover + Ctrl+Q | `CrystalDocumentationProvider` + `CrystalDoc*` splits |
 | `run/` | Run configs + spec SMRunner | `CrystalRunConfiguration` (+`CrystalDebugStateFactory` interface), `CrystalSpecFileIndexer`, `CrystalTestEventsConverter` |
 | `debugger/` | LLDB-DAP | `CrystalDebugRunState`, `crystal-lldb` adapter, `CrystalDebuggerStateFactory` (application service) |
-| `structure/` `formatting/` `sdk/` `project/` `refactoring/` | Structure view, `crystal tool format`, SDK detect (+stdlib warmup), wizard (+spec root), rename | — |
+| `structure/` `formatting/` `sdk/` `project/` `refactoring/` | Structure view, `crystal tool format`, SDK detect, wizard (+spec root), rename | — |
 
 ![Package architecture](diagrams/architecture.svg)
 

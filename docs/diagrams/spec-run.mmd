@@ -16,5 +16,5 @@ flowchart TB
     Events --> Locator["CrystalTestLocator\nURL to PsiLocation\nclick-to-source + rerun"]
 
     Producer --> PlainRun["CrystalRunState\ncrystal run / build\nGeneralCommandLine"]
-    Producer --> DebugRun["CrystalDebugRunState\ncompile bin/name --debug\nDapLaunchArgumentsProvider"]
+    Producer --> DebugRun["CrystalDebugRunState\ncompile bin/name --debug\nvia CrystalDebugStateFactory service"]
     DebugRun --> DAP["crystal-lldb adapter\nlldb-dap process\nline + exception breakpoints"]

@@ -1,21 +1,21 @@
 flowchart TB
     Visitor["inspection visitors\ncall expressions +\ndetached args holders"]
-    Visitor --> DotScan["CrystalDotCallScan.detectDotCall\nDOT-call args without\ncall-expression parent"]
-    Visitor --> Shapes["CrystalCallArguments\nextractMethodName + extractArguments\nArgumentInfo + ambiguity guard"]
+    Visitor --> DotScan["type/CrystalDotCallScan.detectDotCall\nDOT-call args without\ncall-expression parent"]
+    Visitor --> Shapes["type/CrystalCallArguments\nextractMethodName + extractArguments\nArgumentInfo + ambiguity guard"]
 
-    Shapes --> Splat["CrystalSplatResolver\n*x to tuple count\n**o to named-tuple keys\nunresolvable to skip"]
+    Shapes --> Splat["type/CrystalSplatResolver\n*x to tuple count\n**o to named-tuple keys\nunresolvable to skip"]
     Splat --> Candidates["CrystalOverloadEvaluator\nMethodIndex candidates\nDOT: ByClassIndex +\ninitialize for .new"]
     Candidates --> RecordDivert{"record constructor?"}
-    RecordDivert -->|yes| RecordCheck["CrystalRecordArgumentCheck\nCrystalRecordTypeCheck\nrecord params beat initialize"]
+    RecordDivert -->|yes| RecordCheck["CrystalRecordArgumentCheck\nCrystalRecordTypeCheck\nrecord params beat initialize\n(via type/CrystalRecordLookup)"]
     RecordDivert -->|no| Arity["arity: best overload match\ndefaults + splats aware\nany accept silences error"]
 
-    Arity --> PerArg["per-arg types\nCrystalExpressionTypeResolver\nThreadLocal depth ≤ 16"]
+    Arity --> PerArg["per-arg types\ntype/CrystalExpressionTypeResolver\nThreadLocal depth ≤ 16"]
     PerArg --> Leaf["leaf: wrappers + tokens"]
-    Leaf --> Coll["CrystalCollectionTypeResolver\narray / hash / tuple"]
-    Coll --> Ctrl["CrystalControlFlowTypeResolver\nternary / branches / operators"]
-    Ctrl --> Calls["CrystalCallReturnTypeResolver\n.new > annotated returns"]
+    Leaf --> Coll["type/CrystalCollectionTypeResolver\narray / hash / tuple"]
+    Coll --> Ctrl["type/CrystalControlFlowTypeResolver\nternary / branches / operators"]
+    Ctrl --> Calls["type/CrystalCallReturnTypeResolver\n.new > annotated returns"]
 
-    Calls --> Compat["CrystalTypeCompatibility\nInt/UInt/Float alias expansion\nnilable + union split\nknown-builtin guard\nunsuffixed numeric autocast"]
+    Calls --> Compat["type/CrystalTypeCompatibility\nInt/UInt/Float alias expansion\nnilable + union split\nknown-builtin guard\nunsuffixed numeric autocast"]
     Compat --> Report{"all overloads reject?"}
     Report -->|yes| Error["GENERIC_ERROR on innermost\nliteral/expression"]
     Report -->|no| Silent["silent"]

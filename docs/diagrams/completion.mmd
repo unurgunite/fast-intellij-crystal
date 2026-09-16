@@ -13,18 +13,20 @@ flowchart TB
     PosCtx -->|free text| Scope["CrystalScopeCompletion"]
 
     DotStatic --> LookupBuild["CrystalLookupBuilders\nmethod PSI + (param : Type)\ntail + class/return text"]
-    DotInst --> Infer["CrystalTypeInference\ndepth ≤ 5"]
+    DotInst --> Infer["type/CrystalTypeInference\ndepth ≤ 5"]
     Infer --> LookupBuild
 
     Infer --> ParamAnn["param annotation"]
     ParamAnn --> AssignRHS["assignment RHS chain"]
-    AssignRHS --> Literal["CrystalLiteralTypeInference\nString/Char/Symbol/Bool/Nil\nnumbers, Array/Hash/Tuple"]
-    Literal --> RetType["CrystalMethodReturnTypeInference\nannotation > return stmts >\nlast expression"]
-    RetType --> ExprRes["CrystalExpressionTypeResolver"]
+    AssignRHS --> Literal["type/CrystalLiteralTypeInference\nString/Char/Symbol/Bool/Nil\nnumbers, Array/Hash/Tuple"]
+    Literal --> RetType["type/CrystalMethodReturnTypeInference\nannotation > return stmts >\nlast expression"]
+    RetType --> ExprRes["type/CrystalExpressionTypeResolver"]
 
-    DotStatic --> Hierarchy["CrystalTypeHierarchy\nfindTypeByName, current file first\nsuperclass + include walk\nimplicit Object"]
+    DotStatic --> Hierarchy["type/CrystalTypeHierarchy\nfindTypeByName, current file first\nsuperclass + include walk\nimplicit Object"]
     DotInst --> Hierarchy
     Hierarchy --> ByClassIdx["CrystalMethodByClassIndex\nown class first,\nancestors fading priority"]
+    Hierarchy --> MethodLookup["type/CrystalMethodLookup\ninitialize + enclosing class\nsignatures + record lookup"]
+    MethodLookup --> LookupBuild
     ByClassIdx --> LookupBuild
 
     Scope --> BlockParams["block params 120 >\nexplicit params 100 >\nfor-vars 90 > locals 50"]
