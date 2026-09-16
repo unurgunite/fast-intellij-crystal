@@ -26,24 +26,29 @@ that still abort file parsing.
 
 Status 2026-09-16 (wave 10 + stdlib-scan follow-ups, uncommitted on
 `feature/ci-infrastructure`): parse errors 85 → 2 files (2172 files);
-reference-graph resolved 83% → 94% (120700 refs: 106068 → 113493;
-unresolved 13618 → 2009 actionable). Text table now indexes visibility-prefixed
+reference-graph resolved 83% → 94% (120700 refs: 106068 → 113531;
+unresolved 13618 → 1968 actionable). Text table now indexes visibility-prefixed
 defs/macros (`private macro interpret_check_args`), `fun` bindings
 (`LibC#strlen` + bare, alias-aware, def-beats-fun), type fields
 (`Point#x`, type-body-only), and enum member predicates (`Color#red?`,
 CamelCase → `crystalUnderscore`, ALL-CAPS included, alias members included);
+`getter?`/`property?`/`!`/`class_*` expand per the exact object/properties.cr
+matrix (predicate-only readers, `property?` writer, `!` triple); lone-`end`
+anchored balance (no phantom closes from strings/same-line `end`), `}` never
+pops type frames (`CONST = {` literals), `; end` one-liners net to zero;
 bare `CrystalReference` resolves macro calls via `CrystalMacroIndex`,
 DOT-calls resolve `fun`/fields/enum predicates (same-file libs; stdlib via
 text table; `Color::Red.red?` via enclosing enum, bare `Color.red?` stays
 unresolved — invalid Crystal). Harness marks `asm`/`w` noise; aggregate and
 structure tests share one live parse-error walk (order-independent, no
-stale-TSV flake). Structure: 6921 types, 22251 methods, 102712 calls (95915
-resolved, 1603 unresolved). Remaining unresolved is FFI noise by construction
-(`icmp`, libc `fun`), macro-generated names, and 2 EOF-at-length parse
-artifacts proven pre-existing on the pre-wave-10 HEAD. Full suite 939
-green, spotless green (detekt fails identically on clean HEAD —
-environment issue, `PluginEnabler` init). Wave-10 grammar details in
-`docs/specs/wave-10-grammar.md`.
+stale-TSV flake). Structure: 6921 types, 22251 methods, 102712 calls (95953
+resolved, 1562 unresolved). Remaining unresolved is FFI noise by construction
+(`icmp`, libc `fun`, LLVM primitives), macro-generated names, regex-harness
+blind spots (bare `nil_if_read`/`control_nest`/`arena` vs real `?`/qualified
+defs), and 2 EOF-at-length parse artifacts proven pre-existing on the
+pre-wave-10 HEAD. Full suite 945 green, spotless green (detekt fails
+identically on clean HEAD — environment issue, `PluginEnabler` init).
+Wave-10 grammar details in `docs/specs/wave-10-grammar.md`.
 
 ### P2 — Implement Members
 

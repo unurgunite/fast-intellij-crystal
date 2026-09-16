@@ -321,4 +321,113 @@ class CrystalStdlibTextScanTest {
         assertEquals("html_parser", CrystalPsiUtils.crystalUnderscore("HTMLParser"))
         assertEquals("io_error", CrystalPsiUtils.crystalUnderscore("IOError"))
     }
+
+    @Test
+    fun `question-marked getter generates predicate only`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    struct Range
+                      getter? exclusive : Bool
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Range#exclusive?"])
+        assertNull(symbols["Range#exclusive"])
+    }
+
+    @Test
+    fun `question-marked property generates predicate and writer`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Parser
+                      property? wants_doc = false
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Parser#wants_doc?"])
+        assertNotNull(symbols["Parser#wants_doc="])
+        assertNull(symbols["Parser#wants_doc"])
+    }
+
+    @Test
+    fun `bang property generates predicate bare and writer`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Node
+                      property! resolved_type : String
+                      getter! name : String
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Node#resolved_type?"])
+        assertNotNull(symbols["Node#resolved_type"])
+        assertNotNull(symbols["Node#resolved_type="])
+        assertNotNull(symbols["Node#name?"])
+        assertNotNull(symbols["Node#name"])
+        assertNull(symbols["Node#name="])
+    }
+
+    @Test
+    fun `same-line end inside string does not pop the type`() {
+        // `end` inside a string literal on a code line must not close the
+        // frame: only a lone-`end` line pops.
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Foo
+                      MSG = "the end is near"
+                      def bar
+                      end
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Foo#bar"])
+    }
+
+    @Test
+    fun `one-liner type nets its frame to zero`() {
+        // `class Error < Exception; end` (5x in the stdlib): the frame must
+        // not survive to swallow the following def's namespace.
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Error < Exception; end
+                    def top_after
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Error"])
+        assertNotNull(symbols["top_after"])
+        assertNull(symbols["Error#top_after"])
+    }
+
+    @Test
+    fun `lone closing brace does not pop the type frame`() {
+        // `SPECIAL_CHARACTERS = {` in regex.cr: the `{` sits on a handler-claimed
+        // line that skips balancing, so the lone `}` must not pop the class.
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Regex
+                      SPECIAL_CHARACTERS = {
+                        ' ', '.',
+                      }
+                      enum Options
+                        MULTILINE = 6
+                      end
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Regex::Options"])
+        assertNotNull(symbols["Regex::Options#multiline?"])
+    }
 }

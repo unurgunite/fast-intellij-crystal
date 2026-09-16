@@ -159,7 +159,17 @@ private class ScanState(
         }
     }
 
-    fun closeCount(raw: String): Int = endRe.findAll(raw).count() + raw.count { it == '}' }
+    /**
+     * A `}` closes only block frames, never a type body (Crystal types close
+     * with `end`). A lone `}` atop a type frame belongs to a multi-line
+     * literal whose `{` sat on a handler-claimed line that skips balancing
+     * (e.g. `SPECIAL_CHARACTERS = {` in regex.cr) — popping here used to
+     * destroy the enclosing namespace, so `enum Options` lost its `Regex::`
+     * prefix and every later `Regex` method lost its namespace. Now ignored.
+     */
+    fun popBrace() {
+        if (openKinds.lastOrNull() == "other") openKinds.removeLast()
+    }
 }
 
 /** Type / annotation / lib definition — opens a NAMESPACE frame. */
@@ -182,8 +192,9 @@ private fun handleTypeLine(
     state.stack.addLast(qualified)
     state.openKinds.addLast("type")
     state.typeKinds.addLast(kind)
-    // Same-line `end`/`}` closes this frame immediately (e.g. `struct Foo; end`).
-    repeat(state.closeCount(raw)) { state.popOpen() }
+    // Same-line one-liner (`class Error < Exception; end`, 5x in the stdlib)
+    // closes the just-pushed frame immediately so it nets to zero.
+    if (sameLineEndRe.containsMatchIn(raw)) state.popOpen()
     return true
 }
 
@@ -249,14 +260,15 @@ private fun handleDefLine(
     if (ns == null && state.funBareKeys.remove(mname)) {
         state.symbols[mname] = SymbolLoc(state.relPath, offset)
     }
-    // A method body owns its own `end`/`}`; push an "other" frame (and balance
-    // a same-line close) so the enclosing type's namespace frame survives it.
+    // A method body owns its own lone-`end`; push an "other" frame so the
+    // enclosing type's namespace frame survives it. A same-line one-liner
+    // (`def foo; end`) closes the just-pushed frame immediately.
     // Bodiless `abstract def` owns NO close — pushing a frame here would eat
     // the next `end` (the enclosing type's or the next def's) and drift the
     // namespace stack for the rest of the file.
     if (!abstractDefRe.containsMatchIn(raw)) {
         state.openKinds.addLast("other")
-        repeat(state.closeCount(raw)) { state.popOpen() }
+        if (sameLineEndRe.containsMatchIn(raw)) state.popOpen()
     }
     return true
 }
@@ -293,20 +305,29 @@ private fun handleFunLine(
         state.funBareKeys.add(name)
     }
     if (ns == null) {
+        // Top-level `fun` defines a body (own lone-`end`); `fun` inside `lib`
+        // is a bodiless declaration. Same-line one-liners net to zero.
         state.openKinds.addLast("other")
-        repeat(state.closeCount(raw)) { state.popOpen() }
+        if (sameLineEndRe.containsMatchIn(raw)) state.popOpen()
     }
     return true
 }
 
 /**
- * `getter` / `setter` / `property` macros generate method definitions
- * (e.g. `getter size : Int32` → `def size` + `def size=`). These are pervasive
- * in the stdlib (Array#size, Hash#keys, …) and would otherwise be invisible to
- * the symbol table. Expand them into the generated reader/writer names so
- * receiver-typed lookups resolve. `getter`/`property` → reader `name`;
- * `setter`/`property` → writer `name=`. The offset points at the generated
- * name token (not the macro line start) so materialize lands on the identifier.
+ * `getter` / `setter` / `property` (and `?`/`!`/`class_*` variants) macros
+ * generate method definitions. Exact matrix from object/properties.cr
+ * (verified against crystal 1.21.0):
+ * - `getter` → reader `nm`; `setter` → writer `nm=`; `property` → both.
+ * - `?` variants name ONLY the predicate reader (`getter? exclusive` →
+ *   `exclusive?`, no bare `exclusive`); `property?` adds the writer
+ *   (`wants_doc?` + `wants_doc=`).
+ * - `!` variants (no `setter!` exists) name predicate + bare + (`property!`)
+ *   writer (`property! resolved_type` → `resolved_type?`, `resolved_type`,
+ *   `resolved_type=`).
+ * `class_*` variants behave the same (static-ness needs no separate key:
+ * lookups are `Recv#name` either way). Each generated key is first-wins so
+ * an explicit `def wants_doc=` coexists with the macro writer. The offset
+ * points at the generated name token so materialize lands on the identifier.
  */
 private fun handleGenLine(
     raw: String,
@@ -315,6 +336,8 @@ private fun handleGenLine(
 ): Boolean {
     val m = genRe.find(raw) ?: return false
     val kind = m.groupValues[1]
+    val base = kind.removePrefix("class_").removeSuffix("?").removeSuffix("!")
+    val suffix = kind.removePrefix("class_").removePrefix(base)
     val names =
         m.groupValues[2].split(',').mapNotNull { tok ->
             Regex("""\s*([a-zA-Z_]\w*[!?]?)""").find(tok)?.groupValues?.get(1)
@@ -323,8 +346,25 @@ private fun handleGenLine(
     for (nm in names) {
         val idx = raw.indexOf(nm)
         val off = if (idx >= 0) lineStart + idx else lineStart
-        if (kind != "setter") addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
-        if (kind != "getter") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+        if (base == "setter") {
+            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+        } else {
+            when (suffix) {
+                "" -> {
+                    addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+                }
+
+                "?" -> {
+                    addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
+                }
+
+                "!" -> {
+                    addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
+                    addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+                }
+            }
+            if (base == "property") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+        }
     }
     return true
 }
@@ -412,15 +452,17 @@ private fun handleFieldLine(
     return true
 }
 
-/** Any other line: balance block opens (`def`/control-flow keywords, `{`) against closes (`end`, `}`). */
+/** Any other line: balance block opens (`def`/control-flow keywords, `{`) against closes (lone-`end`, `}`).
+ * `}` pops block frames only (popBrace drops it atop a type frame) — see [ScanState.popBrace].
+ * A same-line one-liner (`foo do ... end`) nets to zero via sameLineEndRe. */
 private fun balanceOtherLine(
     raw: String,
     state: ScanState,
 ) {
     val opens = blockKwRe.findAll(raw).count() + raw.count { it == '{' }
-    val closes = state.closeCount(raw)
     repeat(opens) { state.openKinds.addLast("other") }
-    repeat(closes) { state.popOpen() }
+    if (lineEndRe.containsMatchIn(raw) || sameLineEndRe.containsMatchIn(raw)) state.popOpen()
+    repeat(raw.count { it == '}' }) { state.popBrace() }
 }
 
 /** Split a `def` signature into (receiver, methodName). `self.foo` → (null, foo);
@@ -473,7 +515,19 @@ private fun addMethodSymbol(
 }
 
 private val blockKwRe = Regex("""\b(def|macro|if|unless|while|until|case|begin|do)\b""")
-private val endRe = Regex("""\bend\b""")
+
+// A line whose only code token is `end` (indentation + optional `;`/comment).
+// Bare `\bend\b` counting overcounts: `end` inside string literals, comments,
+// and same-line closers (`x = [1].map do ... end`) drift the frame stack and
+// pop enclosing type frames. Anchoring balance closes to lone-`end` lines is
+// the conservative fix: a missed same-line close leaves a stale frame
+// (harmless: keys already recorded), while a phantom close destroys a
+// namespace (harmful: every later key mis-namespaced).
+private val lineEndRe = Regex("""^\s*end\s*(?:[;].*)?$""")
+
+// A one-liner whose opener and closer share the line
+// (`class Error < Exception; end`, `def foo; end`) — nets its frame to zero.
+private val sameLineEndRe = Regex(""";\s*end\s*(?:[;].*)?$""")
 private val typeRe =
     Regex("""^\s*(?:(?:abstract|final|private)\s+)*(class|struct|module|enum|lib|annotation)\s+([A-Z][\w:]*)""")
 private val aliasRe = Regex("""^\s*alias\s+([A-Z]\w*(?:::[A-Z]\w*)*)""")
@@ -484,7 +538,11 @@ private val defRe =
 // Bodiless `abstract def` (optionally after private/protected): owns no
 // `end`, so handleDefLine must not push a balance frame for it.
 private val abstractDefRe = Regex("""^\s*(?:(?:private|protected)\s+)*abstract\s+(?:def|macro)\b""")
-private val genRe = Regex("""^\s*(getter|setter|property)\b\s*(.+)$""")
+
+// No `setter?`/`setter!` macros exist in Crystal (only plain `setter`) —
+// the macro set mirrors object/properties.cr exactly.
+private val genRe =
+    Regex("""^\s*(class_getter[?!]?|class_setter|class_property[?!]?|getter[?!]?|setter|property[?!]?)(?=[\s(:]|$)\s*(.+)$""")
 
 // `fun` C-binding declarations, inside `lib` or top-level. Group 1 is the
 // declared name; for `fun foo = bar` aliases that is `foo` (the regex stops
