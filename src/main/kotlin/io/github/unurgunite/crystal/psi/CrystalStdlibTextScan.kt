@@ -118,6 +118,7 @@ internal object CrystalStdlibTextScan {
             handleDefLine(raw, lineStart, state) ||
             handleFunLine(raw, lineStart, state) ||
             handleGenLine(raw, lineStart, state) ||
+            handleEnumLine(raw, lineStart, state) ||
             handleFieldLine(raw, lineStart, state)
 }
 
@@ -142,10 +143,19 @@ private class ScanState(
     // (this previously dropped `String#upcase`, `Array#size`, … from the symbol table).
     val openKinds = ArrayDeque<String>()
 
+    // Kind of each open type frame ("class", "enum", …), parallel to [stack]:
+    // pushed together with a "type" frame, popped together with it. Lets
+    // handlers tell an `enum` body apart (enum-member predicates) without
+    // re-parsing the header line.
+    val typeKinds = ArrayDeque<String>()
+
     fun popOpen() {
         if (openKinds.isNotEmpty()) {
             val k = openKinds.removeLast()
-            if (k == "type" && stack.isNotEmpty()) stack.removeLast()
+            if (k == "type" && stack.isNotEmpty()) {
+                stack.removeLast()
+                if (typeKinds.isNotEmpty()) typeKinds.removeLast()
+            }
         }
     }
 
@@ -159,17 +169,19 @@ private fun handleTypeLine(
     state: ScanState,
 ): Boolean {
     val m = typeRe.find(raw) ?: return false
-    val full = m.groupValues[1]
+    val kind = m.groupValues[1]
+    val full = m.groupValues[2]
     val name = full.substringAfterLast("::")
-    // Offset of the (last-segment) name identifier: group 1's start — NOT the
+    // Offset of the (last-segment) name identifier: group 2's start — NOT the
     // whole-match start (which is the leading whitespace) — plus the prefix length.
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[2]!!
     val offset = lineStart + g1.range.first + (full.length - name.length)
     val enclosing = state.stack.lastOrNull()
     val qualified = if (enclosing != null) "$enclosing::$full" else full
     addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = true)
     state.stack.addLast(qualified)
     state.openKinds.addLast("type")
+    state.typeKinds.addLast(kind)
     // Same-line `end`/`}` closes this frame immediately (e.g. `struct Foo; end`).
     repeat(state.closeCount(raw)) { state.popOpen() }
     return true
@@ -205,6 +217,15 @@ private fun handleConstLine(
     val enclosing = state.stack.lastOrNull()
     val qualified = if (enclosing != null) "$enclosing::$name" else name
     addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = false)
+    // ALL-CAPS enum members (`MAX = 0`) are real constants AND get a generated
+    // `member?` predicate — index both keys (CamelCase members are handled by
+    // handleEnumLine below; constRe never matches them).
+    if (enclosing != null && state.typeKinds.lastOrNull() == "enum" && directlyInType(state)) {
+        state.symbols.putIfAbsent(
+            "$enclosing#${CrystalPsiUtils.crystalUnderscore(name)}?",
+            SymbolLoc(state.relPath, offset),
+        )
+    }
     return true
 }
 
@@ -309,12 +330,67 @@ private fun handleGenLine(
 }
 
 /**
+ * Enum member predicates (`Red` in `enum Color` → `Color#red?`). Real Crystal
+ * generates a `member?` predicate for every enum constant (verified 1.21.0:
+ * `Color::Red.red?`, `DarkBlue` → `dark_blue?`, `IO` → `io?`,
+ * `UInt128x` → `u_int128x?`; aliases like `Default = LineNumbers` get
+ * `default?` too — the alias is a real constant with its own predicate).
+ * Only directly inside an `enum` body (checked via [ScanState.typeKinds]):
+ * the frame must be open and the innermost type must be an enum. Members
+ * with explicit values are indexed as well — the name before `=` is the
+ * constant. Comma-separated lists (`A, B`) yield one key per member. The
+ * offset points at the CONSTANT so materialize lands on the member.
+ * ALL-CAPS members never reach here (constRe claims them first) — their
+ * predicate key is added in handleConstLine instead.
+ */
+private fun handleEnumLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    if (state.typeKinds.lastOrNull() != "enum") return false
+    if (!directlyInType(state)) return false
+    val ns = state.stack.lastOrNull() ?: return false
+    var found = false
+    // Accepted imprecision: a value expression containing a comma
+    // (`A = f(x, y)`) splits into extra tokens, but only tokens STARTING with
+    // a capitalized name yield keys, so the damage is one spurious key at worst.
+    for (tok in raw.split(',')) {
+        val name = enumMemberRe.find(tok)?.groupValues?.get(1) ?: continue
+        val g1 = enumMemberRe.find(tok)!!.groups[1]!!
+        // tok is a substring of raw — locate it once, then add the in-token offset.
+        val tokStart = raw.indexOf(tok)
+        val offset = lineStart + tokStart + g1.range.first
+        state.symbols.putIfAbsent(
+            "$ns#${CrystalPsiUtils.crystalUnderscore(name)}?",
+            SymbolLoc(state.relPath, offset),
+        )
+        found = true
+    }
+    return found
+}
+
+/**
+ * True when the innermost open frame is a type body itself (not a method,
+ * block, or anything nested below it). Shared by handleFieldLine (locals
+ * inside methods are not fields) and handleEnumLine (defs inside enums are
+ * methods, not members).
+ */
+private fun directlyInType(state: ScanState): Boolean {
+    if (state.openKinds.isEmpty()) return false
+    val depthBelowType =
+        state.openKinds.size -
+            (state.openKinds.indexOfLast { it == "type" } + 1)
+    return depthBelowType == 0
+}
+
+/**
  * Type field declarations (`x : Int32`, `@x : T = default` directly in a
  * struct/class/module/lib body → `Type#field`). Only when the innermost
- * open frame is the type itself: inside a method this shape is a local
- * annotation, and with an empty stack there is no enclosing type. Runs
- * after `getter`/`setter`/`property` expansion (handleGenLine first), so
- * generated readers/writers keep their own keys.
+ * open frame is the type itself (see [directlyInType]): inside a method this
+ * shape is a local annotation, and with an empty stack there is no enclosing
+ * type. Runs after `getter`/`setter`/`property` expansion (handleGenLine
+ * first), so generated readers/writers keep their own keys.
  */
 private fun handleFieldLine(
     raw: String,
@@ -322,18 +398,11 @@ private fun handleFieldLine(
     state: ScanState,
 ): Boolean {
     val m = fieldRe.find(raw) ?: return false
-    // Only directly inside a type body: the innermost open frame must be the
-    // type itself. Inside a method this shape is a local annotation, and with
-    // an empty stack there is no enclosing type. `def`/`macro`/`fun` lines
-    // are handled before us and never reach here, but `end` accounting still
-    // matters: a method body pushes exactly one "other" frame, so depth > 1
-    // below a type means "inside a method or block". (blockKwRe counts
-    // if/while/do-blocks too, so this also excludes fields after blocks.)
-    if (state.openKinds.isEmpty()) return false
-    val depthBelowType =
-        state.openKinds.size -
-            (state.openKinds.indexOfLast { it == "type" } + 1)
-    if (depthBelowType != 0) return false
+    // See [directlyInType]: `def`/`macro`/`fun` lines are handled before us
+    // and never reach here, but `end` accounting still matters (a method body
+    // pushes exactly one "other" frame — blockKwRe counts if/while/do-blocks
+    // too, so this also excludes fields after blocks).
+    if (!directlyInType(state)) return false
     val ns = state.stack.lastOrNull() ?: return false
     val rawName = m.groupValues[1]
     val name = rawName.removePrefix("@@").removePrefix("@")
@@ -405,7 +474,8 @@ private fun addMethodSymbol(
 
 private val blockKwRe = Regex("""\b(def|macro|if|unless|while|until|case|begin|do)\b""")
 private val endRe = Regex("""\bend\b""")
-private val typeRe = Regex("""^\s*(?:(?:abstract|final|private)\s+)*(?:class|struct|module|enum|lib|annotation)\s+([A-Z][\w:]*)""")
+private val typeRe =
+    Regex("""^\s*(?:(?:abstract|final|private)\s+)*(class|struct|module|enum|lib|annotation)\s+([A-Z][\w:]*)""")
 private val aliasRe = Regex("""^\s*alias\s+([A-Z]\w*(?:::[A-Z]\w*)*)""")
 private val constRe = Regex("""^\s*([A-Z][A-Z0-9_]*)\s*=""")
 private val defRe =
@@ -420,6 +490,10 @@ private val genRe = Regex("""^\s*(getter|setter|property)\b\s*(.+)$""")
 // declared name; for `fun foo = bar` aliases that is `foo` (the regex stops
 // at whitespace, never reaching `= bar`).
 private val funRe = Regex("""^\s*(?:(?:private|protected)\s+)*fun\s+([a-zA-Z_]\w*[!?]?)""")
+
+// CamelCase enum member (`Red`, `DarkBlue`, `Default = LineNumbers`, `A, B`).
+// ALL-CAPS members never reach handleEnumLine (constRe claims them first).
+private val enumMemberRe = Regex("""^\s*([A-Z]\w*)\s*(?:=[^,]+)?\s*$""")
 
 // Type field declarations (`x : Int32`, `@ivar : T`). The `(?!:)` rejects
 // namespace paths (`x::Y`); the type must start uppercase or `::`-qualified

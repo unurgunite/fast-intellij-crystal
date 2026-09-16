@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal
 
+import io.github.unurgunite.crystal.psi.CrystalPsiUtils
 import io.github.unurgunite.crystal.psi.CrystalStdlibTextScan
 import io.github.unurgunite.crystal.psi.SymbolLoc
 import org.junit.Assert.assertEquals
@@ -230,5 +231,94 @@ class CrystalStdlibTextScanTest {
     fun `bare colon shape outside type is not a field`() {
         val symbols = scan(text = "x : Int32\n")
         assertNull(symbols["x"])
+    }
+
+    @Test
+    fun `enum members generate predicates`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    enum Color
+                      Red
+                      DarkBlue
+                      IO
+                      UInt128x
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Color#red?"])
+        assertNotNull(symbols["Color#dark_blue?"])
+        assertNotNull(symbols["Color#io?"])
+        assertNotNull(symbols["Color#u_int128x?"])
+        // Predicates are instance-side keys only — no bare or `::` pollution.
+        assertNull(symbols["red?"])
+        assertNull(symbols["Color::Red"])
+    }
+
+    @Test
+    fun `enum member with explicit value and alias generate predicates`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    @[Flags]
+                    enum MyFlags
+                      Default = LineNumbers
+                      A, B
+                      MAX = 3
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["MyFlags#default?"])
+        assertNotNull(symbols["MyFlags#a?"])
+        assertNotNull(symbols["MyFlags#b?"])
+        assertNotNull(symbols["MyFlags#max?"])
+        // ALL-CAPS members stay real constants too.
+        assertNotNull(symbols["MyFlags::MAX"])
+    }
+
+    @Test
+    fun `enum defs are methods not members`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    enum Color
+                      Red
+                      def foo
+                      end
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Color#red?"])
+        assertNotNull(symbols["Color#foo"])
+        assertNull(symbols["Color#def?"])
+    }
+
+    @Test
+    fun `class constants get no predicates`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    class Foo
+                      MAX = 1
+                      Red = 2
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Foo::MAX"])
+        assertNull(symbols["Foo#max?"])
+        assertNull(symbols["Foo#red?"])
+    }
+
+    @Test
+    fun `crystal underscore matches compiler`() {
+        assertEquals("dark_blue", CrystalPsiUtils.crystalUnderscore("DarkBlue"))
+        assertEquals("io", CrystalPsiUtils.crystalUnderscore("IO"))
+        assertEquals("u_int128x", CrystalPsiUtils.crystalUnderscore("UInt128x"))
+        assertEquals("html_parser", CrystalPsiUtils.crystalUnderscore("HTMLParser"))
+        assertEquals("io_error", CrystalPsiUtils.crystalUnderscore("IOError"))
     }
 }

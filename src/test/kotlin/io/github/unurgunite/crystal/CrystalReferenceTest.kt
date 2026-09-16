@@ -421,4 +421,78 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         assertNotNull("Should resolve struct field access", resolved)
         assertEquals("x", resolved!!.text)
     }
+
+    fun testEnumPredicateOnTypedParamResolvesToConstant() {
+        // `c.dark_blue?` where `c : TrafficLight` — Crystal generates a
+        // `member?` predicate per enum constant, so the reference lands on
+        // the CONSTANT leaf inside the enum body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                  DarkBlue
+                end
+                def walk(c : TrafficLight)
+                  c.dark_blue?
+                end
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".dark_blue?" }
+        assertNotNull("Should find .dark_blue? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        val resolved = predCall!!.reference?.resolve()
+        assertNotNull("Should resolve enum predicate", resolved)
+        assertEquals("DarkBlue", resolved!!.text)
+    }
+
+    fun testEnumPredicateOnEnumValueResolvesToConstant() {
+        // `TrafficLight::Red.red?` — namespace receiver, the predicate lives
+        // on the enclosing enum, not on the member.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                end
+                x = TrafficLight::Red.red?
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".red?" }
+        assertNotNull("Should find .red? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        val resolved = predCall!!.reference?.resolve()
+        assertNotNull("Should resolve enum-value predicate", resolved)
+        assertEquals("Red", resolved!!.text)
+    }
+
+    fun testEnumPredicateOnBareEnumNameDoesNotResolve() {
+        // `TrafficLight.red?` is invalid Crystal (predicates are instance
+        // methods, verified 1.21.0) — must not resolve, no false positive.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                end
+                x = TrafficLight.red?
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".red?" }
+        assertNotNull("Should find .red? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        assertNull("Bare-enum predicate must not resolve", predCall!!.reference?.resolve())
+    }
 }

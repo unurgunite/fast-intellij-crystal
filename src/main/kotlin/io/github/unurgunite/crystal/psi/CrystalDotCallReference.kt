@@ -46,6 +46,13 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
  *    (never the stdlib) so local navigation works (`rule.auto_fixable?`) without
  *    the cross-project false-positive popups the strict design otherwise forbids.
  *
+ * 6. Enum member predicates (`color.red?` where `color: Color`, or
+ *    `Color::Red.red?`) — Crystal generates a `member?` predicate per enum
+ *    constant (`DarkBlue` → `dark_blue?`, verified 1.21.0). Matched textually
+ *    against `CrystalEnumConstant` leaves under the resolved enum element, via
+ *    [CrystalPsiUtils.crystalUnderscore]. Stdlib enums resolve through the text
+ *    table instead (`Enum#member?` keys).
+ *
  * The receiver is found by walking `prevSibling` (skipping whitespace/NLS) from
  * this element — the DOT is the first child of [CrystalDotCallAccess], so the
  * receiver is the preceding sibling in the flattened `postfix_expression` sequence.
@@ -70,7 +77,7 @@ class CrystalDotCallReference(
         // both members). Namespace disambiguation via qualifiedName only applies when there is
         // a single member type.
         for (className in classNames) {
-            resolveClassMember(className, qualifiedName, classNames, project, scope)?.let { return it }
+            resolveClassMember(className, qualifiedName, classNames, info.isStatic, project, scope)?.let { return it }
             resolveStdlibMember(className, qualifiedName, classNames, project)?.let { return it }
             resolveConstructor(className, project)?.let { return it }
         }
@@ -86,6 +93,7 @@ class CrystalDotCallReference(
         className: String,
         qualifiedName: String?,
         classNames: List<String>,
+        isStatic: Boolean,
         project: com.intellij.openapi.project.Project,
         scope: GlobalSearchScope,
     ): PsiElement? {
@@ -130,7 +138,15 @@ class CrystalDotCallReference(
                 )
             for (type in types) {
                 matchMemberInTypeBody(type)?.let { return it }
+                // Enum predicates are instance methods (`color.red?`,
+                // `Color::Red.red?`); a bare `Color.red?` is invalid Crystal
+                // (`undefined method 'red?' for Color.class`, verified 1.21.0),
+                // so skip the constant match for plain static receivers.
+                if (!isStatic || qualifiedName != null) {
+                    matchEnumConstantInTypeBody(type)?.let { return it }
+                }
             }
+            matchEnumValueReceiver(qualifiedName, classNames, project, scope)?.let { return it }
         }
 
         // Filter by qualified class name if available (for namespace disambiguation)
@@ -259,6 +275,66 @@ class CrystalDotCallReference(
                     .firstOrNull { it.elementType == CrystalTypes.IDENTIFIER || it.elementType == CrystalTypes.CONSTANT }
                     ?.psi
             if (libLeaf?.text == methodName) return libLeaf
+        }
+        return null
+    }
+
+    /**
+     * Matches [methodName] against enum constants in the resolved type element.
+     * Crystal generates a `member?` predicate per constant (`Red` → `red?`,
+     * `DarkBlue` → `dark_blue?`), so `color.red?` lands on the CONSTANT leaf.
+     * Null when the type is not an enum, the name has no `?` suffix, or no
+     * constant underscores to the predicate name.
+     */
+    private fun matchEnumConstantInTypeBody(type: PsiElement): PsiElement? {
+        if (!methodName.endsWith("?")) return null
+        if (type !is CrystalEnumDefinition) return null
+        val body = type.enumBody ?: return null
+        for (constant in body.enumConstantList) {
+            val leaf =
+                constant.node
+                    .getChildren(null)
+                    .firstOrNull { it.elementType == CrystalTypes.CONSTANT }
+                    ?.psi ?: continue
+            if (CrystalPsiUtils.crystalUnderscore(leaf.text) + "?" == methodName) return leaf
+        }
+        return null
+    }
+
+    /**
+     * Enum-value receiver (`Color::Red.red?`): the namespace walk reports
+     * className="Red", qualifiedName="Color::Red", but the predicate lives on
+     * the ENCLOSING enum (`Color`). Strips the trailing member segment and
+     * matches the predicate inside that enum. Qualified candidates are filtered
+     * by their qualified name so `Foo::Color::Red.red?` prefers `Foo::Color`.
+     */
+    private fun matchEnumValueReceiver(
+        qualifiedName: String?,
+        classNames: List<String>,
+        project: Project,
+        scope: GlobalSearchScope,
+    ): PsiElement? {
+        if (!methodName.endsWith("?")) return null
+        if (classNames.size != 1 || qualifiedName == null) return null
+        if (!qualifiedName.contains("::")) return null
+        val enumQualified = qualifiedName.substringBeforeLast("::")
+        if (enumQualified.isEmpty() || enumQualified == qualifiedName) return null
+        val enumSimple = enumQualified.substringAfterLast("::")
+        val candidates =
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                enumSimple,
+                project,
+                scope,
+                CrystalNamedElement::class.java,
+            )
+        for (candidate in candidates) {
+            if (candidate !is CrystalEnumDefinition) continue
+            if (enumQualified.contains("::")) {
+                val candidateQualified = CrystalPsiUtils.buildQualifiedName(candidate) ?: continue
+                if (candidateQualified != enumQualified) continue
+            }
+            matchEnumConstantInTypeBody(candidate)?.let { return it }
         }
         return null
     }
