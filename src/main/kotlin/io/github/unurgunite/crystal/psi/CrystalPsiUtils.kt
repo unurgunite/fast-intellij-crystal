@@ -6,7 +6,10 @@ import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.stubs.CrystalNamedStub
 
 /**
- * Utility functions for Crystal PSI elements.
+ * Utility functions for Crystal PSI elements: qualified names, enclosing-type
+ * lookups, scope/call predicates, sibling navigation. (Namespace-path walking
+ * lives in the file-private helpers below; string-shape helpers live in
+ * [CrystalNameUtils].)
  */
 object CrystalPsiUtils {
     /**
@@ -178,18 +181,7 @@ object CrystalPsiUtils {
 
         return parts.joinToString("::")
     }
-
-    /**
-     * Crystal's `String#underscore` (verified against 1.21.0: `DarkBlue` →
-     * `dark_blue`, `IO` → `io`, `UInt128x` → `u_int128x`, `HTMLParser` →
-     * `html_parser`). Used to derive an enum member's generated `member?`
-     * predicate name from its CONSTANT (`DarkBlue` → `dark_blue?`).
-     */
-    fun crystalUnderscore(name: String): String = wordBoundaryRe.replace(acronymBoundaryRe.replace(name, "$1_$2"), "$1_$2").lowercase()
 }
-
-private val wordBoundaryRe = Regex("([a-z\\d])([A-Z])")
-private val acronymBoundaryRe = Regex("([A-Z\\d]+)([A-Z][a-z])")
 
 /** Whitespace/label/splat child inside an argument wrapper — carries no value. */
 private fun isSkippableWrapperChild(child: PsiElement): Boolean {

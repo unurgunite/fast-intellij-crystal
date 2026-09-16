@@ -6,6 +6,18 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Fixed
 
+- **Lint toolchain fixed and zero-findings** — detekt `2.0.0-alpha.4` →
+  `2.0.0-alpha.6`, Gradle wrapper 9.4.1 → 9.6.1, ktlint pinned to 1.8.0
+  explicitly in both spotless blocks (was unpinned, drifted between
+  machines). All 10 findings fixed by extraction, not suppression:
+  non-method DOT-call matchers (`matchFunInLibBody`, `matchMemberInTypeBody`
+  + `matchFieldLeaf`, `matchEnumConstantInTypeBody`,
+  `matchEnumValueReceiver` + `enumQualifiedName`/`matchQualifiedEnumConstant`)
+  moved to file level; `resolveClassMember` fallback extracted to
+  `resolveNonMethodMember`; dead `findLibBodyInIndex` stub deleted;
+  `crystalUnderscore` → new `CrystalNameUtils`; scan key emission
+  (`addSymbol`/`addMethodSymbol`/`addGenKeys`/`directlyInType`/`parseDefSig`)
+  → new `CrystalStdlibScanKeys`.
 - **Stdlib parse breaks wave 10 (85 → 2 files, 2172 files)** — macro-heavy
   shapes, all verified legal with crystal 1.21.0: `**`/`<<`/`>>`/`//` in
   string interpolation (xml.cr); macro-split def signatures via

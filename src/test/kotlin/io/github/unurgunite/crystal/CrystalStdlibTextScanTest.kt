@@ -1,6 +1,6 @@
 package io.github.unurgunite.crystal
 
-import io.github.unurgunite.crystal.psi.CrystalPsiUtils
+import io.github.unurgunite.crystal.psi.CrystalNameUtils
 import io.github.unurgunite.crystal.psi.CrystalStdlibTextScan
 import io.github.unurgunite.crystal.psi.SymbolLoc
 import org.junit.Assert.assertEquals
@@ -315,11 +315,11 @@ class CrystalStdlibTextScanTest {
 
     @Test
     fun `crystal underscore matches compiler`() {
-        assertEquals("dark_blue", CrystalPsiUtils.crystalUnderscore("DarkBlue"))
-        assertEquals("io", CrystalPsiUtils.crystalUnderscore("IO"))
-        assertEquals("u_int128x", CrystalPsiUtils.crystalUnderscore("UInt128x"))
-        assertEquals("html_parser", CrystalPsiUtils.crystalUnderscore("HTMLParser"))
-        assertEquals("io_error", CrystalPsiUtils.crystalUnderscore("IOError"))
+        assertEquals("dark_blue", CrystalNameUtils.crystalUnderscore("DarkBlue"))
+        assertEquals("io", CrystalNameUtils.crystalUnderscore("IO"))
+        assertEquals("u_int128x", CrystalNameUtils.crystalUnderscore("UInt128x"))
+        assertEquals("html_parser", CrystalNameUtils.crystalUnderscore("HTMLParser"))
+        assertEquals("io_error", CrystalNameUtils.crystalUnderscore("IOError"))
     }
 
     @Test

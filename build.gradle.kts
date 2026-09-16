@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.grammarkit") version "2023.3.0.3"
     id("com.diffplug.spotless") version "8.6.0"
-    id("dev.detekt") version "2.0.0-alpha.4"
+    id("dev.detekt") version "2.0.0-alpha.6"
 }
 
 sourceSets {
@@ -67,13 +67,15 @@ intellijPlatform {
 
 spotless {
     kotlin {
-        ktlint()
+        // ktlint version pinned explicitly (spotless 8.6.0 default is 1.8.0):
+        // unpinned ktlint() drifts between machines/CI.
+        ktlint("1.8.0")
         target("src/**/*.kt")
         // Generated parser/lexer sources are committed but not hand-written.
         targetExclude("src/main/gen/**")
     }
     kotlinGradle {
-        ktlint()
+        ktlint("1.8.0")
         target("*.kts")
     }
 }

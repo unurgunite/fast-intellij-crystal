@@ -123,7 +123,7 @@ internal object CrystalStdlibTextScan {
 }
 
 /** Mutable per-file scan state: namespace stack plus block-kind stack. */
-private class ScanState(
+internal class ScanState(
     val relPath: String,
     val symbols: MutableMap<String, SymbolLoc>,
     val hasCanonical: MutableSet<String>,
@@ -233,7 +233,7 @@ private fun handleConstLine(
     // handleEnumLine below; constRe never matches them).
     if (enclosing != null && state.typeKinds.lastOrNull() == "enum" && directlyInType(state)) {
         state.symbols.putIfAbsent(
-            "$enclosing#${CrystalPsiUtils.crystalUnderscore(name)}?",
+            "$enclosing#${CrystalNameUtils.crystalUnderscore(name)}?",
             SymbolLoc(state.relPath, offset),
         )
     }
@@ -346,27 +346,39 @@ private fun handleGenLine(
     for (nm in names) {
         val idx = raw.indexOf(nm)
         val off = if (idx >= 0) lineStart + idx else lineStart
-        if (base == "setter") {
-            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
-        } else {
-            when (suffix) {
-                "" -> {
-                    addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
-                }
-
-                "?" -> {
-                    addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
-                }
-
-                "!" -> {
-                    addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
-                    addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
-                }
-            }
-            if (base == "property") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
-        }
+        addGenKeys(state, off, ns, base, suffix, nm)
     }
     return true
+}
+
+/** Generated keys for one `getter`/`setter`/`property` name (see [handleGenLine] matrix). */
+internal fun addGenKeys(
+    state: ScanState,
+    off: Int,
+    ns: String?,
+    base: String,
+    suffix: String,
+    nm: String,
+) {
+    if (base == "setter") {
+        addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+        return
+    }
+    when (suffix) {
+        "" -> {
+            addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+        }
+
+        "?" -> {
+            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
+        }
+
+        "!" -> {
+            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
+            addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+        }
+    }
+    if (base == "property") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
 }
 
 /**
@@ -402,26 +414,12 @@ private fun handleEnumLine(
         val tokStart = raw.indexOf(tok)
         val offset = lineStart + tokStart + g1.range.first
         state.symbols.putIfAbsent(
-            "$ns#${CrystalPsiUtils.crystalUnderscore(name)}?",
+            "$ns#${CrystalNameUtils.crystalUnderscore(name)}?",
             SymbolLoc(state.relPath, offset),
         )
         found = true
     }
     return found
-}
-
-/**
- * True when the innermost open frame is a type body itself (not a method,
- * block, or anything nested below it). Shared by handleFieldLine (locals
- * inside methods are not fields) and handleEnumLine (defs inside enums are
- * methods, not members).
- */
-private fun directlyInType(state: ScanState): Boolean {
-    if (state.openKinds.isEmpty()) return false
-    val depthBelowType =
-        state.openKinds.size -
-            (state.openKinds.indexOfLast { it == "type" } + 1)
-    return depthBelowType == 0
 }
 
 /**
@@ -467,51 +465,11 @@ private fun balanceOtherLine(
 
 /** Split a `def` signature into (receiver, methodName). `self.foo` → (null, foo);
  *  `Foo.bar` → (Foo, bar); bare `foo` → (null, foo). */
-private fun parseDefSig(sig: String): Pair<String?, String> {
+internal fun parseDefSig(sig: String): Pair<String?, String> {
     if (sig.startsWith("self.")) return null to sig.substring("self.".length)
     val dot = sig.lastIndexOf('.')
     if (dot > 0) return sig.substring(0, dot) to sig.substring(dot + 1)
     return null to sig
-}
-
-private fun addSymbol(
-    symbols: MutableMap<String, SymbolLoc>,
-    hasCanonical: MutableSet<String>,
-    relPath: String,
-    offset: Int,
-    name: String,
-    qualified: String,
-    isType: Boolean,
-) {
-    val loc = SymbolLoc(relPath, offset)
-    symbols.putIfAbsent(qualified, loc)
-    // Canonical: file base name matches the symbol (e.g. String -> string.cr), so
-    // Ctrl+Click lands on the primary definition, not an arbitrary reopening.
-    val canonical =
-        isType &&
-            java.io
-                .File(relPath)
-                .nameWithoutExtension
-                .equals(name, ignoreCase = true)
-    if (!symbols.containsKey(name) || (canonical && !hasCanonical.contains(name))) {
-        symbols[name] = loc
-        if (canonical) hasCanonical.add(name)
-    }
-}
-
-// Register a `Class#method` (and bare `method` for top-level defs) symbol-table entry.
-// Used by both `def`/`macro` lines and expanded `getter`/`setter`/`property` macros.
-private fun addMethodSymbol(
-    symbols: MutableMap<String, SymbolLoc>,
-    relPath: String,
-    offset: Int,
-    ns: String?,
-    mname: String,
-) {
-    val loc = SymbolLoc(relPath, offset)
-    val key = if (ns != null) "$ns#$mname" else mname
-    if (ns == null) symbols.putIfAbsent(mname, loc)
-    symbols.putIfAbsent(key, loc)
 }
 
 private val blockKwRe = Regex("""\b(def|macro|if|unless|while|until|case|begin|do)\b""")
