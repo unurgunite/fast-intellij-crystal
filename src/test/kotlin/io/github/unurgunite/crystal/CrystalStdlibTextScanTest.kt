@@ -131,4 +131,104 @@ class CrystalStdlibTextScanTest {
         assertNotNull(symbols["Foo#create"])
         assertNull(symbols["Foo#self"])
     }
+
+    @Test
+    fun `fun in lib is indexed qualified and bare`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    lib C
+                      fun strlen(s : Char*) : SizeT
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["C#strlen"])
+        assertNotNull(symbols["strlen"])
+    }
+
+    @Test
+    fun `fun alias indexes the alias name`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    lib LLVM
+                      fun build_icmp = LLVMBuildICmp(a : Int32) : Int32
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["LLVM#build_icmp"])
+        assertNull(symbols["LLVM#LLVMBuildICmp"])
+    }
+
+    @Test
+    fun `top-level fun is indexed bare`() {
+        val symbols =
+            scan(
+                text = "fun __crystal_malloc(size : UInt32) : Void*\nend\n",
+            )
+        assertNotNull(symbols["__crystal_malloc"])
+    }
+
+    @Test
+    fun `def beats fun for the bare key`() {
+        // Walk order in one scanText call is fixed, but the cross-file VFS
+        // order is not: both directions must end with the def winning, and
+        // the qualified lib key must survive in both.
+        val defText = "lib C\n  fun sleep(x : Int32) : Int32\nend\ndef sleep(x)\nend\n"
+        val funFirst = scan(text = defText)
+        // Offset points at the method name, past the `def ` prefix.
+        assertEquals(defText.indexOf("def sleep") + 4, funFirst["sleep"]!!.offset)
+        val revText = "def sleep(x)\nend\nlib C\n  fun sleep(x : Int32) : Int32\nend\n"
+        val defFirst = scan(text = revText)
+        // `fun` never overwrites: the earlier `def` offset survives.
+        assertEquals(revText.indexOf("def sleep") + 4, defFirst["sleep"]!!.offset)
+        assertNotNull(defFirst["C#sleep"])
+        assertNotNull(funFirst["C#sleep"])
+    }
+
+    @Test
+    fun `struct field is indexed qualified only`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    struct Point
+                      x : Int32
+                      @y : String = "a"
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Point#x"])
+        assertNotNull(symbols["Point#y"])
+        assertNull(symbols["x"])
+    }
+
+    @Test
+    fun `local annotation inside def is not a field`() {
+        val symbols =
+            scan(
+                text =
+                    """
+                    struct Point
+                      x : Int32
+                      def foo
+                        y : Int32 = 1
+                        y
+                      end
+                    end
+                    """.trimIndent(),
+            )
+        assertNotNull(symbols["Point#x"])
+        assertNull(symbols["Point#y"])
+        // `foo` itself is a real def and must stay indexed.
+        assertNotNull(symbols["Point#foo"])
+    }
+
+    @Test
+    fun `bare colon shape outside type is not a field`() {
+        val symbols = scan(text = "x : Int32\n")
+        assertNull(symbols["x"])
+    }
 }

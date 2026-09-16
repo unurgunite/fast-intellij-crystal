@@ -41,6 +41,11 @@ internal object CrystalStdlibTextScan {
         // already stored. Lets us upgrade a first-seen arbitrary definition to the
         // canonical one when we later encounter it during the VFS walk.
         val hasCanonical = HashSet<String>()
+        // Bare names currently held by a `fun` declaration (see handleFunLine).
+        // A later `def`/`macro` with the same bare name upgrades the key —
+        // method definitions beat C bindings regardless of VFS walk order
+        // (e.g. `sleep`: concurrent.cr `def` vs wasm32-wasi `fun`).
+        val funBareKeys = HashSet<String>()
         VfsUtilCore.visitChildrenRecursively(
             root,
             object : VirtualFileVisitor<Any>() {
@@ -50,7 +55,7 @@ internal object CrystalStdlibTextScan {
                     val relPath =
                         VfsUtilCore
                             .getRelativePath(file, root) ?: return true
-                    scanFileText(file, relPath, symbols, hasCanonical)
+                    scanFileText(file, relPath, symbols, hasCanonical, funBareKeys)
                     return true
                 }
             },
@@ -71,6 +76,7 @@ internal object CrystalStdlibTextScan {
         relPath: String,
         symbols: MutableMap<String, SymbolLoc>,
         hasCanonical: MutableSet<String>,
+        funBareKeys: MutableSet<String> = HashSet(),
     ) {
         val text =
             try {
@@ -78,7 +84,7 @@ internal object CrystalStdlibTextScan {
             } catch (_: Throwable) {
                 return
             }
-        scanText(relPath, text, symbols, hasCanonical)
+        scanText(relPath, text, symbols, hasCanonical, funBareKeys)
     }
 
     /** Pure text scan (no VFS) — unit-testable without the IDE. */
@@ -87,8 +93,9 @@ internal object CrystalStdlibTextScan {
         text: String,
         symbols: MutableMap<String, SymbolLoc>,
         hasCanonical: MutableSet<String>,
+        funBareKeys: MutableSet<String> = HashSet(),
     ) {
-        val state = ScanState(relPath, symbols, hasCanonical)
+        val state = ScanState(relPath, symbols, hasCanonical, funBareKeys)
         var pos = 0
         for (raw in text.lines()) {
             val lineStart = pos
@@ -99,7 +106,7 @@ internal object CrystalStdlibTextScan {
         }
     }
 
-    /** One line: type/alias/const/def/macro-generator shapes first, generic balancing last. */
+    /** One line: type/alias/const/def/fun/macro-generator/field shapes first, generic balancing last. */
     private fun handleLine(
         raw: String,
         lineStart: Int,
@@ -109,7 +116,9 @@ internal object CrystalStdlibTextScan {
             handleAliasLine(raw, lineStart, state) ||
             handleConstLine(raw, lineStart, state) ||
             handleDefLine(raw, lineStart, state) ||
-            handleGenLine(raw, lineStart, state)
+            handleFunLine(raw, lineStart, state) ||
+            handleGenLine(raw, lineStart, state) ||
+            handleFieldLine(raw, lineStart, state)
 }
 
 /** Mutable per-file scan state: namespace stack plus block-kind stack. */
@@ -117,6 +126,9 @@ private class ScanState(
     val relPath: String,
     val symbols: MutableMap<String, SymbolLoc>,
     val hasCanonical: MutableSet<String>,
+    // Bare names claimed by a `fun` declaration (cross-file set, see
+    // buildStdlibData). Lets a later `def`/`macro` upgrade the bare key.
+    val funBareKeys: MutableSet<String>,
 ) {
     // Qualified-namespace stack: each entry is the FULL qualified name of the enclosing
     // type (e.g. "File", "File::Info"), so a nested definition keys as
@@ -211,12 +223,55 @@ private fun handleDefLine(
     // For bare top-level builtins (no enclosing namespace) force the simple key
     // so e.g. `raise` jumps to raise.cr, not a private `def raise` elsewhere.
     addMethodSymbol(state.symbols, state.relPath, offset, ns, mname)
+    // A `def`/`macro` beats a same-named `fun` for the bare key regardless of
+    // VFS walk order (see handleFunLine) — native code shadows C bindings.
+    if (ns == null && state.funBareKeys.remove(mname)) {
+        state.symbols[mname] = SymbolLoc(state.relPath, offset)
+    }
     // A method body owns its own `end`/`}`; push an "other" frame (and balance
     // a same-line close) so the enclosing type's namespace frame survives it.
     // Bodiless `abstract def` owns NO close — pushing a frame here would eat
     // the next `end` (the enclosing type's or the next def's) and drift the
     // namespace stack for the rest of the file.
     if (!abstractDefRe.containsMatchIn(raw)) {
+        state.openKinds.addLast("other")
+        repeat(state.closeCount(raw)) { state.popOpen() }
+    }
+    return true
+}
+
+/**
+ * `fun` C-binding declarations (inside `lib`, or top-level like `fun main`).
+ * Indexed under the enclosing lib (`LibC#strlen` for DOT-call receivers) and
+ * as a bare name (first-wins) for bare calls — several libc functions
+ * (`exit`, `read`, `malloc`, …) are called bare in user code. An aliased
+ * declaration (`fun foo = bar`) indexes the alias `foo`, not the C name.
+ * `fun` inside `lib` is a bodiless declaration (no `end`); a top-level `fun`
+ * defines a function with a body, so only it owns a balance frame.
+ * Accepted imprecision: multi-line signatures (59 in the stdlib, mostly
+ * Windows lib_c) may index a param line as `Lib#param` — harmless, since
+ * nothing ever calls those names (bare keys are first-wins anyway).
+ */
+private fun handleFunLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = funRe.find(raw) ?: return false
+    val name = m.groupValues[1]
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first
+    val loc = SymbolLoc(state.relPath, offset)
+    val ns = state.stack.lastOrNull()
+    if (ns != null) {
+        state.symbols.putIfAbsent("$ns#$name", loc)
+    }
+    // Bare key: a `def`/`macro` that already claimed (or later claims) the
+    // name wins — see the upgrade in handleDefLine.
+    if (state.symbols.putIfAbsent(name, loc) == null) {
+        state.funBareKeys.add(name)
+    }
+    if (ns == null) {
         state.openKinds.addLast("other")
         repeat(state.closeCount(raw)) { state.popOpen() }
     }
@@ -250,6 +305,41 @@ private fun handleGenLine(
         if (kind != "setter") addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
         if (kind != "getter") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
     }
+    return true
+}
+
+/**
+ * Type field declarations (`x : Int32`, `@x : T = default` directly in a
+ * struct/class/module/lib body → `Type#field`). Only when the innermost
+ * open frame is the type itself: inside a method this shape is a local
+ * annotation, and with an empty stack there is no enclosing type. Runs
+ * after `getter`/`setter`/`property` expansion (handleGenLine first), so
+ * generated readers/writers keep their own keys.
+ */
+private fun handleFieldLine(
+    raw: String,
+    lineStart: Int,
+    state: ScanState,
+): Boolean {
+    val m = fieldRe.find(raw) ?: return false
+    // Only directly inside a type body: the innermost open frame must be the
+    // type itself. Inside a method this shape is a local annotation, and with
+    // an empty stack there is no enclosing type. `def`/`macro`/`fun` lines
+    // are handled before us and never reach here, but `end` accounting still
+    // matters: a method body pushes exactly one "other" frame, so depth > 1
+    // below a type means "inside a method or block". (blockKwRe counts
+    // if/while/do-blocks too, so this also excludes fields after blocks.)
+    if (state.openKinds.isEmpty()) return false
+    val depthBelowType =
+        state.openKinds.size -
+            (state.openKinds.indexOfLast { it == "type" } + 1)
+    if (depthBelowType != 0) return false
+    val ns = state.stack.lastOrNull() ?: return false
+    val rawName = m.groupValues[1]
+    val name = rawName.removePrefix("@@").removePrefix("@")
+    val g1 = m.groups[1]!!
+    val offset = lineStart + g1.range.first + (g1.value.length - name.length)
+    state.symbols.putIfAbsent("$ns#$name", SymbolLoc(state.relPath, offset))
     return true
 }
 
@@ -325,3 +415,14 @@ private val defRe =
 // `end`, so handleDefLine must not push a balance frame for it.
 private val abstractDefRe = Regex("""^\s*(?:(?:private|protected)\s+)*abstract\s+(?:def|macro)\b""")
 private val genRe = Regex("""^\s*(getter|setter|property)\b\s*(.+)$""")
+
+// `fun` C-binding declarations, inside `lib` or top-level. Group 1 is the
+// declared name; for `fun foo = bar` aliases that is `foo` (the regex stops
+// at whitespace, never reaching `= bar`).
+private val funRe = Regex("""^\s*(?:(?:private|protected)\s+)*fun\s+([a-zA-Z_]\w*[!?]?)""")
+
+// Type field declarations (`x : Int32`, `@ivar : T`). The `(?!:)` rejects
+// namespace paths (`x::Y`); the type must start uppercase or `::`-qualified
+// (excludes locals, call args, ternaries, symbol values). Group 1 keeps any
+// `@`/`@@` prefix so the offset can be adjusted past it in handleFieldLine.
+private val fieldRe = Regex("""^\s*(?:(?:private|protected)\s+)?(@{0,2}[a-z_]\w*[!?]?)\s*:(?!:)\s*(?:::)?[A-Z]""")

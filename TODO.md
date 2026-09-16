@@ -24,23 +24,21 @@ After the `def %` fix, re-run a full stdlib VFS walk and report per-file symbol
 counts; fix any other operator methods (`[]`, `[]?`, `==`, `<<`, etc.) or constructs
 that still abort file parsing.
 
-Status 2026-09-16 (wave 10, in progress, uncommitted on
-`feature/ci-infrastructure`): 85 → 2 files with errors (2172 files).
-Fixed: `INTERPOLATION` `**`/`<<`/`>>`/`//` (xml.cr `class_getter`);
-macro-split def signatures via `method_variant_header`
-(indexable/mutable.cr `map!`); `do`/`end`/keywords/NEWLINE in
-`MACRO_INTERPOLATION`/`INTERPOLATION` (`{{ x.map do ... end.splat }}`,
-`{{ if ... else ... end }}`); heredoc inside `{% %}` as flat tokens
-(macros.cr `{% raise <<-TXT`); escaped `\{%`/`\{{` as body text
-(big_int.cr, llvm.cr, ecr/macros.cr); comma-transparent macro controls in
-lists (cache_dir.cr, enumerable.cr `zip?`); expression-before-tokens in
-`macro_array_tail` (`ENV["B"]`); postfix modifier on multi-assign
-(location.cr `self.lines`); `{{...}}*` splat params
-(interpreter/compiler.cr); unclosed-macro fallback rule. Remaining
-`spec/helpers/string.cr` + `syntax/parser.cr` are EOF-at-length artifacts
-proven pre-existing on the pre-wave-10 HEAD. Ten regression goldens, full
-suite 914 green, spotless green (detekt fails identically on clean HEAD —
-environment issue, `PluginEnabler` init). Details in
+Status 2026-09-16 (wave 10 + stdlib-scan follow-ups, uncommitted on
+`feature/ci-infrastructure`): parse errors 85 → 2 files (2172 files);
+reference-graph resolved 83% → 93% (120700 refs: 106068 → 112374;
+unresolved 13618 → 2890). Text table now indexes visibility-prefixed
+defs/macros (`private macro interpret_check_args`), `fun` bindings
+(`LibC#strlen` + bare, alias-aware, def-beats-fun), and type fields
+(`Point#x`, type-body-only); bare `CrystalReference` resolves macro calls
+via `CrystalMacroIndex`, DOT-calls resolve `fun`/fields (same-file libs;
+stdlib via text table). Harness marks `asm`/`w` noise; aggregate and
+structure tests share one live parse-error walk (order-independent, no
+stale-TSV flake). Remaining unresolved is FFI noise by construction
+(`icmp`, libc `fun`), macro-generated names, and 2 EOF-at-length parse
+artifacts proven pre-existing on the pre-wave-10 HEAD. Full suite 931
+green, spotless green (detekt fails identically on clean HEAD —
+environment issue, `PluginEnabler` init). Wave-10 grammar details in
 `docs/specs/wave-10-grammar.md`.
 
 ### P2 — Implement Members

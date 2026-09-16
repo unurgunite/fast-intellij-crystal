@@ -749,6 +749,11 @@ $GRAPH_SCRIPT
         if (isIoNoise(token)) return true
         if (MACRO_NAMES.contains(token)) return true
         if (KEYWORDS.contains(token)) return true
+        // Verified 2026-09-16: no `def`/`macro`/`getter` named `asm` or `w`
+        // anywhere in the stdlib — `asm(...)` is the inline-assembly keyword
+        // (fiber/context/*) and `w` is always a block param/local
+        // (io/byte_format.cr, log/log.cr). Unresolvable by construction.
+        if (token == "asm" || token == "w") return true
         return false
     }
 

@@ -125,8 +125,7 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         )
     }
 
-    fun testPrivateMacroCallResolvesToMacroDefinition() {
-        // `private macro` + bare call in the same file: resolves through
+    fun testPrivateMacroCallResolvesToMacroDefinition() { // `private macro` + bare call in the same file: resolves through
         // CrystalMacroIndex (macros are not in CrystalMethodIndex).
         val file =
             myFixture.configureByText(
@@ -371,5 +370,55 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         val usages = myFixture.findUsages(constDef)
         assertNotNull("Find Usages should return results", usages)
         assertTrue("Should find at least one usage of the constant", usages.isNotEmpty())
+    }
+
+    fun testLibFunCallResolvesToFunDefinition() {
+        // `fun` C bindings have no stubs, so CrystalClassIndex misses `lib C`.
+        // The reference falls back to a same-file PSI walk of the lib body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                lib C
+                  fun foo : Int32
+                end
+                x = C.foo
+                """.trimIndent(),
+            )
+        val dotCall =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .firstOrNull()
+        assertNotNull("Should find dot call access", dotCall)
+        val ref = dotCall!!.reference
+        assertNotNull("dot call should have a reference", ref)
+        val resolved = ref!!.resolve()
+        assertNotNull("Should resolve lib fun call", resolved)
+        assertEquals("foo", resolved!!.text)
+    }
+
+    fun testStructFieldAccessResolvesToFieldDeclaration() {
+        // `x : Type` field declarations are not methods — the reference falls
+        // back to a textual match inside the resolved struct body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                struct Point
+                  x : Int32
+                end
+                p = Point.new
+                y = p.x
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val fieldCall = dotCalls.find { it.text == ".x" }
+        assertNotNull("Should find .x dot call, found: ${dotCalls.map { it.text }}", fieldCall)
+        val resolved = fieldCall!!.reference?.resolve()
+        assertNotNull("Should resolve struct field access", resolved)
+        assertEquals("x", resolved!!.text)
     }
 }
