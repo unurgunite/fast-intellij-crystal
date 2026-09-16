@@ -2,10 +2,10 @@
 
 Two type resolution systems:
 
-1. **`CrystalTypeInference`** (`completion/`) — type of a **variable** given its
+1. **`CrystalTypeInference`** (`type/`) — type of a **variable** given its
    name and context. Used by completion and Go to Definition. Entry points
    `inferType` (joined `"A | B"`) / `inferTypeList` (per-member, for unions).
-2. **`CrystalExpressionTypeResolver`** (`inspections/`) — type of **any
+2. **`CrystalExpressionTypeResolver`** (`type/`) — type of **any
    expression** PSI element. Used by the type-check inspection. Delegates
    variable resolution to `CrystalTypeInference`.
 

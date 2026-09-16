@@ -9,19 +9,21 @@ diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` rendered — re-render with
 
 | Package | Responsibility | Key classes |
 |---|---|---|
-| root | Language plumbing, editor behaviors | `CrystalLanguage`, `CrystalFileType`, `CrystalFile`, `CrystalParserDefinition`, `CrystalEnterHandler` (+`Blocks`/`Brackets`/`Heredoc`), `CrystalFoldingBuilder`, `CrystalBraceMatcher`, `CrystalCommenter`, `CrystalStdlibCacheWarmup` |
+| root | Language plumbing | `CrystalLanguage`, `CrystalFileType`, `CrystalFile`, `CrystalParserDefinition` |
+| `editor/` | Editor behaviors | `CrystalEnterHandler` (+`Blocks`/`Brackets`/`Heredoc`), `CrystalFoldingBuilder`, `CrystalBraceMatcher`, `CrystalCommenter`, `CrystalQuoteHandler`, `CrystalTypedHandler`, `CrystalCodeBlockSupportHandler` |
 | `lexer/` | JFlex tokenizer | `Crystal.flex`, `CrystalTokenTypes` |
 | `parser/` | GrammarKit PEG grammar | `Crystal.bnf` (output committed in `src/main/gen/`) |
-| `psi/` | References, resolution, mixins | `CrystalReference`, `CrystalDotCallReference`/`CrystalDotCallReceiver`, `CrystalNamespaceReference`, `CrystalLocalScopeResolve`, `CrystalPsiUtils`, stdlib resolvers |
+| `psi/` + `psi/references/` + `psi/stdlib/` + `psi/util/` | References, resolution, mixins | `CrystalReference`, `CrystalDotCallReference`/`CrystalDotCallReceiver`, `CrystalNamespaceReference`, `CrystalLocalScopeResolve`, `CrystalPsiUtils`, stdlib resolvers |
+| `type/` | Type-system kernel (leaf: psi/stubs only) | `CrystalTypeInference`, `CrystalExpressionTypeResolver`, `CrystalMethodLookup`, `CrystalRecordLookup`, `CrystalTypeCompatibility`, call-shape model |
 | `stubs/` | Stub serialization + StubIndex | `CrystalClassIndex`, `CrystalMethodIndex`, `CrystalMethodByClassIndex`, `CrystalConstantIndex`, … |
-| `completion/` | Dispatch, inference, lookups | `CrystalCompletionContributor` → `CrystalCompletionCases` → `CrystalDotCompletion`/`CrystalScopeCompletion`; `CrystalTypeInference`, `CrystalTypeHierarchy`, `CrystalLookupBuilders` |
-| `navigation/` | Goto, usages, parameter info | `CrystalGotoDeclarationHandler`, Find Usages, `CrystalParameterInfoHandler`, `CrystalBareCallScanner` |
-| `inspections/` | Type/arity/unused-var checks | `CrystalTypeCheckInspection`, `CrystalArgumentCountInspection`, `CrystalExpressionTypeResolver`, `CrystalOverloadEvaluator` |
-| `highlighting/` | Lexer colors + annotator | `CrystalSyntaxHighlighter`, `CrystalAnnotator` |
+| `completion/` | Dispatch + lookup builders | `CrystalCompletionContributor` → `CrystalCompletionCases` → `CrystalDotCompletion`/`CrystalScopeCompletion`; `CrystalTypeHierarchy`, `CrystalLookupBuilders`, `CrystalCompletionHelper` |
+| `navigation/` + `navigation/parameterinfo/` | Goto, usages, parameter info | `CrystalGotoDeclarationHandler`, Find Usages, `CrystalParameterInfoHandler`, `CrystalBareCallScanner` |
+| `inspections/` | Type/arity/unused-var checks | `CrystalTypeCheckInspection`, `CrystalArgumentCountInspection`, `CrystalOverloadEvaluator` |
+| `highlighting/` | Lexer colors + annotator + TODO | `CrystalSyntaxHighlighter`, `CrystalAnnotator`, `CrystalTodoIndexer` |
 | `documentation/` | Hover + Ctrl+Q | `CrystalDocumentationProvider` + `CrystalDoc*` splits |
-| `run/` | Run configs + spec SMRunner | `CrystalRunConfiguration`, `CrystalSpecFileIndexer`, `CrystalTestEventsConverter` |
-| `debugger/` | LLDB-DAP | `CrystalDebugRunState`, `crystal-lldb` adapter |
-| `structure/` `formatting/` `sdk/` `project/` `refactoring/` | Structure view, `crystal tool format`, SDK detect, wizard, rename | — |
+| `run/` | Run configs + spec SMRunner | `CrystalRunConfiguration` (+`CrystalDebugStateFactory` interface), `CrystalSpecFileIndexer`, `CrystalTestEventsConverter` |
+| `debugger/` | LLDB-DAP | `CrystalDebugRunState`, `crystal-lldb` adapter, `CrystalDebuggerStateFactory` (application service) |
+| `structure/` `formatting/` `sdk/` `project/` `refactoring/` | Structure view, `crystal tool format`, SDK detect (+stdlib warmup), wizard (+spec root), rename | — |
 
 ![Package architecture](diagrams/architecture.svg)
 
@@ -94,3 +96,8 @@ Debug: compile `bin/<name> --debug` → `crystal-lldb` over `lldb-dap`.
   keywords stay IDENTIFIER-based.
 - **Definition plumbing** — mixins + `GotoDeclarationHandler` for DOT-calls only;
   constructor order `self.new` > `record` > `initialize`.
+- **Dependency direction** — `type/` is the leaf kernel (psi/stubs only):
+  `completion/`, `inspections/`, `psi/`, `navigation/`, `documentation/`
+  depend on it, never the reverse. `run/` → `debugger/` goes through the
+  `CrystalDebugStateFactory` application service. `psi/` never imports
+  `navigation/`.

@@ -65,6 +65,12 @@ code-style decision → `docs/decision-log/`; ECR tutorial deleted, IDE sketch �
 (string-interp matrix, type-inference Implemented-vs-roadmap, find-usages
 split out of block-highlighting, hover/completion deduped); CONTRIBUTING no
 longer cites untracked `AGENTS.md`; BNF wave comments point at `reports/`.
+Architecture waves 0–3: `editor/` + rehomed root files; `psi/{references,
+stdlib,util}` + `navigation/{parameterinfo}` (+ivar merged into `psi/`);
+leaf `type/` kernel (inference, resolvers, `MethodLookup`, `RecordLookup`,
+`extractParameterName`); cycles dead (`completion↔inspections`,
+`psi↔completion`, `psi↔navigation`, `run↔debugger` via application service);
+`ARCHITECTURE.md` module map + dependency-direction invariant updated.
 
 ### P2 — Implement Members
 

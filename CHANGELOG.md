@@ -30,6 +30,19 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   `CrystalLocalScopeResolveTest` (5), `CrystalStdlibFileResolveTest` (7),
   `crystalUnderscore` moved to `CrystalPsiUtilsTest` (+4 edge cases), union
   members + depth-budget `inferTypeList` tests (2).
+- **Architecture waves 0–3 (all package cycles dead)** — wave 0: 4 unused
+  cross-package imports removed. Wave 1: `editor/` (13 files) + rehomed
+  `TodoIndexer`→`highlighting`, `TemplateContextType`→`editor`,
+  `SpecSourceRootConfigurator`→`project`, `StdlibCacheWarmup`→`sdk`,
+  `SingleQuoteStringInspection`→`inspections` (+12 `plugin.xml` FQNs).
+  Wave 2: `psi/{references,stdlib,util}` + `navigation/{parameterinfo}`
+  (ivar cluster merged into `psi/`; 2 `parameterInfo` FQNs fixed).
+  Wave 3: leaf `type/` kernel (inference, resolvers, call-shape model,
+  `MethodLookup`, `RecordLookup`, `psi.util.extractParameterName`);
+  `completion/` keeps thin delegates; `run↔debugger` via the
+  `CrystalDebugStateFactory` application service. Dependency direction is now
+  one-way (`type/` ← `completion/`/`inspections`/`psi/`/`navigation/`;
+  `psi/` never imports `navigation/`). `ARCHITECTURE.md` module map updated.
 - **Docs restructure (no more mixed-genre `docs/specs/`)** — `specs/` holds
   living behavior only (10 specs + `README.md` index); test conventions →
   `docs/TESTING.md` (stale count fixed, suite/golden layout documented); wave
