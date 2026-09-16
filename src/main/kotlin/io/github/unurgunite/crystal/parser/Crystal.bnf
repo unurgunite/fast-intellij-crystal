@@ -11,7 +11,7 @@
   elementTypeHolderClass="io.github.unurgunite.crystal.psi.CrystalTypes"
   elementTypeClass="io.github.unurgunite.crystal.psi.CrystalElementType"
   tokenTypeClass="io.github.unurgunite.crystal.lexer.CrystalTokenType"
-  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
+  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
 
   tokens = [
     // Keywords
@@ -126,6 +126,10 @@
     CARET="CARET"
     TILDE="TILDE"
     DOUBLE_STAR="DOUBLE_STAR"
+    UNARY_MINUS="UNARY_MINUS"
+    UNARY_PLUS="UNARY_PLUS"
+    SPLAT="SPLAT"
+    WRAP_NEG="WRAP_NEG"
     WRAP_PLUS="WRAP_PLUS"
     WRAP_MINUS="WRAP_MINUS"
     WRAP_STAR="WRAP_STAR"
@@ -187,6 +191,9 @@
     // Whitespace & Comments
     LINE_COMMENT="LINE_COMMENT"
     NEWLINE="NEWLINE"
+    // Escaped macro delimiters (`\{%`, `\{{` — the lexer emits BACKSLASH and
+    // pushes back the delimiter so it re-lexes as macro code).
+    BACKSLASH="BACKSLASH"
   ]
 }
 
@@ -210,6 +217,7 @@ private top_level_statement ::= NEWLINE
                               | annotation_definition
                               | method_definition
                               | macro_definition
+                              | macro_definition_open
                               | alias_definition
                               | visibility_modifier
                               | macro_control
@@ -310,6 +318,7 @@ private class_member ::= NEWLINE
                | abstract_method_definition
                | method_definition
                | macro_definition
+               | macro_definition_open
                | class_definition
                | module_definition
                | struct_definition
@@ -375,12 +384,53 @@ lib_union_definition ::= UNION CONSTANT lib_body END
 
 // ==================== Methods ====================
 
-method_definition ::= DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] [method_body END] {
+// Macro-split signature (`indexable/mutable.cr` `map!`: `{% if v >= 0 %}
+// def map!(& : T -> _) : self {% else %} def map!(&) {% end %}` + ONE shared
+// body + `end` — each `{% %}` branch carries a complete variant header, only
+// one survives expansion). The `(NLS macro_control DEF ...)*` tail consumes
+// the `{% else %} DEF-variant` middles; the final `{% end %}` stays in
+// method_body's macro-interleave path (same as statement-level macro-if
+// chains). Single sequence, no intra-rule alternative: pin(".*")=2 commits
+// after DEF+name, so an alternative there could never fall back.
+// The variant DEF is REQUIRED (not optional): a def whose BODY merely starts
+// with `{% if %}` must not lose its first control to this tail (verified:
+// optional variant breaks `def f \n {% if y %} bar {% end %} \n end` — the
+// body loses `{% if %}` and the trailing `{% end %}` dangles). The stub name
+// stays correct: findNameIdentifierInMethodName takes the FIRST direct
+// IDENTIFIER child, which is always the main header's name.
+// The variant header lives in a private wrapper rule (NOT inline): inlining
+// a second parameter_list/type_reference directly under method_definition
+// flips the existing single getters (getParameterList, getTypeReference, …)
+// into List getters and breaks all Kotlin call sites (verified 2026-09-16).
+// The wrapper carries its own single getters; method_definition only gains
+// getMethodVariantHeaderList, touching no existing code. (Flat token
+// alternatives must stay inline — named wrappers around bare tokens emit
+// duplicate flat+wrapper getters that break kotlinc; this wrapper holds
+// only sub-rule refs, so it is safe.)
+method_definition ::= DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*] (NLS method_variant_header)* [method_body END] {
   pin(".*")=2
   stubClass="io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub"
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedMethodDefinitionImpl"
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
+
+// One `{% else %} DEF-variant` middle of a macro-split signature (see above).
+// PUBLIC (own PSI node CrystalMethodVariantHeader): keeps method_definition's
+// own parameter_list/type_reference getters single, so no Kotlin call site
+// changes. Holds only sub-rule refs (never bare tokens) — no
+// duplicate-getter hazard (that trap is specific to named wrappers around
+// bare tokens; method_body/parameter_list prove sub-rule wrappers are safe).
+// NLS between macro_control and DEF is load-bearing: `{% else %}` and the
+// variant `def` are on separate lines (verified 2026-09-16: without it the
+// variant never fires — NEWLINE is a real token, not whitespace).
+// No guard, no pin: the REQUIRED DEF self-protects (a plain `{% end %}` or
+// a body-opening `{% if %}` fails the variant inside the `(...)*` loop,
+// which simply ends and lets method_body take over).
+// Plain public rule (own PSI node, single getters — see above); NOT private:
+// a private rule inlines (no node) and its parameter_list/type_reference
+// children would flip method_definition's getters to List (verified
+// 2026-09-16: private variant broke 30+ Kotlin call sites).
+method_variant_header ::= macro_control NLS DEF method_name [LPAREN NLS parameter_list NLS RPAREN] [COLON type_reference] [FORALL CONSTANT (COMMA CONSTANT)*]
 
 // Bodiless `abstract def foo` (Crystal forbids bodies on abstract defs —
 // verified: `abstract def foo : Int32; 1; end` is a compile error).
@@ -391,6 +441,14 @@ private method_name ::= IDENTIFIER [macro_interpolation] [BANG|QUESTION] [ASSIGN
                       | type_path DOT (IDENTIFIER | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
                       | CONSTANT [macro_interpolation] [BANG|QUESTION] [ASSIGN]
                       | SELF DOT (IDENTIFIER [macro_interpolation] | CONSTANT | keyword_as_method | operator_method_name | macro_interpolation) [BANG|QUESTION] [ASSIGN]
+                      // Operator `def` names (`def []`, `def []?`, `def []=`,
+                      // `def !~`, `def ==` — array.cr/match_data.cr/string.cr):
+                      // `[]` lexes as TWO tokens (LBRACKET RBRACKET), so the
+                      // single-token operator_method_name arm can't match them.
+                      // Disjoint first token (LBRACKET) — plain names keep
+                      // their shapes (goldens confirm). Commits on the pair
+                      // (fail-fast: `[` alone never matches a method name).
+                      | LBRACKET RBRACKET [QUESTION | ASSIGN] [BANG|QUESTION]
                       // NOTE: the DOT-first form stays before the lone `{{a}}` form
                       // (PEG longer-first); the MacroSetter shape change comes from
                       // the new DOT AT / interpolated_method_segment alternatives in
@@ -419,6 +477,16 @@ private operator_method_name ::= PLUS | MINUS | STAR | SLASH | PERCENT | AMPERSA
 
 method_body ::= statement_list rescue_clause+ [else_clause] [ensure_clause]
               | statement_list [else_clause] [ensure_clause]
+              // `{% ... %}`-managed bodies (`{% begin %}`, macro-generated
+              // `rescue`/`ensure` — http/server.cr `{% begin %} begin ...
+              // ensure {% end %}` shape): raw macro controls interleave with
+              // statements, so neither plain alternative commits. Fail-fast
+              // `{%` guard keeps macro-free bodies on the plain paths.
+              // The tail inlines (macro_control | statement_list)+ directly:
+              // a named private rule would make GrammarKit emit a duplicate
+              // flat+wrapper getStatementListList() overload pair that breaks
+              // kotlinc (verified twice: tuple_literal, array_literal).
+              | statement_list &(macro_control) (macro_control | statement_list)+ [rescue_clause+] [else_clause] [ensure_clause]
 
 macro_body ::= macro_body_element*
 
@@ -427,27 +495,144 @@ private macro_body_element ::= MACRO_BODY_CONTENT
                              | macro_interpolation
                              | macro_control
                              | NEWLINE
+                             // Escaped macro delimiters (`\{%`, `\{{` — big_int.cr,
+                             // llvm.cr, ecr/macros.cr): the `\` suppresses
+                             // immediate expansion; the content stays TEXT.
+                             // The lexer already emits matching BEGIN tokens
+                             // (pushState like the unescaped forms); here they
+                             // parse as opaque body text — the matching ENDs
+                             // ride the same rule (nesting via macro_control /
+                             // macro_interpolation recursion stays balanced).
+                             // The content soup mirrors macro_control's own
+                             // (NOT macro_control_content*: after an escaped
+                             // `{{n}}` the lexer emits MACRO_BODY_CONTENT for
+                             // `}}` and bare `%`/`}` tokens, which the content
+                             // rule rejects — verified 2026-09-16: the
+                             // structured content alternative NEVER fires on
+                             // `\{% if Int{{n}} == X %}`, only the soup does).
+                             | BACKSLASH MACRO_CONTROL_BEGIN macro_escaped_content* MACRO_CONTROL_END
+                             | BACKSLASH MACRO_INTERPOLATION_BEGIN (bare_command_expression | expression)? MACRO_INTERPOLATION_END
 
-macro_interpolation ::= MACRO_INTERPOLATION_BEGIN (bare_command_expression | expression) MACRO_INTERPOLATION_END
-                      | MACRO_INTERPOLATION_BEGIN (bare_command_expression | expression) RBRACE
+// Flat token soup for escaped `\{%...%}` bodies (see above): every token the
+// macro lexers can emit, with NO structure (the body is TEXT — even
+// `MACRO_INTERPOLATION_BEGIN`/`END` pairs are opaque). The nested `{%`/`{{`
+// push real states (balanced by their ENDs via macro_control /
+// macro_interpolation recursion). Deliberately NOT reusing
+// macro_control_content (which requires structured interpolations).
+private macro_escaped_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
+                             // Generated-code fragments the MACRO_BODY lexer
+                             // leaves as structured tokens (they sit INSIDE
+                             // macro text, so real crystal would reject them
+                             // as code — verified illegal 1.21.0 — but the
+                             // bodies are TEXT and the tokens must parse as
+                             // SOMETHING): `=`/`(`/`)`/`[`/`]`/`]`-tails around
+                             // `{{...}}` (`def f({{...}})`,
+                             // `y = [{{...}}]` — macros.cr `record`). Each is
+                             // a lone token element; the parser pairs them
+                             // only by position, never as real syntax.
+                             | ASSIGN
+                             | LPAREN | RPAREN
+                             | LBRACKET | RBRACKET
+
+macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS MACRO_INTERPOLATION_END
+                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS RBRACE
+                      // Macro-splat parameter (`def initialize({{ x.map ...
+                      // end.splat }})` — macros.cr `record`): ILLEGAL in real
+                      // crystal (verified 1.21.0: `unexpected token "{{"`),
+                      // but macro bodies are TEXT — the lexer emits
+                      // MACRO_BODY_CONTENT for the def text and the `{{` must
+                      // parse as SOMETHING, or one error node orphans the
+                      // whole macro tail. Tolerated leniency (same precedent
+                      // as `{% %}` in `def` params, wave-9 spec).
+                      // NLS inside (Reflect(X) in enumerable.cr puts `{{` /
+                      // `}}` on their own lines): NLS is private (inlines, no
+                      // shape change when absent).
+                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression)? NLS MACRO_INTERPOLATION_END
 
 macro_control ::= MACRO_CONTROL_BEGIN macro_control_content* MACRO_CONTROL_END
 
-private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
+// Escaped `\{%...%}` / `\{{...}}` at statement level (big_int.cr, llvm.cr,
+// ecr/macros.cr: `\{% if Int{{n}} == X %}` / `\{{ run(...) }}` inside
+// `{% for %}`-generated defs). Real crystal rejects `\{%` at true statement
+// level (verified 1.21.0: `unknown token: '{'`), but inside macro `{% for %}`
+// bodies it is body TEXT — and our `{% for %}` design parses the body as
+// sibling statements, so the escaped controls surface here. Tolerated
+// leniency (same precedent as macro_definition_open). PUBLIC wrapper (own
+// PSI node, composite refs only — no duplicate-getter hazard); BACKSLASH
+// first token keeps it fail-fast (zero impact on BACKSLASH-free code —
+// BACKSLASH only ever precedes `{%`/`{{`).
+escaped_macro_statement ::= BACKSLASH macro_control
+                          | BACKSLASH macro_interpolation
+
+// Inline `{% if %} A {% else %} B {% end %}` as an EXPRESSION operand
+// (`ei_class == {% if flag?(:bits64) %} CLASS_64 {% else %} CLASS_32 {% end %} && ...`
+// — elf.cr `valid?`): at expansion time the branch yields one value, so real
+// crystal parses the whole chain as one `&&` expression (verified 1.21.0).
+// Without this, each `{%...%}` parses as a lone statement-level control and
+// the `&&` dangles. PEG longer-first: sits BEFORE plain macro_control in
+// primary_expression. Fail-fast guard `{% IF/UNLESS` keeps every other
+// control on the plain shape (goldens confirm). Branch `expression`s stop
+// naturally before `{%` (no expression continues over MACRO_CONTROL_BEGIN).
+// `(macro_control expression)*` covers `{% elsif %}`/`{% else %}` middles;
+// the final macro_control is the `{% end %}`. Nested macro-ifs recurse
+// through expression → primary (each level consumes ≥1 control, terminates).
+// Statement-level `{% if %}` blocks are unaffected: `statement` tries plain
+// macro_control BEFORE expression_statement, so a leading `{%` never reaches
+// here at statement start. Also fixes `{% if %}` as named-arg value
+// (`new(x: {% if a %} 1 {% else %} 2 {% end %})` — status.cr) via expression.
+private macro_if_expression ::= &(MACRO_CONTROL_BEGIN (IF | UNLESS)) macro_control expression (macro_control expression)* macro_control
+
+private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
                               | for_statement
 
+// Escaped-nested `{{...}}` inside macro code (`\{% if Int{{n}} == X %}` —
+// big_int.cr, llvm.cr): the lexer's MACRO_INTERPOLATION `{{` rule emits
+// MACRO_BODY_CONTENT for `}}` (it thinks a `{{`-nesting opened), so the
+// structured macro_interpolation rule can never match. This flat fallback
+// consumes the interpolation as opaque body text (same swallowing shape as
+// the BACKSLASH body-text rule). AFTER macro_interpolation (PEG: real
+// interpolations keep their shape). No new PSI type.
+private macro_escaped_interpolation ::= MACRO_INTERPOLATION_BEGIN (macro_control_token | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE)+
+
+// Heredoc inside `{% %}` (`{% raise <<-TXT unless kwargs.empty? ... TXT %}`
+// — macros.cr `record`): the lexer emits HEREDOC_START on the opener line,
+// body content, and HEREDOC_END at the marker (MACRO_HEREDOC_BODY state pops
+// back to MACRO_CONTROL). FLAT tokens in the content soup (NOT a structured
+// START..END rule): the opener line carries ordinary macro code BETWEEN the
+// start and the body (`raise <<-TXT unless x.empty?` — the heredoc is a call
+// argument, the `unless` a postfix modifier), so no contiguity exists to
+// match. STRING_ESCAPE covers raw heredocs (`\`` etc.); the INTERPOLATION
+// pair covers `#{name}` inside non-raw bodies (the lexer pushes the shared
+// INTERPOLATION state, which pops back into the heredoc body).
+
+// Percent literal inside `{% %}` / `{{ }}` (`{% for mod in %w(LittleEndian
+// BigEndian) %}` — MacroForAssign golden, real stdlib shape): the lexer now
+// emits proper PERCENT_* tokens there (not PERCENT+IDENTIFIER+LPAREN), so the
+// content needs a structured rule mirroring percent_literal (BEGIN content*
+// END — NOT flat tokens, or unbalanced fragments would parse). No new PSI
+// type: reuses the percent_literal shape… — no, own private rule (sharing
+// percent_literal directly would attach PERCENT_LITERAL PSI inside macro
+// controls; keep macro bodies token-flat like everything else here).
+private macro_percent_literal ::= PERCENT_LITERAL_BEGIN macro_percent_content* PERCENT_LITERAL_END
+                                | PERCENT_SYMBOL_BEGIN macro_percent_symbol_content* PERCENT_SYMBOL_END
+private macro_percent_content ::= STRING_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END | SYMBOL_LITERAL | REGEX_LITERAL | COMMAND_LITERAL | NEWLINE
+private macro_percent_symbol_content ::= SYMBOL_LITERAL | NEWLINE
+
 private macro_control_token ::= IDENTIFIER | CONSTANT | INSTANCE_VAR | CLASS_VAR
-                              | INTEGER_LITERAL | STRING_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END
-                              | SYMBOL_LITERAL | SYMBOL_COLON
+                              | INTEGER_LITERAL | FLOAT_LITERAL | STRING_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END
+                              | SYMBOL_LITERAL | SYMBOL_COLON | CHAR_LITERAL
                               | TRUE | FALSE | NIL
                               | IF | ELSE | ELSIF | END | FOR | IN | UNLESS | BEGIN | YIELD | VERBATIM
                               | LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE | COMMA | DOT | COLON
                               | EQ | NEQ | LT | GT | LTE | GTE | OR_OR | AND_AND | PIPE | AMPERSAND
-                              | ASSIGN | PLUS | MINUS | STAR | DOUBLE_STAR | SLASH | DOUBLE_SLASH | QUESTION | BANG | DOTDOT | DOTDOTDOT
+                              | ASSIGN | PLUS | MINUS | STAR | DOUBLE_STAR | SLASH | DOUBLE_SLASH | QUESTION | BANG | CARET | TILDE | DOTDOT | DOTDOTDOT
+                              | LSHIFT | RSHIFT
                               | DOUBLE_COLON | PERCENT
+                              | REGEX_BEGIN | REGEX_LITERAL | REGEX_END
                               | NEWLINE | SEMICOLON | HASH | AT | ARROW | ANNOTATION
                               | COMMAND_BEGIN | COMMAND_LITERAL | COMMAND_END
                               | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END
+                              | MACRO_BODY_CONTENT
                               | DO | DEF | CLASS | MODULE | STRUCT | ENUM | MACRO | RETURN | BREAK | NEXT
                               | THEN | WHEN | CASE | WHILE | UNTIL | RESCUE | ENSURE | FUN | LIB | TYPE | ALIAS
                               | AS | OF | IS_A | NIL_QUESTION | RESPONDS_TO | ABSTRACT | PROTECTED | PRIVATE
@@ -462,11 +647,32 @@ macro_definition ::= MACRO method_name [LPAREN NLS parameter_list NLS RPAREN] ma
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
+// Unclosed `macro` (macro TEXT containing generated-code fragments, e.g.
+// `def f({{...}})` — macros.cr `record`, ILLEGAL in real crystal but macro
+// bodies are TEXT): MACRO_BODY's def-text never flips back to YYINITIAL, so
+// no `end` token ever closes the macro. Instead of one error node orphaning
+// the whole macro tail, tolerate the header + body WITHOUT the closing END
+// (the orphaned `{{...}}` fragments parse as macro_body_elements above).
+// AFTER the closed alternative (PEG: real macros keep their shape).
+// Same pin/stub/mixin contract (it IS a definition, for the index).
+macro_definition_open ::= MACRO method_name [LPAREN NLS parameter_list NLS RPAREN] macro_body {
+  pin=1
+  stubClass="io.github.unurgunite.crystal.stubs.CrystalMacroDefinitionStub"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedMacroDefinitionImpl"
+  implements="io.github.unurgunite.crystal.psi.CrystalMacroDefinition"
+}
+
 // ==================== Parameters ====================
 
 parameter_list ::= [parameter_item (COMMA NLS parameter_item)* [NLS COMMA]]
 
-private parameter_item ::= bare_splat_separator | DOTDOTDOT | parameter
+private parameter_item ::= bare_splat_separator | DOTDOTDOT | parameter | macro_control
+
+// NOTE: `macro_control` in parameter_item also accepts `{% %}` directly in `def`
+// parameter lists (a syntax error in real crystal — only the `->()` proc form
+// allows macro-generated parameters, verified 2026-09-14). Deliberate union:
+// the grammar is context-insensitive and must accept all macro-branch texts
+// (same precedent as `fun {{...}}` names, wave-9 spec). Harmless leniency.
 
 private param_prefix ::= annotation_usage
                        | macro_control
@@ -476,13 +682,29 @@ private param_prefix ::= annotation_usage
 // a name (`of` as single name with default: `def self.map(values, of = nil, &)`,
 // `for` as external name: `def f(for dst_io : IO)`, `when` as block param:
 // `node.whens.each do |when|` — all stdlib shapes). Mirrors `bare_arg_name`.
-// Declaration positions (COLON/ASSIGN/COMMA/RPAREN/PIPE follow), so the keyword
+// Declaration positions (COLON/ASSIGN/COMMA/RPAREN follow), so the keyword
 // alternative fails fast elsewhere.
 private param_name ::= IDENTIFIER | keyword_as_record_field
 
-parameter ::= param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
+// Anonymous `out : Type` (lib fun shape — xml/libxml2.cr `fun xmlNewTextWriter(out : OutputBuffer*)`;
+// verified legal; `def f(out : T)` is rejected by real crystal but tolerated here).
+// FIRST alternative with no param_prefix*: the greedy prefix star would eat OUT
+// and leave COLON dangling with no backtrack. Fails fast on `out x : T`
+// (COLON absent → fall through to prefix+name alternatives). No pin: no commit.
+parameter ::= OUT COLON type_reference [ASSIGN expression]
+            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name IDENTIFIER [COLON type_reference] [ASSIGN expression]
-            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [COLON (splat_type | type_reference)] [ASSIGN expression]
+            | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [macro_interpolation] [COLON (splat_type | type_reference)] [ASSIGN expression]
+            // Macro-splat parameter (`def initialize({{ x.map ... end.splat }})`
+            // — macros.cr `record`): the whole parameter is generated code.
+            // Before the external/internal-name pair (fails fast without
+            // `{{`); kept inside `parameter` (not parameter_item) so the
+            // PARAMETER_LIST shape and CrystalParameterMixin stay intact.
+            // The `[STAR]` covers the splat-after-interpolation shape
+            // (`{{operands.splat(", ")}}*, node : ASTNode?` —
+            // interpreter/compiler.cr): the `*` applies to the generated
+            // list, never a bare STAR param (which has no `{{`).
+            | macro_interpolation [STAR]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] instance_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] class_var_access [COLON type_reference] [ASSIGN expression]
             | param_prefix* AMPERSAND class_var_access [COLON type_reference]
@@ -516,7 +738,7 @@ property_declaration ::= (instance_var_access | class_var_access | IDENTIFIER | 
 
 // ==================== Visibility ====================
 
-visibility_modifier ::= (PRIVATE | PROTECTED) (method_definition | macro_definition | class_definition | module_definition | struct_definition | enum_definition | record_definition | constant_assignment | property_macro | abstract_method_definition | statement)
+visibility_modifier ::= (PRIVATE | PROTECTED) (method_definition | macro_definition | class_definition | module_definition | struct_definition | enum_definition | record_definition | alias_definition | constant_assignment | property_macro | abstract_method_definition | statement)
                       | (PRIVATE | PROTECTED) SELF DOT IDENTIFIER [call_args | bare_argument_list] [block]
                       | (PRIVATE | PROTECTED) &NEWLINE
 
@@ -552,9 +774,13 @@ statement ::= !WHEN (if_statement
             | assignment
             | constant_assignment
             | macro_control
+            | escaped_macro_statement
+            | dot_space_statement
+            | bare_command_space_first
             | bare_command_expression
             | method_definition
             | macro_definition
+            | macro_definition_open
             | expression_statement)
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
@@ -580,11 +806,16 @@ private condition_assignment ::= variable ASSIGN NLS expression
 for_statement ::= FOR IDENTIFIER (COMMA IDENTIFIER)* IN expression then_clause for_body END {pin=1}
 
 // `{% for %}` generating case branches (`case x {% for n in NS %} in .{{n.id}}? ...` —
-// token.cr, tracing.cr): the loop body holds `in`/`when` clauses, not statements.
-// Transparent (private): plain `for` keeps its shape via the first alternative.
-private for_body ::= statement_list | (when_clause | in_clause | macro_control)+
+// token.cr, tracing.cr): the loop body holds `in`/`when` clauses, macro controls,
+// or raw argument text (`call(..., {% for i in 0...n %} arg{{i}}, {% end %})` —
+// proc.cr: the generated args carry their own commas as flat tokens). The
+// statement_list alternative stays FIRST (plain loops keep their shape; it also
+// keeps a single getStatementList() on the generated PSI). The flat-token
+// alternative commits only when a body line fails statement parsing — same PSI
+// type via expression-free tokens (no new element types, no duplicate getters).
+private for_body ::= statement_list | (expression | when_clause | in_clause | macro_control | macro_control_token)+
 
-case_statement ::= CASE [assignment | expression] NEWLINE* (when_clause | in_clause | macro_control)+ [else_clause] END {pin=1}
+case_statement ::= CASE [assignment | expression] NEWLINE* (NEWLINE* (when_clause | in_clause | macro_control))+ [else_clause] END {pin=1}
 
 begin_statement ::= BEGIN statement_list rescue_clause* [else_clause] [ensure_clause] END {pin=1}
 
@@ -606,8 +837,7 @@ when_clause ::= WHEN case_pattern_list then_clause statement_list
 // parses as division through the expression alternative; PEG tries the regex
 // first but backtracks on REGEX_END mismatch).
 private case_pattern_list ::= case_pattern_alt (NLS COMMA NLS case_pattern_alt)*
-private case_pattern_alt ::= macro_interpolation
-                           | regex_expression
+private case_pattern_alt ::= regex_expression
                            | NLS DOT (IDENTIFIER | RESPONDS_TO | IS_A | NIL_QUESTION | AS | AS_QUESTION | CASE_EQ | operator_method_name | BANG) [call_args | bare_argument_list]
                            | case_pattern_assign
                            | expression
@@ -616,21 +846,30 @@ private case_pattern_alt ::= macro_interpolation
 // PEG order: before `expression` so the ASSIGN is not left dangling.
 private case_pattern_assign ::= variable ASSIGN NLS expression
 
-// `in` pattern clauses (`case ... in Tuple(A, B)`, `in WinError`, `in {a, b}`):
+// `in` pattern clauses (`case ... in Tuple(A, B)`, `in WinError`, `in {a, b}`,
+// `in .{{name}}?` — disassembler.cr/interpreter.cr macro-generated receiver):
 // full expression_list (not just call-shaped patterns), optional `if` guard.
 // PEG order: tuple destructuring literal first so `{a, b}` is not read as a
-// tuple_literal expression missing its `then`.
+// tuple_literal expression missing its `then`; DOT+`{{` last (fail-fast;
+// plain forms keep their shapes — goldens confirm). No block tails anywhere:
+// blocks never appear in patterns.
 in_clause ::= IN tuple_literal [IF expression] then_clause statement_list
             | IN expression_list [IF expression] then_clause statement_list
+            | IN DOT macro_interpolation [call_args | bare_argument_list] [IF expression] then_clause statement_list
 
 rescue_clause ::= RESCUE [rescue_spec] then_clause statement_list
 
 // rescue_spec: handles all Crystal rescue clause forms.
 // Order matters in PEG (longer alternative first for IDENTIFIER disambiguation).
 // type_reference supports unions (SomeError | OtherError) and namespaces (::Foo).
+// Macro-interleaved specs (`rescue IO::Error{% unless win %} | OpenSSL::Error{% end %}`
+// — http/server.cr): `{% %}` may sit between union members. The tail commits
+// only on a following macro_control or PIPE+type (plain specs keep the single
+// type_reference shape — goldens confirm); the union-inside-type_reference
+// still wins for macro-free `A | B`.
 private rescue_spec ::= IDENTIFIER COLON type_reference
                       | IDENTIFIER
-                      | type_reference
+                      | type_reference (NLS macro_control | NLS PIPE NLS type_reference)*
 
 ensure_clause ::= ENSURE statement_list
 
@@ -660,9 +899,21 @@ break_expression ::= BREAK assignment (COMMA NLS expression)*
 next_expression ::= NEXT assignment (COMMA NLS expression)*
                   | NEXT expression? (COMMA NLS expression)*
 
-yield_statement ::= YIELD [LPAREN argument_list RPAREN | bare_argument_list] [postfix_modifier] {pin=1}
+yield_statement ::= YIELD [LPAREN argument_list_macro RPAREN | bare_argument_list] [postfix_modifier] {pin=1}
+// `yield` whose paren args contain a macro-generated tuple `{% for %}` body
+// (`yield({elem, {% for %} other_elem{{i}}, {% end %}})` — enumerable.cr
+// `zip`): the flat macro controls break argument_list's `argument (COMMA
+// argument)*` rhythm (each `{%...%}` is a lone control with no commas).
+// Same flat-token precedent as hash_entry_list/array: accept raw controls
+// INSIDE the parens (no new PSI type — controls flatten as siblings;
+// arity tooling reads the ARGUMENT leaves, of which there are exactly the
+// real ones: `elem`, `other_elem{{i}}`). Commits only on `{%` right after
+// `(` (fail-fast: plain `yield(x, y)` keeps argument_list shape — goldens
+// confirm). The tail after the last control is a plain argument_list
+// (trailing real args + `)`), so `yield({% for %}a,{% end %}b, c)` works.
+private argument_list_macro ::= &MACRO_CONTROL_BEGIN (macro_control | argument | macro_control_token | COMMA | NEWLINE)+
 
-yield_expression ::= YIELD [expression (COMMA NLS expression)*] {pin=1}
+yield_expression ::= YIELD [LPAREN NLS argument_list NLS RPAREN | expression (COMMA NLS expression)*] {pin=1}
 
 with_yield_statement ::= WITH expression YIELD {pin=1}
 
@@ -685,23 +936,42 @@ with_yield_statement ::= WITH expression YIELD {pin=1}
 // CrystalStatement.assignment).
 assignment ::= assignable_head DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR) (dot_call_access | namespace_access)* assign_op NLS? (assignment | expression) [postfix_modifier]
              | assignable_call assign_op NLS? (assignment | expression) [postfix_modifier]
+             // Grouped-postfix receiver (`(stack - size).as(Int32*).value = type_id`
+             // — instructions.cr `code:` hash entry): grouped_expression IS in
+             // postfix_expression's primary tower, but the plain assignable
+             // alternatives above can't start with it (PEG commits on the
+             // receiver alternatives first and the group never matches). The
+             // leading-`(` is disjoint from plain receivers (fail-fast), so
+             // plain `a.b = v` keeps its shape — goldens confirm. The tail is
+             // the shared chained form (DOT name + more DOTs + assign_op) so
+             // `(a).b.c = v` chains work too. NOTE: optional trailing [block]
+             // is NOT here — `foo.bar do end = x` is nonsense.
+             | grouped_expression (dot_call_access | namespace_access)+ assign_op NLS? (assignment | expression) [postfix_modifier]
              | variable assign_op NLS? (assignment | expression) [postfix_modifier] {pin=2
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalAssignmentMixin"
 }
 
-private assignable_call ::= (SELF | instance_var_access | class_var_access | GLOBAL_VAR | CONSTANT | IDENTIFIER) (dot_call_access | namespace_access | LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])+
+private assignable_call ::= (SELF | instance_var_access | class_var_access | GLOBAL_VAR | CONSTANT | IDENTIFIER | OUT) (dot_call_access | namespace_access | LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])+
 
 // Receiver + at most ONE suffix group, and that group must NOT be a DOT-call
 // with its own args tail (see `assignment` chained form above): `.x_ptr` in
 // `point.x_ptr.value` parses via the no-args DOT alternative, leaving `.value`
 // for the explicit DOT + name. Index/namespace groups are unrestricted.
-private assignable_head ::= (SELF | instance_var_access | class_var_access | GLOBAL_VAR | CONSTANT | IDENTIFIER) (DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR) | namespace_access | LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])
+private assignable_head ::= (SELF | instance_var_access | class_var_access | GLOBAL_VAR | CONSTANT | IDENTIFIER | OUT) (DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR) | namespace_access | LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])
 
-multi_assignment ::= multi_assign_target COMMA NLS multi_assign_target_list ASSIGN NLS multi_assign_values
+multi_assignment ::= multi_assign_target COMMA NLS multi_assign_target_list ASSIGN NLS multi_assign_values [postfix_modifier]
 
 private multi_assign_target_list ::= multi_assign_target (COMMA NLS multi_assign_target)*
 
-multi_assign_target ::= STAR variable
+// Macro-interpolated multi-assign target (`{{operand.var}}, ip = ...` —
+// disassembler.cr `{% for %}` body): at expansion time the `{{...}}` becomes
+// a plain identifier, so the line is a normal multi-assign. Bare `{{a}}, b
+// = ...` at top level is a syntax error in real crystal (verified 1.21.0),
+// but inside `{% for %}` it is legal — accepted here as context-insensitive
+// union (same precedent as `fun {{...}}` names). Disjoint first token (`{{`)
+// — plain targets keep their shapes (goldens confirm).
+multi_assign_target ::= macro_interpolation
+                      | STAR variable
                       | STAR UNDERSCORE
                       | assignable_call
                       | variable [COLON type_reference]
@@ -717,7 +987,10 @@ constant_assignment ::= CONSTANT ASSIGN NLS expression [postfix_modifier] {
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
-private variable ::= instance_var_access | class_var_access | GLOBAL_VAR | IDENTIFIER macro_interpolation | IDENTIFIER | OF | UNION | TYPE
+// `out` as an assignment target (`out = v.to_unsafe`, `out += 1` — slice/sort.cr;
+// verified legal). Reads go through `variable_reference` (which also has OUT —
+// needed for `out.copy_from(...)` / `out.value` receiver shapes in sort.cr).
+private variable ::= instance_var_access | class_var_access | GLOBAL_VAR | IDENTIFIER macro_interpolation | IDENTIFIER | OF | UNION | TYPE | OUT | fresh_var
 
 private assign_op ::= ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
                     | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
@@ -733,7 +1006,10 @@ private assign_op ::= ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_
 // (PEG retries the whole prefix on each failed alternative), i.e. O(3^depth)
 // on nested expressions — 191s for a 2.5KB hash-in-do-block-in-hash file.
 // The optional tail parses the prefix exactly once.
-expression ::= or_expression [QUESTION [expression COLON expression]]
+// NLS around the tail tokens: the `:` branch may start on the next line
+// (`? from + X\n : (...) ? ...` — range/bsearch.cr:52), same NLS discipline
+// as every other binary operator in this tower (OR_OR NLS, EQ NLS, ...).
+expression ::= or_expression [QUESTION NLS expression NLS COLON NLS expression]
 
 private or_expression ::= and_expression (OR_OR NLS and_expression)*
 
@@ -763,7 +1039,7 @@ private multiplicative_expression ::= power_expression ((STAR | SLASH | DOUBLE_S
 
 private power_expression ::= unary_expression ((DOUBLE_STAR | WRAP_DOUBLE_STAR) NLS unary_expression)*
 
-private unary_expression ::= (PLUS | MINUS | TILDE | AMPERSAND | STAR | CARET) unary_expression
+private unary_expression ::= (PLUS | MINUS | UNARY_PLUS | UNARY_MINUS | TILDE | AMPERSAND | STAR | CARET | WRAP_NEG) unary_expression
                            | postfix_expression
 
 private postfix_expression ::= primary_expression postfix_op*
@@ -771,7 +1047,7 @@ private postfix_expression ::= primary_expression postfix_op*
 private postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
                      | NLS dot_call_access [block]
                      | namespace_access
-                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION] [index_assign_suffix]
+                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
                      | NLS DOT (INSTANCE_VAR | CLASS_VAR)
                      | NLS DOT IDENTIFIER assign_op expression
 
@@ -780,14 +1056,47 @@ private postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference R
 // Index arguments may be open ranges (`a[1..]`, `a[..2]`, `a[1.., 2]`): the range
 // rule already allows missing sides, but `argument` requires a full expression.
 // This wrapper accepts a bare range (or range + more args) in index position.
-// PEG order: range first (narrower). `argument` also covers ranges via its
-// `expression` tail, but the dedicated `range_expression` must win so tooling
-// keeps its shape (CrystalArgumentCountInspection reads CrystalArgument PSI).
-// The ternary-in-index gap (`a[b ? c : d]` — time/tz.cr) is NOT fixed here:
-// `range_expression` commits on `b` and `?` dangles with no backtrack.
-// That needs `range_expression` itself to reject a bare `?`-continuation… left open.
+// PEG order: named first (fail-fast on missing COLON), then range (narrower),
+// then general argument. `range_expression` would otherwise commit on the
+// label of `a[pattern, options: options]` (csv.cr) and orphan the COLON with
+// no backtrack. `argument` also covers ranges via its `expression` tail, but
+// the dedicated `range_expression` must win so tooling keeps its shape
+// (CrystalArgumentCountInspection reads CrystalArgument PSI).
+// The ternary-in-index gap (`a[b ? c : d]` — time/tz.cr) IS fixed here (was
+// open): `range_expression` commits on `b` and `?` dangles with no backtrack,
+// so the ternary gets its own alternative FIRST. PEG order: named (fail-fast
+// on missing COLON), ternary (commits only on a full `? ... : ...`), then
+// range (narrower), then general argument. or_expression is exactly the
+// ternary LHS (ternary lives only at `expression` level), so a partial match
+// is impossible — `a[b?]` (`?` glued into the IDENTIFIER, no QUESTION token)
+// and `a[b ? c]` (no COLON) fall through untouched (verified, goldens green).
+// No new PSI type: reuses expression nodes (the COLON/QUESTION tokens + two
+// expressions flatten like the `expression`-level ternary tail).
 private range_argument_list ::= range_argument (NLS COMMA NLS range_argument)*
-private range_argument ::= range_expression | argument
+private range_argument ::= named_argument | index_ternary | range_expression !range_extends | argument
+// Guard: a bare range_expression match is only complete if NO expression-tower
+// operator follows that would extend it (`self[*foo(r, s) || return nil]?` —
+// match_data.cr/array.cr/string.cr `def []?`: range commits on `*foo(r, s)`,
+// stops at `||`, and RBRACKET mismatches with no backtrack into `argument`).
+// Operators BELOW range level (|, ^, &, shifts, +-*/) are consumed INSIDE the
+// range operands, so only tower operators ABOVE range level are listed here
+// (||, &&, comparisons); on guard failure PEG falls through to `argument`,
+// whose full expression tower re-parses (ranges included) — previously all
+// such shapes failed entirely, so zero golden churn by construction.
+// Deliberately EXCLUDED: ASSIGN (index-assign `a[i = 1]` rides the `[assign_op
+// ...]` arm after the list — guarding it would break that working shape;
+// verified) and QUESTION (partial `a[b ? c]` fails identically either way).
+private range_extends ::= OR_OR | AND_AND | EQ | NEQ | LT | GT | LTE | GTE | SPACESHIP | CASE_EQ | MATCH_OP
+private index_ternary ::= or_expression QUESTION expression COLON expression
+// Bracketed type-label inside index/call brackets (`foo([value : Int64])` —
+// interpreter instructions.cr operand descriptors): `[name : Type]` is a
+// declaration tuple, not an index hash — `value` would commit as an
+// expression and orphan `: Int64`. Commits only on `[`+name+COLON
+// (fail-fast: `[a]`, `[a, b]`, `x[0]` never match — index shapes keep
+// theirs, goldens confirm). Joins argument right after named_argument:
+// both are colon-shaped — PEG tries named_argument first so `a[label: x]`
+// named args still win (they fail fast on non-IDENTIFIER labels anyway).
+private bracket_type_label ::= LBRACKET NLS bare_arg_name COLON type_reference NLS RBRACKET
 
 // DOT-call access: the method-name + optional args part of a DOT-call (e.g. `.tanzen`,
 // `.new(arg)`, `.method arg`). Non-private so it gets a real PSI composite with a
@@ -817,17 +1126,77 @@ private range_argument ::= range_expression | argument
 // without it the ASSIGN-branch's bare-command RHS re-matches `.@tail` as a
 // bare arg even with the split alternative above (PEG tries the main alt's
 // ASSIGN tail before postfix_op* advances to the next DOT).
+// PEG: the no-LBRACKET tail commits first — `parts[0]`-style index tails then
+// attach via the regular postfix loop, which also accepts further DOT/index
+// segments (`a.b[0].c`). Without the guard the DOT alternative swallows the
+// index into a bare arg and orphans the rest (`parts[0], city: ...` broke into
+// BARE_COMMAND + DUMMY_BLOCK; NamedTuple/CallAssignTargets goldens).
+// SCOPE: the guard ONLY applies to the bare-argument tail (bare calls like
+// `puts Foo.bar 123` — the shape the regression came from). The paren and
+// bare-dot tails stay guard-free: `.should eq(true)` (DescribeBlock golden)
+// parses through the DOT alternative with a paren-arg tail, and `a.b[0]`-style
+// index tails ride the postfix loop, not dot_call arms.
+// `.@ivar` EXCLUSION on the bare tail, generalized to ALL DOT-led tails:
+// no DOT-led segment can start an expression in real crystal (verified:
+// `f .upcase` formats to `f.upcase` — the DOT attaches as postfix chain),
+// so a bare tail starting with DOT must fail and let postfix_op own it.
+// (`other.value.@tail` stays flat siblings — ConditionalAssignment golden;
+// `node.location.not_nil!, uninitialized` parses as 2 args, not nested —
+// type_declaration_visitor.cr, verified with real crystal: `f(a.b!, c)` is
+// 2 args.) `&.` shorthand is unaffected (AMPERSAND-led, not DOT-led).
+// YIELD EXCLUSION (same phantom-arg hazard): `with SslConfig.new yield`
+// (WithYield golden) — bare `yield` belongs to with_yield_statement, not to
+// `.new`'s argument list. Precision `!(YIELD !LPAREN)`: `foo.bar yield(x)`
+// keeps attaching (paren form can't be a with_yield tail); only the bare
+// form is excluded. `foo.bar yield(x)` is unobserved in stdlib but stays
+// working through this carve-out.
 dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS RPAREN [ASSIGN]
                   | DOT AT macro_interpolation [ASSIGN] [call_args | !LBRACE bare_argument_list]
                   | DOT (INSTANCE_VAR | CLASS_VAR)
-                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE bare_argument_list] {
+                  // Trailing `?` on index args (`headers["V"]?` — endless http
+                  // shapes): the `?` binds the WHOLE index lookup, not the last
+                  // inner arg (`foo["a"?]` would be nonsense). Without this the
+                  // bare_argument_list swallows `["V"]` and the `?` dangles
+                  // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
+                  // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
+                  // handled by postfix_op/index_assign_suffix — untouched).
+                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalDotCallAccessMixin"
 }
 
+// Space-paren DOT-call statement (`builder.icmp (a ? b : c), p1, p2` —
+// codegen/primitives.cr:488): a DOT-call whose paren group is
+// SPACE-separated from the callee, followed by a comma tail, so real crystal
+// reads it as ONE call (`icmp` with 3 args — verified 1.21.0 with
+// `crystal tool format --check`; the glued `builder.icmp(t ? A : B), p1, p2`
+// is a SYNTAX ERROR there).
+// STATEMENT LEVEL ONLY (same scoping as bare_command_space_first): the token
+// stream is whitespace-blind, so `a.b(c), d` inside `foo(...)` is
+// token-identical to the space form — but there the trailing `, d` belongs
+// to the OUTER call (`foo` gets 2 args). An expression-reachable alternative
+// would steal outer args with no backtrack (verified 2026-09-15: the
+// COMMA-inside-parens scan idea fails because the comma sits AFTER the
+// parens, not inside). At statement level a top-level comma has nowhere else
+// to go, so greedy consume is safe. Glued single `foo.bar (1)` keeps
+// method-call shape via bare_space_args' load-bearing COMMA lookahead.
+// Receiver is a plain variable_reference (`builder` — the only stdlib shape;
+// `a.b.c (x), y` chains stay a tolerated gap). The method name is a plain
+// token (no reference — Go to Definition/hover degrade for this one shape;
+// arity tooling ignores the new node type — one call site in stdlib).
+// The args reuse bare_space_args (REAL bare_argument_list node, same
+// duplicate-getter discipline as bare_command_space_first).
+dot_space_statement ::= variable_reference DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation) bare_space_args [block]
 // Macro-suffixed method segment (`LibLLVM.build_{{name}}2(...)` — llvm/builder.cr):
 // IDENTIFIER + interpolation + optional trailing segment. PEG first (longer than
 // bare IDENTIFIER); fails fast when no `{{` follows the identifier.
 private interpolated_method_segment ::= IDENTIFIER macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
+
+// (REMOVED dot_space_call/space_paren_scan/for_like_tail_arg — replaced by
+// dot_space_statement above. Trap record: (1) a COMMA-inside-parens scan
+// misfires because the disambiguating comma sits AFTER the parens;
+// (2) inlining argument/bare_argument wrappers beside scan leaves emits
+// duplicate flat+wrapper getArgumentList()/getBareArgumentList() overload
+// pairs on DOT_CALL_ACCESS that break javac — verified 2026-09-15 twice.)
 
 // Namespace access: `::Const` in expression context (e.g. `Foo::Bar`, `::Foo`, `A::B::C`).
 // Non-private so it gets a real PSI composite with a CrystalNamespaceAccessMixin providing
@@ -855,7 +1224,7 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
                             | NEXT | NIL | NIL_QUESTION
                             | OF | OFFSETOF | OUT
                             | POINTEROF | PREVIOUS_DEF | PRIVATE | PROTECTED
-                            | REQUIRE | RESCUE | RESPONDS_TO | RETURN
+                            | RECORD | REQUIRE | RESCUE | RESPONDS_TO | RETURN
                             | SELECT | SELF | SIZEOF | STRUCT | SUPER
                             | THEN | TRUE | TYPEOF
                             | UNINITIALIZED | UNION | UNLESS | UNTIL
@@ -871,6 +1240,7 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
 
 private primary_expression ::= grouped_expression
                              | type_receiver_expression
+                             | macro_array_tail
                              | array_literal
                              | hash_literal
                              | tuple_literal
@@ -892,6 +1262,7 @@ private primary_expression ::= grouped_expression
                              | asm_expression
                              | macro_interpolation
                              | yield_expression
+                             | macro_if_expression
                              | macro_control
                              | if_statement
                              | unless_statement
@@ -904,7 +1275,19 @@ private primary_expression ::= grouped_expression
 // Trailing `rescue` modifier inside parens (`(Process.run(...) rescue nil)` —
 // link.cr). Narrower than a full `postfix_modifier`: `(x) if y` keeps its
 // statement-level postfix shape (verified legal — must not reshape goldens).
-grouped_expression ::= LPAREN NLS expression [assign_op NLS expression] [RESCUE expression] NLS RPAREN
+// If/unless/while/until modifiers INSIDE parens (`(DEFAULT if
+// supports_feature?(...))` — io_uring.cr:190 named-arg value): same legality,
+// verified with real crystal 1.21.0. Separate arm AFTER rescue (rescue keeps
+// its shape — link.cr golden untouched); flattens inline (no POSTFIX_MODIFIER
+// node — same as the rescue arm). Fails fast without the keyword (goldens
+// confirm zero churn).
+// Statement SEQUENCES in parens (`(a; b)` — primitives.cr:746 ternary
+// branches): real crystal allows `;`-separated statements inside any group
+// (verified 1.21.0). The sequence sits INSIDE the group only (a new private
+// rule would reshape every grouped_expression's PSI — GROUPED_EXPRESSION is
+// read by tooling — so it inlines as `(SEMICOLON expression)*`: plain
+// single-expression groups keep their shape, goldens confirm).
+grouped_expression ::= LPAREN NLS expression (SEMICOLON NLS expression)* [assign_op NLS expression] [RESCUE expression] [(IF | UNLESS | WHILE | UNTIL) expression [expression_assign_suffix]] NLS RPAREN
 
 // Index assignment on the LHS: `a[i] += v`, `a[i] ||= v`, `a[i], b = ...`.
 // The `[]` postfix already parses `a[i]` as an index expression; this suffix
@@ -921,7 +1304,40 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // recursion occurs. The `!LPAREN !DOT !LBRACKET !binary_op_lookahead` lookahead prevents
 // a parenthesised call like `add("x")` from being greedily consumed as a bare command
 // (the command `add` with the grouped-expression argument `("x")`).
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead (bare_argument_list [block] | block) [postfix_modifier]
+// Space-separated leading groups/arrays (`foo (1), 2`, `foo [1], 2` — verified
+// legal; time/format/formatter.cr, codegen/primitives.cr, syntax/ast.cr shapes):
+// a grouped/array first argument followed by a comma proves the SPACE form (a
+// glued `foo(1)` never has a comma after `)`). STATEMENT LEVEL ONLY (see
+// bare_command_space_first below): the bare tower has no whitespace tokens, so
+// `a[n], b` (index + next value) is token-identical to `a [n], b` (space call)
+// and an expression-reachable alternative steals index expressions with no
+// backtrack (`a[n], a.value` multi-RHS and `{street: parts[0], ...}` hash values
+// both broke into BARE_COMMAND; CallAssignTargets/NamedTuple goldens).
+// `new [name], global` rides the statement-level alternative (`new` lexes
+// as IDENTIFIER, verified; it is a def-body tail statement in ast.cr).
+// YIELD-FIRST-ARG EXCLUSION: `with config yield` (WithYield golden) — a bare
+// `yield` first arg belongs to with_yield_statement, not to the bare command
+// (`config` + phantom `yield` arg, with_yield's own YIELD then missing).
+// Precision `!(YIELD !LPAREN)`: `foo yield(x)` keeps working (paren form
+// can't be a with tail). Non-first `, yield` args are unaffected
+// (`add_type all_types, yield(obj)` — type_merge.cr — the guard only sees
+// the list head).
+// BLOCK `||`/`&&` CONTINUATION (`index { |e| yield e } || raise E.new` —
+// enumerable.cr:763; `bsearch { } || return`, `find { } || ...`): the arg-less
+// `| block` arm bypasses bare_or_expression (which consumes `||` inside
+// arguments — `foo bar || baz` works), so a block-terminated bare command
+// left `||` dangling. The tail re-attaches it. Precision: OR_OR/AND_AND only
+// (all other binary ops are blocked by binary_op_lookahead or consumed
+// in-args); RHS is full `expression` (covers `raise X`, bare `return`,
+// calls — return/yield/raise are all in the tower). Fires only after a
+// block — arg-internal `||` is consumed greedily first, so `foo bar || baz`
+// keeps its shape (goldens confirm).
+// `!COLON` right after the callee: `big_i: {{ x }} - other` is a hash label,
+// not a call — the COLON-led shape must fall through to variable_reference /
+// hash parsing instead of becoming callee `big_i` + phantom `: ...` error
+// (big_int.cr). `::` lexes as DOUBLE_COLON (not COLON), so `::X`/namespaces
+// unaffected; `foo bar: 1` unaffected (COLON not adjacent to the callee).
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
@@ -934,8 +1350,61 @@ bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNI
 // arguments (`each &.to_www_form builder, name`), so the callee tolerates them.
 private bare_assign_lookahead ::= &( (!ASSIGN !NEWLINE ANY_TOKEN)* ASSIGN )
 
+// Space-first bare call: `foo (1), 2`, `foo [1], [2]`, `new [name], global`.
+// STATEMENT LEVEL ONLY (referenced solely from `statement`): at expression
+// level the token stream cannot tell `a[n], b` (index + next value) from
+// `a [n], b` (space call), and PEG never backtracks — an expression-reachable
+// alternative stole both shapes (verified 2026-09-14, then scoped here).
+// Same BARE_COMMAND_EXPRESSION PSI + mixin as the plain form (one
+// getBareArgumentList() accessor: bare_space_args wraps a REAL
+// bare_argument_list node — an inline `(grouped|array) (COMMA bare_argument)+`
+// sequence makes GrammarKit emit a duplicate flat+wrapper overload pair that
+// breaks javac; tried 2026-09-14).
+bare_command_space_first ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !binary_op_lookahead bare_space_args [block] [postfix_modifier] {
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
+}
+
+// Space-first args: grouped/array first value + comma tail, wrapped in a REAL
+// bare_argument_list node (so the BARE_COMMAND_EXPRESSION PSI keeps exactly
+// one getBareArgumentList() accessor shape — no duplicate overloads). The
+// COMMA inside the lookahead is load-bearing: without it the alternative
+// steals single `foo (1)` / `foo [1]` (which must stay method-call/index
+// shapes — goldens). The first element re-parses as a full bare_argument
+// whose expression happens to be grouped/array; the plain statement-level
+// alternative's !LPAREN/!LBRACKET guards are disjoint, so no PEG hazard.
+// NOTE: bare_space_args inlines bare_argument_list directly (a named wrapper
+// would flatten the same but add a useless PSI level; an inline
+// `(grouped|array) (COMMA bare_argument)+` sequence makes GrammarKit emit the
+// flat+wrapper getBareArgumentList() overload pair that breaks javac).
+// POSTFIX after the leading group/array (`write_extra_newlines
+// (last_entry.value || entry.value).end_location, entry.value.location` —
+// syntax/to_s.cr:228): the first arg is grouped/array PLUS postfix
+// (`.end_location`), so the lookahead allows bare_postfix_op* before the
+// COMMA. Still load-bearing COMMA (single `foo (1)` / `foo (1).x` stay
+// method-call shapes). No new ambiguity: after `(x)` only postfix tokens can
+// follow in the lookahead, and a trailing COMMA proves the SPACE form —
+// `foo (x)[a, b]` (index, no tail comma) still fails the lookahead because
+// the postfix alternative atomically consumes `[a, b]` and the COMMA then
+// mismatches (PEG backtracks the star to empty, COMMA mismatches `[`).
+private bare_space_args ::= &((grouped_expression | array_literal) bare_postfix_op* COMMA) bare_argument_list
+
+// Space-paren DOT-call (`builder.icmp (a ? b : c), p1, p2` — primitives.cr):
+// a DOT-call whose paren args are SPACE-separated from the callee and hold
+// ≥2 comma-separated values, so real crystal reads it as ONE call (`icmp`
+// with 3 args — verified 1.21.0). The glued `foo(1), 2` form never has a
+// comma inside the parens, so COMMA-inside-parens is the disambiguator
+// (single `foo (1)` keeps method-call shape — goldens confirm). Same PSI as
+// bare_command_space_first (BARE_COMMAND_EXPRESSION + real
+// bare_argument_list). Commits only when a comma sits at paren depth 1:
+// `foo (a ? b : c)` (ternary colon, no comma) stays a call (zero churn).
+// (REMOVED — replaced by dot_space_call above: inlining the tail into
+// dot_call_access collided accessors. History kept for the trap record:
+// reusing argument/bare_argument wrappers beside the scan leaves emits
+// duplicate flat+wrapper getArgumentList()/getBareArgumentList() overload
+// pairs on DOT_CALL_ACCESS that break javac — verified 2026-09-15 twice.)
+
 method_call_expression ::= type_path call_args [block]
-                         | [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | RESPONDS_TO) call_args [block]
+                         | [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | RESPONDS_TO | IS_A | NIL_QUESTION) call_args [block]
                          | (IDENTIFIER | CONSTANT) block
                          | (SUPER | PREVIOUS_DEF) call_args [block]
                          | (SUPER | PREVIOUS_DEF) bare_argument_list
@@ -973,23 +1442,54 @@ private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PE
 // instead of a flat postfix (MacroSetter golden). `{{a}}.{{b}}` chains still parse
 // via the expression tower (primary `{{a}}` + postfix dot_call `.{{b}}`).
 // INSTANCE_VAR / CLASS_VAR stay: `a.try(&.@x)` is legal (verified 2026-09-14).
+// Index tail (`&.pos[name]?` — filters.cr ×6, types.cr, fun.cr, to_s.cr):
+// the `?` binds the whole index lookup. The tail sits BETWEEN call_args and
+// bare_argument_list (not after): real crystal reads glued `&.foo[0]` as
+// INDEX on the result (verified 1.21.0: `o &.foo[0]` → `x.foo[0]`), while
+// spaced `&.foo [1, 2]` is an ARRAY argument (verified: "undefined method
+// 'foo'" — i.e. `x.foo([1,2])`). The token stream is whitespace-blind, so
+// one order must win: index-first matches 7 stdlib sites; the spaced-array
+// shape has ZERO stdlib occurrences (tolerated gap — `&.foo [1,2]` now
+// parses `[1,2]` as index args, arity-identical anyway). PEG commits the
+// index tail only on a full `[...]` (fail-fast otherwise — plain `&.foo`
+// and `&.foo(x)` keep their shapes, goldens confirm).
 implicit_object_call ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS RPAREN
-                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args | bare_argument_list] [block]
+                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
 
 call_args ::= LPAREN NLS argument_list NLS RPAREN
             | LPAREN NLS RPAREN
 
-argument_list ::= argument (NLS COMMA NLS argument)* [NLS COMMA]
+argument_list ::= (macro_arg_splice | argument | macro_control) (NLS COMMA NLS (macro_arg_splice | argument | macro_control))* [NLS COMMA]
 
 argument ::= STAR expression
+           | SPLAT expression
            | DOUBLE_STAR expression
            | AMPERSAND expression
            | OUT (IDENTIFIER | instance_var_access)
            | named_argument
            | and_assign_argument
+           | bracket_type_label
            | macro_control
            | expression
+
+// `{% for %}` / `{% if %}` splicing whole argument sequences (`call(*args,
+// {% for i in 0...n %} arg{{i}}, {% end %})` — proc.cr:145): the header and
+// footer are separate macro_controls with raw arg text between (no comma after
+// the header), so the splice consumes header + newline-separated body items
+// (each iteration's trailing comma belongs to the outer list loop).
+// Transparent (private): control-free lists commit through `argument` exactly
+// as before (goldens confirm zero shape change). `+` (not `*`) keeps lone
+// `{% if x %}` controls on the plain macro_control alternative.
+private macro_arg_splice ::= macro_control (NLS (argument | macro_control))+
+
+// `{% for %}` / `{% if %}` generating whole arguments inside call args
+// (`call(*args, {% for i in 0...n %} arg{{i}}, {% end %})` — proc.cr): the loop
+// body holds raw argument text, so controls are valid argument *sequence*
+// members alongside real arguments. Transparent (private): the control-free
+// case commits through `argument` exactly as before (goldens confirm zero
+// shape change). The loop's own inner commas are flat macro_control_token
+// text — each generated arg ends with a comma the control body consumed.
 
 // `&&=`/`||=` as an argument value (`m(x &&= 5, 1)` — real call sites).
 // PEG order: before `expression` so the assign-op is not left dangling.
@@ -1002,7 +1502,57 @@ private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS exp
 // Without pin=2, the optional [IDENTIFIER COLON] prefix would greedily consume
 // IDENTIFIER even when COLON doesn't follow, causing binary expressions like
 // x * 2 to be misparsed (x consumed, * 2 treated as unary star expression).
-private named_argument ::= (IDENTIFIER | keyword_as_record_field) COLON expression {pin=2}
+// Macro-interpolated name (`{{ key.id.stringify }}: %var{key.id}` —
+// json/from_json.cr, yaml/from_yaml.cr `NamedTuple.new(...)` bodies):
+// the label is macro-generated so the parser cannot see an IDENTIFIER.
+// Disjoint first token (`{{`) — plain `name:` keeps its shape exactly
+// (goldens confirm). Joins the name group (not a separate alternative)
+// so the pin=2 error-recovery contract is unchanged.
+private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | decl_type_value | expression) {pin=2}
+
+// Declaration-shaped value (`thread_local(x : ::Foo(Bar*))` — object.cr macro
+// takes a TypeDeclaration, not an expression; bare twin `buf : UInt8*` in
+// `::Syscall.def_syscall` — syscall.cr). PEG trap: `expression` PARTIALLY
+// matches the type (`::Foo` then dangles at `(`) with no backtrack from the
+// caller level, so the type path must be tried FIRST — but only when the
+// value is type-only. The complexity guard commits solely when a type-only
+// marker (`::`, `(`, `[`, `*`, `->`, `?`) appears before the value ends:
+// plain `x: Int32` / `x: y` keep the expression shape (zero golden churn).
+// The trailing terminator guard rejects partial matches (`x: a * b`,
+// `x: cond ? a : b` fall through to expression). No pin anywhere inside:
+// both guards fail cleanly with no input consumed.
+private decl_type_value ::= decl_complex_scan type_reference &decl_paren_end
+// Lookahead terminator WITHOUT leading NLS: `&(NLS MARKER)` is a trap —
+// NLS possessively eats the very newline that IS the marker (`x : UInt8*\n)`
+// fails: NLS eats `\n`, RPAREN mismatches, no retry with empty NLS).
+// A pure token alternation suffices (lookahead never consumes: any NLS run
+// is accepted at its FIRST newline; `,`/`)` match directly).
+private decl_paren_end ::= COMMA | RPAREN | NEWLINE | SEMICOLON
+// The scan loop EXCLUDES every marker token (same discipline as
+// bare_assign_lookahead): a `(... ANY_TOKEN)* MARKER` loop would otherwise
+// swallow the marker itself (`UInt8*` — STAR eaten as ANY_TOKEN, then the
+// MARKER check fails on `,` with no backtrack into fewer iterations).
+// `+` (not `*`): the marker must not be first (`(a)` grouped values,
+// `*args` splats, `->` procs stay on the expression path — zero churn).
+// DOUBLE_COLON is neither excluded nor a marker: `A::B` values scan through
+// with no marker found (expression-namespace shape, zero churn), while
+// `::Foo(Bar*)` still fires via LPAREN.
+// CONCRETE tokens (not ANY_TOKEN): GrammarKit hoists `nextTokenIs(ANY_TOKEN)`
+// as a first-token predicate for bare `(...)+ MARKER` sequences — and
+// ANY_TOKEN (`new CrystalTokenType("ANY_TOKEN")`) never equals a real token,
+// so the hoist is always-false and the whole scan is DEAD (verified
+// 2026-09-15 with a stderr probe: first-iter=false on `UInt8`). Concrete
+// tokens hoist correctly (nextTokenIs(IDENTIFIER|...) is true at type starts).
+// The `&(...)` wrapper (same as bare_assign_lookahead) is kept; the caller
+// references the scan BARE (nested _AND_-in-_AND_ never fires — verified).
+// Loop set = tokens that occur INSIDE type text; markers = tokens that prove
+// a type Suffix follows (pointer `*`, args `(`, nullable `?`, proc `->`).
+// PIPE is neither (would steal `a | b` binary-or — the terminator guard
+// can't save it since `)` follows both). LBRACKET/RBRACKET/INTEGER ride the
+// loop (index brackets `[16]`) but `[` is NOT a marker (`a[0]` index values
+// must stay expressions). DOT rides the loop (harmless: garbage like `a.b`
+// still fails at type_reference/terminator).
+private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
 
 // Bare (parenthesis-free) arguments — used for calls like: describe App5 do ... end
 // Arguments may continue on following lines after a comma (`printf "%s",\n  a` —
@@ -1011,11 +1561,21 @@ bare_argument_list ::= bare_argument (COMMA NLS bare_argument)*
 
 bare_argument ::= named_bare_argument
                 | STAR bare_expression
+                | SPLAT bare_expression
                 | DOUBLE_STAR bare_expression
                 | AMPERSAND bare_expression
                 | macro_control
-                | bare_expression
-                | OUT (IDENTIFIER | instance_var_access)
+                // OUT-prefix BEFORE bare_expression: `foo(out x)` must match the
+                // prefix form — bare_expression would otherwise consume lone `out`
+                // (OUT is in variable_reference) and orphan `x` with no backtrack.
+                 | OUT (IDENTIFIER | instance_var_access)
+                 | bare_expression
+
+// Space-first leading value: the grouped/array first argument. Inlined into the
+// bare_command alternative above (a named wrapper rule would flatten children
+// the same way — GrammarKit inlines single-child privates — so there is no
+// point in a separate rule; the duplicate-getter breakage it caused is
+// documented here as a warning, not a pattern).
 
 // NOTE: no `::`-led positional bare alternative here by design. A previous
 // revision added `bare_namespace_value ::= namespace_access [dot_call_access]`
@@ -1034,6 +1594,16 @@ bare_argument ::= named_bare_argument
 // IDENTIFIER even when COLON doesn't follow, causing binary expressions like
 // x * scalar to be misparsed (x consumed, * scalar treated as unary star).
 private named_bare_argument ::= bare_arg_name COLON named_bare_value [ASSIGN bare_expression] {pin=2}
+// Grouped-expression values (`code: (stack - size).as(X*).value = tid` —
+// instructions.cr): the `(` must commit before the bare-expression arm eats
+// `stack` and orphans the operator. NOT a separate named_bare_argument
+// alternative (that splits one BARE_ARGUMENT into two rule variants and
+// breaks the pin contract — verified: BareNamespaceValue/KeywordBareLabels
+// regressed): the grouped arm is FIRST inside named_bare_value (PEG
+// longer-first within the rule). The `= tid` tail belongs to the OUTER
+// named_bare_argument [ASSIGN ...], not here — no inner ASSIGN.
+ private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | bare_expression
+private grouped_named_value ::= grouped_expression bare_postfix_op*
 
 // Bare-call label: plain identifier or any non-reserved keyword usable as a label.
 private bare_arg_name ::= IDENTIFIER | keyword_as_record_field
@@ -1048,13 +1618,23 @@ private bare_arg_name ::= IDENTIFIER | keyword_as_record_field
 // The COLON anchor precedes the value, so this cannot steal tails the way a
 // positional alternative could. Plain values never start with `::`, so the
 // first alternative fails fast with no shape changes elsewhere.
-private named_bare_value ::= namespace_access bare_postfix_op* | bare_expression
+// Declaration-shaped values (`buf : UInt8*` — syscall.cr `def_syscall` bare
+// macro args) ride the guarded decl_bare_type_value: same complexity +
+// terminator discipline as the paren twin above, with bare terminators
+// (COMMA / line end / block / postfix modifier — the value is paren-free).
+private decl_bare_type_value ::= decl_bare_complex_scan type_reference &decl_bare_end
+// Same no-NLS discipline as decl_paren_end above (the `&(NLS MARKER)` trap
+// bites here hardest: bare values END at newlines by definition).
+private decl_bare_end ::= COMMA | NEWLINE | SEMICOLON | DO | LBRACE | IF | UNLESS | WHILE | UNTIL | RESCUE | RPAREN | END
+// Same concrete-token discipline as decl_complex_scan above (loop tokens +
+// markers, `&(...)` wrapper, caller references the scan BARE).
+private decl_bare_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
 
 // Bare expression: same as expression but does not consume blocks or assignments
 // This prevents the bare argument from eating the 'do' that belongs to the outer method call
 // Same single-alternative shape as `expression` (see above): the old
 // three-alternative form triple-parsed every bare expression node.
-private bare_expression ::= bare_or_expression [QUESTION [expression COLON expression]]
+private bare_expression ::= bare_or_expression [QUESTION NLS expression NLS COLON NLS expression]
 
 private bare_or_expression ::= bare_and_expression (OR_OR NLS bare_and_expression)*
 
@@ -1081,25 +1661,41 @@ private bare_multiplicative_expression ::= bare_power_expression ((STAR | SLASH 
 
 private bare_power_expression ::= bare_unary_expression ((DOUBLE_STAR | WRAP_DOUBLE_STAR) NLS bare_unary_expression)*
 
-private bare_unary_expression ::= (PLUS | MINUS | TILDE | AMPERSAND | STAR) bare_unary_expression
+private bare_unary_expression ::= (PLUS | MINUS | UNARY_PLUS | UNARY_MINUS | TILDE | AMPERSAND | STAR | WRAP_NEG) bare_unary_expression
                                 | bare_postfix_expression
 
 private bare_postfix_expression ::= bare_primary_expression bare_postfix_op*
 
 private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
-                          | NLS dot_call_access
-                          | namespace_access
-                          | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION] [index_assign_suffix]
+                         | NLS dot_call_access
+                         | namespace_access
+                         | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
 
-// Bare primary: like primary but no blocks or method calls with bare args (to prevent ambiguity)
-private bare_primary_expression ::= grouped_expression
+// Bare primary: like primary but no blocks or method calls with bare args (to prevent ambiguity).
+// The nested-bare alternative (`exec new_request method, path, headers, body` —
+// http/client.cr) sits LAST and commits only when a comma-separated tail
+// follows the inner callee's first argument: without the COMMA lookahead it
+// would steal single-arg outers (`foo bar` must stay callee+variable, not
+// callee+(bare `bar`)). The inner form reuses the statement-level
+// bare_command_expression (same PSI shape, no new element types). Recursion
+// always consumes ≥1 callee token per level, so PEG terminates.
+// The COLON variant covers a NAMED first inner arg (`set_visibility
+// parse_var_or_call global: true, location: location` — parser.cr:5099):
+// greedy right-association (`o f x: 1` == `o(f(x: 1))`) verified with real
+// crystal 1.21.0. `foo bar: 1` still parses as outer+ named arg: the guard
+// fires, inner `bar: 1` fails (no args after callee `bar`), PEG backtracks
+// to the plain alternatives.
+private bare_primary_expression ::= &(IDENTIFIER IDENTIFIER (COMMA | COLON)) bare_command_expression
+                                  | grouped_expression
                                   | type_receiver_expression
+                                  | macro_array_tail
                                   | array_literal
                                   | hash_literal
                                   | tuple_literal
                                    | proc_literal
-                                   | bare_method_call_expression
-                                   | implicit_object_call
+                                  | bare_method_call_expression
+                                  | implicit_object_call
+                                  | regex_expression
                                   | literal
                                   | instance_var_access
                                   | class_var_access
@@ -1115,8 +1711,31 @@ private bare_primary_expression ::= grouped_expression
                                   | return_expression
                                   | break_expression
                                   | next_expression
+                                  | yield_paren_expression
+                                  | yield_bare_multiarg
 
-bare_method_call_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | RESPONDS_TO) call_args {
+// `yield` as a grouped bare value (`(yield a, self[b])` — named_tuple.cr
+// `map` macro body): inside the flat macro_array_tail alternatives the bare
+// `expression` arm commits on `yield a` (yield_expression is NOT in
+// bare_primary_expression — it would recurse through expression →
+// bare towers) and orphans `, self[b]` with no backtrack. The paren form is
+// unambiguous (`(` directly after `yield` never means anything else in the
+// bare tower), so it joins bare_primary_expression with zero shape change
+// elsewhere (goldens confirm — the arm fails fast without LPAREN).
+private yield_paren_expression ::= YIELD LPAREN NLS argument_list NLS RPAREN
+// Multi-arg bare `yield` INSIDE a group (`(yield a, self[b])` —
+// named_tuple.cr `map` macro body): the bare `expression` arm of the flat
+// macro_array_tail alternatives commits on `yield a` (yield_expression can't
+// join bare_primary — it would recurse) and orphans `, self[b]` with no
+// backtrack. Commits only when a COMMA follows the first value (plain
+// `yield a` / `(yield a)` keep their shapes — goldens confirm); the rest of
+// the values are plain `expression`s (NOT yield_expression — no left
+// recursion: the head YIELD token is consumed before the values parse).
+// No new PSI type: bare_argument leaves flatten like any bare list.
+private yield_bare_multiarg ::= YIELD &(bare_expression COMMA) bare_expression (COMMA NLS bare_expression)+
+                                  | yield_expression
+
+bare_method_call_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | RESPONDS_TO | IS_A | NIL_QUESTION) call_args {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalBareMethodCallExpressionMixin"
 }
 
@@ -1126,11 +1745,24 @@ block ::= DO [PIPE NLS parameter_list NLS PIPE] statement_list rescue_clause* [e
 // Proc/Lambda literal: ->{ body }, ->(params) { body }, ->method_name(types),
 // and the do-block form `-> do ... end` / `->(params) do ... end`
 // (e.g. `LibGC.set_start_callback -> do ... end`).
-proc_literal ::= ARROW LPAREN NLS parameter_list NLS RPAREN LBRACE statement_list RBRACE
-               | ARROW LPAREN NLS parameter_list NLS RPAREN DO statement_list END
+proc_literal ::= ARROW LPAREN NLS proc_parameter_list NLS RPAREN LBRACE statement_list RBRACE
+               | ARROW LPAREN NLS proc_parameter_list NLS RPAREN DO statement_list END
                | ARROW LBRACE statement_list RBRACE
                | ARROW DO statement_list END
-               | ARROW (IDENTIFIER | CONSTANT) [DOT (IDENTIFIER | CONSTANT)] [LPAREN type_reference (COMMA type_reference)* RPAREN] {pin=1}
+               | ARROW (instance_var_access | class_var_access | IDENTIFIER | CONSTANT) [DOT (IDENTIFIER | CONSTANT)] [LPAREN type_reference (COMMA type_reference)* RPAREN] {pin=1}
+
+// Proc parameter list: like parameter_list but macro controls may sit at the
+// edges without commas of their own (`->({% for i in 0...n %} arg{{i}} : T,
+// {% end %}) { ... }` — proc.cr: a NEWLINE, not a comma, follows the header
+// control). Delegates to the plain parameter_list (so the PARAMETER_LIST PSI
+// node keeps its shape — inspections read it); edge controls are eaten by
+// proc_lead/proc_trail, mid-list controls ride parameter_item's macro_control
+// alternative. PEG: lead/trail fail fast without `{%` (zero impact on plain
+// lists). `{% %}` in `def` params is a real syntax error, tolerated as grammar
+// union (only the `->()` form needs it — see parameter_item note).
+private proc_parameter_list ::= [proc_lead? parameter_list proc_trail?]
+private proc_lead ::= macro_control (NLS macro_control)* NLS?
+private proc_trail ::= NLS macro_control (NLS macro_control)*
 
 // ==================== Literals ====================
 
@@ -1140,6 +1772,15 @@ private literal ::= INTEGER_LITERAL
                   | string_expression
                   | symbol_string_expression
                   | SYMBOL_LITERAL
+                  | bracket_type_label
+                  // Symbol from macro interpolation (`:{{name.id}}` —
+                  // colorize.cr: only legal inside `{% %}` in real crystal,
+                  // accepted here as context-insensitive union, same
+                  // precedent as `fun {{...}}` names. Disjoint first token
+                  // (COLON): `::` lexes DOUBLE_COLON, named-arg/hash/ternary
+                  // COLONs are consumed by their own rules — zero shape
+                  // change elsewhere (goldens confirm).
+                  | COLON macro_interpolation
                   | regex_expression
                   | command_expression
                   | NIL
@@ -1168,17 +1809,118 @@ private percent_symbol_content ::= SYMBOL_LITERAL | NEWLINE
 
 symbol_string_expression ::= SYMBOL_COLON (STRING_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)+
 
-array_literal ::= LBRACKET NLS [expression_list] NLS RBRACKET [OF type_reference]
+// `[] of T1, T2, ... -> Ret?`: the `of` argument is a multi-param PROC type
+// (`[] of Int32, ::Exception? ->` — at_exit_handlers.cr). Verified with real
+// crystal 1.21.0: `[] of Int32, String` (no arrow) is a SYNTAX ERROR
+// ("expecting token '->'"), so the ARROW is REQUIRED — never optional.
+// That requirement is also the disambiguator: `[] of String, path = "..."`
+// (param defaults — loader/unix.cr, ast.cr, debug.cr, ...) fails the tail
+// (no arrow after `path`) and backtracks to plain `[] of String`, leaving
+// `, path = ...` to parameter_list. No pin: the tail must roll back cleanly.
+// Members are type_union (NOT type_reference): a member type_reference would
+// eat the tail's own `-> Ret` through its proc-type arm (`::Exception? ->
+// Nil` matched as one member), starving the required outer ARROW with no
+// backtrack.
+// The tail is a NAMED rule (own PSI node): inlining type_union directly
+// would flatten expression-typed leaves into ARRAY_LITERAL and make
+// GrammarKit emit a duplicate flat+wrapper getExpressionList() overload
+// pair that breaks kotlinc (same trap as tuple_literal — verified).
+// The resolver reads the first type_reference (unchanged); extra members
+// live under the tail node.
+// Label-element arrays (`[a : Int32]`, `[a : Int32, b : Int32]` — verified
+// legal with real crystal 1.21.0; instructions.cr `operands: [value : Int64]`
+// shape): the label alternative comes LAST — plain `[a]`, `[a, b]`, `[a: 1]`
+// commit through expression_list first (zero shape change, goldens confirm);
+// only a `name COLON Type` element (which expression_list can never finish —
+// the COLON orphans) falls through here. Only the FIRST element carries the
+// brackets; the rest are plain `name : Type` pairs (real shape). No new PSI
+// type: label leaves sit directly in ARRAY_LITERAL; getExpressionList() is
+// empty for label arrays (the resolver already returns null on empty).
+array_literal ::= LBRACKET NLS [expression_list] NLS RBRACKET [OF type_reference array_of_tail?]
+                | LBRACKET NLS bare_arg_name COLON type_reference (NLS COMMA NLS bare_arg_name COLON type_reference)* [NLS COMMA] NLS RBRACKET
+array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
+
+// Array with macro-generated elements (`[{% for %} (yield ...), {% end %}]`
+// — named_tuple.cr `map`): the generated elements carry their own commas as
+// flat tokens (same precedent as hash_entry_list's `{%` alternative and
+// for_body). Inlined siblings (NOT a named wrapper — that emits the duplicate
+// flat+wrapper getExpressionList() overload pair that breaks kotlinc /
+// CrystalCollectionTypeResolver, verified): the plain expression_list arm is
+// tried first via the `!MACRO_CONTROL_BEGIN` guard so macro-free arrays keep
+// their shape; the flat form commits only on a leading `{%` (fail-fast).
+// The flattened leaves sit directly in ARRAY_LITERAL (no new element types).
+// `expression` precedes `macro_control_token` (PEG ordered choice): a token
+// match on CONSTANT/IDENTIFIER (`ENV` in `ENV["B"]`) strands brackets/dots —
+// the index `]` then trips the loop's `!RBRACKET` guard and the whole tail
+// fails with `got ','` (verified 2026-09-16: cache_dir.cr). Maximal munch
+// first; tokens cover only what expression can't start. Failure backtracks
+// to the choice point, so keywords/operators still fall through to tokens.
+macro_array_tail ::= LBRACKET NLS &MACRO_CONTROL_BEGIN (!RBRACKET (yield_bare_multiarg | yield_paren_expression | macro_control | macro_interpolation | expression | macro_control_token | COMMA | NEWLINE))+ NLS RBRACKET [OF type_reference array_of_tail?]
 
 hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference]
 
+// Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
+// tuple.cr): the generated entries carry their own commas as flat tokens.
+// The macro-bearing `{% begin %} { {% for %} ... } {% end %}` shape is
+// covered by the `{% begin %}`-macro_control_in_expression path — no dedicated
+// tuple alternative (an inline flat alternative makes GrammarKit emit a
+// duplicate getExpressionList() overload pair that breaks javac — verified).
 tuple_literal ::= LBRACE NLS expression_list NLS RBRACE
 
-hash_entry_list ::= hash_entry (NLS COMMA NLS hash_entry)* [NLS COMMA]
+// Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
+// tuple.cr): the generated entries carry their own commas as flat tokens, so
+// the body accepts macro controls and raw control tokens alongside plain
+// entries (same flat-token precedent as for_body). PEG: the plain entry list
+// stays first (zero shape change when macro-free); the flat alternative
+// commits only when a macro control opens the body (fail-fast `{%` guard).
+hash_entry_list ::= &MACRO_CONTROL_BEGIN (!RBRACE (macro_control | hash_entry | macro_interpolation | macro_control_token | COMMA | NEWLINE))+
+                  // Line-break-separated entries without commas (`{a: {...}\n b:
+                  // {...}}` — instructions.cr hash-of-hashes): real crystal
+                  // treats a newline after a complete entry as a separator
+                  // (verified 1.21.0 — `mc9` with-comma and `mc8` without both
+                  // legal). Trailing-NEWLINE `each` guard: without it the
+                  // `(NLS hash_entry)` arm matches EVERY entry boundary's
+                  // newline then fails the entry, and PEG — no backtrack past
+                  // a consumed repetition — drops the whole list (goldens
+                  // regress). With the guard the arm only fires when an entry
+                  // really follows (or `{%`, via the second arm).
+                  | hash_entry ((NLS COMMA | NLS &hash_entry) NLS (hash_entry | macro_control) | NLS macro_control)* [NLS COMMA]
 
-hash_entry ::= expression (DOUBLE_ARROW | COLON) expression
+// PEG LONGER-FIRST: the bracket_type_label alternative MUST precede the
+// expression-led one — both match `[value`, but only the label survives the
+// COLON (`operands: [value : Int64]` broke: the expression arm committed on
+// `[value` and orphaned the COLON with no backtrack — instructions.cr).
+// Fails fast on `[a]`, `[a, b]`, `x[0]` (no COLON after the name → next
+// alternative). The label also lives in `literal` (argument/call-bracket
+// positions) and in `argument` (call args) — same fail-fast, no churn.
+// Grouped-value hash entries (`code: (stack - size)` — instructions.cr:
+// the expression arm commits on the INNER `stack` and orphans the MINUS,
+// same no-backtrack trap as the label above) get their own first
+// alternative — grouped_named_value (group + postfix chain).
+hash_entry ::= grouped_named_value
+             | bracket_type_label
+             // Value may be a setter-chain assignment (`code: (stack -
+             // size).as(Int32*).value = type_id` — instructions.cr): the plain
+             // `expression` commits on the receiver chain and orphans the
+             // trailing `= tid` with no backtrack. `assignment` first
+             // (fail-fast on non-assignables — plain values keep the
+             // expression shape, goldens confirm). No new PSI type.
+             | expression (DOUBLE_ARROW | COLON) (assignment | expression)
 
 // ==================== Variable References ====================
+
+// Macro fresh variable (`%var`, `%var{i}` — json/from_json.cr, iterator.cr):
+// real crystal lexes `%`+ident as one MACRO_VAR token outside percent
+// literals (verified in the 1.21.0 lexer source); here the lexer emits
+// PERCENT + pushback and the parser combines them. Commits only on
+// `%`+IDENTIFIER (plain `%` modulo / `%w(`/`%q(` literals fail fast —
+// longest-match + rule order keep them). Optional `{...}` index suffix
+// (`%var{key.id}` — parsed as a grouped expression). Named element (Go to
+// Definition / rename ride the existing variable machinery).
+fresh_var ::= PERCENT IDENTIFIER [LBRACE expression RBRACE] {
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalVariableReferenceMixin"
+  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
+}
 
 instance_var_access ::= AT macro_interpolation | INSTANCE_VAR {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalInstanceVarAccessMixin"
@@ -1190,7 +1932,11 @@ class_var_access ::= AT AT macro_interpolation | CLASS_VAR {
   implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
 }
 
-variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | IDENTIFIER | OF | WHEN | UNION | TYPE {
+// `out` as a receiver (`out.copy_from(...)`, `out.value` reads — slice/sort.cr;
+// verified legal) joins variable_reference like UNION/TYPE. Only over-acceptance
+// is bare `puts out` (a real syntax error, unobserved in stdlib, harmless).
+// Assignment targets use `variable` (which also has OUT) via the assignment rules.
+variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | IDENTIFIER | OF | WHEN | UNION | TYPE | OUT | SELF | IS_A | NIL_QUESTION | RESPONDS_TO | fresh_var {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalVariableReferenceMixin"
 }
 
@@ -1198,7 +1944,13 @@ variable_reference ::= GLOBAL_VAR | CONSTANT | IDENTIFIER macro_interpolation | 
 // (`{{method.id}} path, form: body` — macro-generated bare calls; the callee
 // name is macro-generated so the parser cannot see it). Allowed as a bare
 // callee with trailing bare arguments.
-private macro_callee_call ::= macro_interpolation bare_argument_list
+// `!binary_op_lookahead` (same guard as the plain callee alternative):
+// `foo({{ x }} - other)` is binary minus (verified with real crystal 1.21.0
+// via `crystal run`: `foo({{ 10 }} - 3)` passes 7, not two args) — without
+// the guard the `- other` parses as a unary-minus bare arg and orphans the
+// binary shape (big_int.cr hash values). Legit `{{m}} path, ...` unaffected:
+// `path` is not an operator, guard passes.
+private macro_callee_call ::= macro_interpolation !binary_op_lookahead bare_argument_list
 
 // ==================== Type References ====================
 
@@ -1215,14 +1967,14 @@ type_receiver_expression ::= type_path type_arguments &DOT
 private type_single ::= STAR type_path [type_arguments] [QUESTION]
                       | type_path macro_interpolation [QUESTION]
                       | type_path LPAREN NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* [NLS COMMA] NLS RPAREN [QUESTION]
-                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args*
+                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF [QUESTION]
                       | TYPEOF LPAREN NLS expression (COMMA NLS expression)* NLS RPAREN [QUESTION]
                       | LPAREN type_reference (COMMA type_reference)* RPAREN [QUESTION]
-                      | LBRACE NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* NLS RBRACE [QUESTION]
-                      | LBRACE NLS type_reference (NLS COMMA NLS type_reference)* NLS RBRACE [QUESTION]
+                      | LBRACE NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* NLS RBRACE [QUESTION] (STAR | DOUBLE_STAR)*
+                      | LBRACE NLS type_reference (NLS COMMA NLS type_reference)* NLS RBRACE [QUESTION] (STAR | DOUBLE_STAR)*
                       | macro_interpolation (DOT (CLASS | IDENTIFIER | CONSTANT))* [QUESTION]
                       | macro_interpolation [QUESTION]
                       | IDENTIFIER
@@ -1255,7 +2007,7 @@ private type_name ::= (CONSTANT | macro_interpolation) (DOUBLE_COLON (CONSTANT |
 
 // ==================== Typeof / Sizeof ====================
 
-typeof_expression ::= TYPEOF LPAREN expression RPAREN {pin=1}
+typeof_expression ::= TYPEOF LPAREN NLS expression (COMMA NLS expression)* NLS RPAREN {pin=1}
 
 sizeof_expression ::= SIZEOF LPAREN NLS type_reference NLS RPAREN {pin=1}
 
@@ -1265,7 +2017,11 @@ pointerof_expression ::= POINTEROF LPAREN NLS (postfix_expression | instance_var
 
 offsetof_expression ::= OFFSETOF LPAREN NLS type_reference COMMA NLS instance_var_access NLS RPAREN {pin=1}
 
-uninitialized_expression ::= UNINITIALIZED type_reference {pin=1}
+// Bare `uninitialized` without a type (`f(uninitialized, nil)` —
+// type_declaration_visitor.cr:277) is legal (verified 1.21.0) — the type is
+// optional. pin=1 keeps the UNINITIALIZED commit; a missing type just yields
+// a typeless node (no error, no shape change for the typed form).
+uninitialized_expression ::= UNINITIALIZED [type_reference] {pin=1}
 
 asm_expression ::= ASM LPAREN NLS string_expression NLS [asm_sections] NLS RPAREN {pin=1}
 
@@ -1286,7 +2042,33 @@ private asm_option_list ::= string_expression (NLS COMMA NLS string_expression)*
 
 // ==================== Expression Lists ====================
 
-expression_list ::= expression (NLS COMMA NLS expression)* [NLS COMMA]
+// Elements may be assignments (`case {a = f(x), b = g(y)}` — complex.cr:
+// Crystal evaluates the assignments, the tuple holds the values). Assignment
+// first (PEG longer-first: lone `a` also matches `expression`, but
+// the ASSIGN tail must win). Fails before pin when no ASSIGN follows, so
+// plain elements backtrack cleanly with zero shape change (goldens confirm).
+// Macro controls as elements (`{elem, {% for %} x{{i}}, {% end %}}`,
+// `[a, {% if %} y, {% end %}]` — enumerable.cr `zip?`, cache_dir.cr,
+// all verified legal 1.21.0): the `{%...%}` chunks are lone controls with
+// no commas of their own; the list commas separate them like real elements
+// (same precedent as argument_list's macro_control alternative).
+// Controls are TRANSPARENT to comma rhythm: `a, {% if %} y, {% end %}, b` —
+// after a control an element may follow WITHOUT a comma (the comma belongs
+// to the generated code: `{% if %} y,`), and `{% end %}` may sit bare before
+// `]`/`)`. Without this the inner `y,` breaks macro_if_expression (which
+// needs the control right after the expression) and the bare `{% if %}`
+// matches as a lone item, orphaning `y` with `got 'ENV'` (verified
+// 2026-09-16: cache_dir.cr). The control branch OWNS its leading comma
+// (`[NLS COMMA]`): otherwise the plain comma-branch matches `, {% if %}`
+// first (PEG ordered choice) and strands the element (verified 2026-09-16).
+// AND the plain branch carries `!MACRO_CONTROL_BEGIN` after its comma:
+// `expression` itself matches a bare `{%...%}` (via primary→macro_control),
+// so without the token guard the plain branch STILL eats `, {% if %}` first
+// (verified 2026-09-16, second round of the same bug). Token-level `!` is
+// safe here (unlike `!`/`&` before composites). LAST in items (plain
+// elements commit first — zero shape change when macro-free).
+// Flat (no wrapper — the duplicate-getter trap).
+expression_list ::= (assignment | expression | macro_control) ((NLS COMMA NLS !MACRO_CONTROL_BEGIN (assignment | expression)) | ([NLS COMMA] NLS macro_control [NLS (assignment | expression)]))* [NLS COMMA]
 
 // ==================== Helper Rules ====================
 

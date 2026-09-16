@@ -153,7 +153,8 @@ class CrystalReference(
         val isMethodCall =
             element is CrystalMethodCallExpression ||
                 element is CrystalBareMethodCallExpression ||
-                element is CrystalBareCommandExpression
+                element is CrystalBareCommandExpression ||
+                element is CrystalBareCommandSpaceFirst
         if (!isMethodCall) return null
         val enclosing = CrystalPsiUtils.getEnclosingType(element) ?: return null
         return CrystalPsiUtils.buildQualifiedName(enclosing)

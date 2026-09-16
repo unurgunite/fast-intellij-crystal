@@ -17,6 +17,9 @@ public interface CrystalMacroControl extends PsiElement {
   List<CrystalEnumDefinition> getEnumDefinitionList();
 
   @NotNull
+  List<CrystalExpression> getExpressionList();
+
+  @NotNull
   List<CrystalForStatement> getForStatementList();
 
   @NotNull

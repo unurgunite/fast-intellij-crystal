@@ -603,4 +603,70 @@ class CrystalParserTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     fun testOperatorMethodNames() {
         doTest(true)
     }
+
+    // Wave 10 batch A (all shapes verified legal with crystal 1.21.0).
+    fun testPercentQLiteral() {
+        doTest(true)
+    }
+
+    fun testLibFunOutParam() {
+        doTest(true)
+    }
+
+    fun testMacroStateTokens() {
+        doTest(true)
+    }
+
+    fun testOutTargetShapes() {
+        doTest(true)
+    }
+
+    fun testPrivateAlias() {
+        doTest(true)
+    }
+
+    fun testProcMacroParams() {
+        doTest(true)
+    }
+
+    // Wave 10 batch B (all shapes verified legal with crystal 1.21.0).
+    fun testMultiAssignPostfix() {
+        doTest(true)
+    }
+
+    fun testMacroSplitSignature() {
+        doTest(true)
+    }
+
+    fun testInterpolationOperators() {
+        doTest(true)
+    }
+
+    fun testMacroHeredoc() {
+        doTest(true)
+    }
+
+    fun testEscapedMacroDelimiters() {
+        doTest(true)
+    }
+
+    fun testExprListMacroControls() {
+        doTest(true)
+    }
+
+    fun testMacroArrayExprFirst() {
+        doTest(true)
+    }
+
+    fun testMacroInterpMultiline() {
+        doTest(true)
+    }
+
+    fun testMacroInterpKeywords() {
+        doTest(true)
+    }
+
+    fun testMacroSplatParam() {
+        doTest(true)
+    }
 }

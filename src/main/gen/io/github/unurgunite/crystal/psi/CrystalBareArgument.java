@@ -11,6 +11,9 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalArgument> getArgumentList();
 
   @NotNull
+  List<CrystalArgumentList> getArgumentListList();
+
+  @NotNull
   List<CrystalArrayLiteral> getArrayLiteralList();
 
   @NotNull
@@ -69,6 +72,9 @@ public interface CrystalBareArgument extends PsiElement {
 
   @NotNull
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
+
+  @NotNull
+  List<CrystalMacroArrayTail> getMacroArrayTailList();
 
   @NotNull
   List<CrystalMacroControl> getMacroControlList();

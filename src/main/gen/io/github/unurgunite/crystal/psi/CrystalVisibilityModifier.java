@@ -11,6 +11,9 @@ public interface CrystalVisibilityModifier extends PsiElement {
   CrystalAbstractMethodDefinition getAbstractMethodDefinition();
 
   @Nullable
+  CrystalAliasDefinition getAliasDefinition();
+
+  @Nullable
   CrystalBareArgumentList getBareArgumentList();
 
   @Nullable

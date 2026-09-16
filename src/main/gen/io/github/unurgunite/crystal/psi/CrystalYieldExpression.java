@@ -7,6 +7,9 @@ import com.intellij.psi.PsiElement;
 
 public interface CrystalYieldExpression extends PsiElement {
 
+  @Nullable
+  CrystalArgumentList getArgumentList();
+
   @NotNull
   List<CrystalExpression> getExpressionList();
 

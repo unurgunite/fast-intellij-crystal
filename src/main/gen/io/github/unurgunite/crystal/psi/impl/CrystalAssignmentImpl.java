@@ -105,6 +105,12 @@ public class CrystalAssignmentImpl extends CrystalAssignmentMixin implements Cry
   }
 
   @Override
+  @Nullable
+  public CrystalFreshVar getFreshVar() {
+    return PsiTreeUtil.getChildOfType(this, CrystalFreshVar.class);
+  }
+
+  @Override
   @NotNull
   public List<CrystalGroupedExpression> getGroupedExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalGroupedExpression.class);
@@ -144,6 +150,12 @@ public class CrystalAssignmentImpl extends CrystalAssignmentMixin implements Cry
   @NotNull
   public List<CrystalInstanceVarAccess> getInstanceVarAccessList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceVarAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroArrayTail> getMacroArrayTailList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroArrayTail.class);
   }
 
   @Override

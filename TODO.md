@@ -24,13 +24,24 @@ After the `def %` fix, re-run a full stdlib VFS walk and report per-file symbol
 counts; fix any other operator methods (`[]`, `[]?`, `==`, `<<`, etc.) or constructs
 that still abort file parsing.
 
-Status 2026-09-14: waves 1–9 done, 509 → 85 files with errors (2172 files,
-95 total errors). Biggest remaining clusters: `got '('` (15, incl. macro_control
-as call arg, `&.`+keyword verified-fixed, space-call paren-first open),
-`got ','` (10, multi-assign dot targets + bare-in-bare open), `got 'do'` (9),
-`{% ... %}` with `^`/CHAR_LITERAL/`||`-chains (7), `got '{'` (6). Deferred
-open gaps are listed in `docs/specs/wave-9-grammar.md` (all verified legal
-with crystal 1.21.0).
+Status 2026-09-16 (wave 10, in progress, uncommitted on
+`feature/ci-infrastructure`): 85 → 2 files with errors (2172 files).
+Fixed: `INTERPOLATION` `**`/`<<`/`>>`/`//` (xml.cr `class_getter`);
+macro-split def signatures via `method_variant_header`
+(indexable/mutable.cr `map!`); `do`/`end`/keywords/NEWLINE in
+`MACRO_INTERPOLATION`/`INTERPOLATION` (`{{ x.map do ... end.splat }}`,
+`{{ if ... else ... end }}`); heredoc inside `{% %}` as flat tokens
+(macros.cr `{% raise <<-TXT`); escaped `\{%`/`\{{` as body text
+(big_int.cr, llvm.cr, ecr/macros.cr); comma-transparent macro controls in
+lists (cache_dir.cr, enumerable.cr `zip?`); expression-before-tokens in
+`macro_array_tail` (`ENV["B"]`); postfix modifier on multi-assign
+(location.cr `self.lines`); `{{...}}*` splat params
+(interpreter/compiler.cr); unclosed-macro fallback rule. Remaining
+`spec/helpers/string.cr` + `syntax/parser.cr` are EOF-at-length artifacts
+proven pre-existing on the pre-wave-10 HEAD. Ten regression goldens, full
+suite 914 green, spotless green (detekt fails identically on clean HEAD —
+environment issue, `PluginEnabler` init). Details in
+`docs/specs/wave-10-grammar.md`.
 
 ### P2 — Implement Members
 

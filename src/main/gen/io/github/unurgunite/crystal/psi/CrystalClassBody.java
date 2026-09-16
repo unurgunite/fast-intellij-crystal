@@ -41,6 +41,9 @@ public interface CrystalClassBody extends PsiElement {
   List<CrystalMacroDefinition> getMacroDefinitionList();
 
   @NotNull
+  List<CrystalMacroDefinitionOpen> getMacroDefinitionOpenList();
+
+  @NotNull
   List<CrystalMethodDefinition> getMethodDefinitionList();
 
   @NotNull

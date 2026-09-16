@@ -31,9 +31,20 @@ class CrystalLexerAdapter : FlexAdapter(CrystalLexer(null)) {
         endOffset: Int,
         initialState: Int,
     ) {
+        val flexLexer = flex as CrystalLexer
+        // Fresh lex from the start: reset ALL mutable lexer fields. JFlex's
+        // zzResetReader does not touch user fields, and FlexAdapter reuses one
+        // instance across files — stale `lastSignificantToken` / `stateStack` /
+        // `afterDef` etc. leaked parse-affecting state between files (verified
+        // 2026-09-14: golden failures depended on suite execution order).
+        // Mid-file re-lex (startOffset > 0) keeps the stacks: incremental
+        // highlighting re-enters nested states with only the encoded depth.
+        if (startOffset == 0) {
+            flexLexer.resetState()
+        }
         val baseState = initialState and STATE_MASK
         val depth = initialState ushr DEPTH_SHIFT
         super.start(buffer, startOffset, endOffset, baseState)
-        (flex as CrystalLexer).interpolationDepth = depth
+        flexLexer.interpolationDepth = depth
     }
 }

@@ -61,7 +61,7 @@ object CrystalMethodReturnTypeInference {
      */
     private fun inferReturnTypeFromBody(method: CrystalMethodDefinition): String? {
         val body = method.methodBody ?: return null
-        val statements = body.statementList.statementList
+        val statements = body.statementListList.flatMap { it.statementList }
         if (statements.isEmpty()) return null
 
         // Check each statement for return statements

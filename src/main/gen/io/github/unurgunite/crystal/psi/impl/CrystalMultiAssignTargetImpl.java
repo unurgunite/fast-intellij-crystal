@@ -106,6 +106,12 @@ public class CrystalMultiAssignTargetImpl extends ASTWrapperPsiElement implement
   }
 
   @Override
+  @Nullable
+  public CrystalFreshVar getFreshVar() {
+    return PsiTreeUtil.getChildOfType(this, CrystalFreshVar.class);
+  }
+
+  @Override
   @NotNull
   public List<CrystalGroupedExpression> getGroupedExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalGroupedExpression.class);
@@ -145,6 +151,12 @@ public class CrystalMultiAssignTargetImpl extends ASTWrapperPsiElement implement
   @Nullable
   public CrystalInstanceVarAccess getInstanceVarAccess() {
     return PsiTreeUtil.getChildOfType(this, CrystalInstanceVarAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroArrayTail> getMacroArrayTailList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroArrayTail.class);
   }
 
   @Override

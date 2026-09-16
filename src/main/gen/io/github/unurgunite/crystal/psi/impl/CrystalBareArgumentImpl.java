@@ -35,6 +35,12 @@ public class CrystalBareArgumentImpl extends ASTWrapperPsiElement implements Cry
 
   @Override
   @NotNull
+  public List<CrystalArgumentList> getArgumentListList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArgumentList.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalArrayLiteral> getArrayLiteralList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArrayLiteral.class);
   }
@@ -151,6 +157,12 @@ public class CrystalBareArgumentImpl extends ASTWrapperPsiElement implements Cry
   @NotNull
   public List<CrystalInstanceVarAccess> getInstanceVarAccessList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceVarAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroArrayTail> getMacroArrayTailList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroArrayTail.class);
   }
 
   @Override

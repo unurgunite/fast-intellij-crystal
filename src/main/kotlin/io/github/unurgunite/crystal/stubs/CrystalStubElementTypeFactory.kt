@@ -21,6 +21,9 @@ object CrystalStubElementTypeFactory {
 
             "MACRO_DEFINITION" -> CrystalStubElementTypeHolder.MACRO_DEFINITION
 
+            // Unclosed-macro fallback shares the macro stub (same PSI contract).
+            "MACRO_DEFINITION_OPEN" -> CrystalStubElementTypeHolder.MACRO_DEFINITION
+
             "CONSTANT_ASSIGNMENT" -> CrystalStubElementTypeHolder.CONSTANT_ASSIGNMENT
 
             else -> throw IllegalArgumentException("Unknown stub element type: $name")

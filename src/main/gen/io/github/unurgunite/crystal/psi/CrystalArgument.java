@@ -7,6 +7,9 @@ import com.intellij.psi.PsiElement;
 
 public interface CrystalArgument extends PsiElement {
 
+  @NotNull
+  List<CrystalArgument> getArgumentList();
+
   @Nullable
   CrystalClassVarAccess getClassVarAccess();
 
@@ -14,12 +17,18 @@ public interface CrystalArgument extends PsiElement {
   CrystalExpression getExpression();
 
   @Nullable
-  CrystalInstanceVarAccess getInstanceVarAccess();
+  CrystalFreshVar getFreshVar();
 
   @Nullable
-  CrystalMacroControl getMacroControl();
+  CrystalInstanceVarAccess getInstanceVarAccess();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
 
   @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
+
+  @Nullable
+  CrystalTypeReference getTypeReference();
 
 }

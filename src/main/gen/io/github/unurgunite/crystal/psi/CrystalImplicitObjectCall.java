@@ -28,8 +28,8 @@ public interface CrystalImplicitObjectCall extends PsiElement {
   @NotNull
   List<CrystalBeginStatement> getBeginStatementList();
 
-  @Nullable
-  CrystalBlock getBlock();
+  @NotNull
+  List<CrystalBlock> getBlockList();
 
   @NotNull
   List<CrystalBreakExpression> getBreakExpressionList();
@@ -74,10 +74,13 @@ public interface CrystalImplicitObjectCall extends PsiElement {
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
 
   @NotNull
+  List<CrystalMacroArrayTail> getMacroArrayTailList();
+
+  @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
-  @Nullable
-  CrystalMacroInterpolation getMacroInterpolation();
+  @NotNull
+  List<CrystalMacroInterpolation> getMacroInterpolationList();
 
   @NotNull
   List<CrystalMethodCallExpression> getMethodCallExpressionList();
@@ -121,8 +124,8 @@ public interface CrystalImplicitObjectCall extends PsiElement {
   @NotNull
   List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList();
 
-  @Nullable
-  CrystalTypeReference getTypeReference();
+  @NotNull
+  List<CrystalTypeReference> getTypeReferenceList();
 
   @NotNull
   List<CrystalTypeofExpression> getTypeofExpressionList();

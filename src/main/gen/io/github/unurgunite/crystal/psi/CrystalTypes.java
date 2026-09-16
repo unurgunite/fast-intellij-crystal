@@ -17,12 +17,14 @@ public interface CrystalTypes {
   IElementType ARGUMENT = new CrystalElementType("ARGUMENT");
   IElementType ARGUMENT_LIST = new CrystalElementType("ARGUMENT_LIST");
   IElementType ARRAY_LITERAL = new CrystalElementType("ARRAY_LITERAL");
+  IElementType ARRAY_OF_TAIL = new CrystalElementType("ARRAY_OF_TAIL");
   IElementType ASM_EXPRESSION = new CrystalElementType("ASM_EXPRESSION");
   IElementType ASM_OPERAND = new CrystalElementType("ASM_OPERAND");
   IElementType ASSIGNMENT = new CrystalElementType("ASSIGNMENT");
   IElementType BARE_ARGUMENT = new CrystalElementType("BARE_ARGUMENT");
   IElementType BARE_ARGUMENT_LIST = new CrystalElementType("BARE_ARGUMENT_LIST");
   IElementType BARE_COMMAND_EXPRESSION = new CrystalElementType("BARE_COMMAND_EXPRESSION");
+  IElementType BARE_COMMAND_SPACE_FIRST = new CrystalElementType("BARE_COMMAND_SPACE_FIRST");
   IElementType BARE_METHOD_CALL_EXPRESSION = new CrystalElementType("BARE_METHOD_CALL_EXPRESSION");
   IElementType BEGIN_STATEMENT = new CrystalElementType("BEGIN_STATEMENT");
   IElementType BLOCK = new CrystalElementType("BLOCK");
@@ -37,17 +39,20 @@ public interface CrystalTypes {
   IElementType CONDITION = new CrystalElementType("CONDITION");
   IElementType CONSTANT_ASSIGNMENT = CrystalStubElementTypeFactory.create("CONSTANT_ASSIGNMENT");
   IElementType DOT_CALL_ACCESS = new CrystalElementType("DOT_CALL_ACCESS");
+  IElementType DOT_SPACE_STATEMENT = new CrystalElementType("DOT_SPACE_STATEMENT");
   IElementType ELSE_CLAUSE = new CrystalElementType("ELSE_CLAUSE");
   IElementType ELSIF_CLAUSE = new CrystalElementType("ELSIF_CLAUSE");
   IElementType ENSURE_CLAUSE = new CrystalElementType("ENSURE_CLAUSE");
   IElementType ENUM_BODY = new CrystalElementType("ENUM_BODY");
   IElementType ENUM_CONSTANT = new CrystalElementType("ENUM_CONSTANT");
   IElementType ENUM_DEFINITION = CrystalStubElementTypeFactory.create("ENUM_DEFINITION");
+  IElementType ESCAPED_MACRO_STATEMENT = new CrystalElementType("ESCAPED_MACRO_STATEMENT");
   IElementType EXPRESSION = new CrystalElementType("EXPRESSION");
   IElementType EXPRESSION_LIST = new CrystalElementType("EXPRESSION_LIST");
   IElementType EXPRESSION_STATEMENT = new CrystalElementType("EXPRESSION_STATEMENT");
   IElementType EXTEND_STATEMENT = new CrystalElementType("EXTEND_STATEMENT");
   IElementType FOR_STATEMENT = new CrystalElementType("FOR_STATEMENT");
+  IElementType FRESH_VAR = new CrystalElementType("FRESH_VAR");
   IElementType FUN_DEFINITION = new CrystalElementType("FUN_DEFINITION");
   IElementType GROUPED_EXPRESSION = new CrystalElementType("GROUPED_EXPRESSION");
   IElementType HASH_ENTRY = new CrystalElementType("HASH_ENTRY");
@@ -67,13 +72,16 @@ public interface CrystalTypes {
   IElementType LIB_STRUCT_DEFINITION = new CrystalElementType("LIB_STRUCT_DEFINITION");
   IElementType LIB_TYPE_ALIAS = new CrystalElementType("LIB_TYPE_ALIAS");
   IElementType LIB_UNION_DEFINITION = new CrystalElementType("LIB_UNION_DEFINITION");
+  IElementType MACRO_ARRAY_TAIL = new CrystalElementType("MACRO_ARRAY_TAIL");
   IElementType MACRO_BODY = new CrystalElementType("MACRO_BODY");
   IElementType MACRO_CONTROL = new CrystalElementType("MACRO_CONTROL");
   IElementType MACRO_DEFINITION = CrystalStubElementTypeFactory.create("MACRO_DEFINITION");
+  IElementType MACRO_DEFINITION_OPEN = CrystalStubElementTypeFactory.create("MACRO_DEFINITION_OPEN");
   IElementType MACRO_INTERPOLATION = new CrystalElementType("MACRO_INTERPOLATION");
   IElementType METHOD_BODY = new CrystalElementType("METHOD_BODY");
   IElementType METHOD_CALL_EXPRESSION = new CrystalElementType("METHOD_CALL_EXPRESSION");
   IElementType METHOD_DEFINITION = CrystalStubElementTypeFactory.create("METHOD_DEFINITION");
+  IElementType METHOD_VARIANT_HEADER = new CrystalElementType("METHOD_VARIANT_HEADER");
   IElementType MODULE_DEFINITION = CrystalStubElementTypeFactory.create("MODULE_DEFINITION");
   IElementType MULTI_ASSIGNMENT = new CrystalElementType("MULTI_ASSIGNMENT");
   IElementType MULTI_ASSIGN_TARGET = new CrystalElementType("MULTI_ASSIGN_TARGET");
@@ -139,6 +147,7 @@ public interface CrystalTypes {
   IElementType ASSIGN = new CrystalTokenType("ASSIGN");
   IElementType AS_QUESTION = new CrystalTokenType("AS_QUESTION");
   IElementType AT = new CrystalTokenType("AT");
+  IElementType BACKSLASH = new CrystalTokenType("BACKSLASH");
   IElementType BANG = new CrystalTokenType("BANG");
   IElementType BEGIN = new CrystalTokenType("BEGIN");
   IElementType BREAK = new CrystalTokenType("BREAK");
@@ -258,6 +267,7 @@ public interface CrystalTypes {
   IElementType SLASH = new CrystalTokenType("SLASH");
   IElementType SLASH_ASSIGN = new CrystalTokenType("SLASH_ASSIGN");
   IElementType SPACESHIP = new CrystalTokenType("SPACESHIP");
+  IElementType SPLAT = new CrystalTokenType("SPLAT");
   IElementType STAR = new CrystalTokenType("STAR");
   IElementType STAR_ASSIGN = new CrystalTokenType("STAR_ASSIGN");
   IElementType STRING_ESCAPE = new CrystalTokenType("STRING_ESCAPE");
@@ -273,6 +283,8 @@ public interface CrystalTypes {
   IElementType TRUE = new CrystalTokenType("TRUE");
   IElementType TYPE = new CrystalTokenType("TYPE");
   IElementType TYPEOF = new CrystalTokenType("TYPEOF");
+  IElementType UNARY_MINUS = new CrystalTokenType("UNARY_MINUS");
+  IElementType UNARY_PLUS = new CrystalTokenType("UNARY_PLUS");
   IElementType UNDERSCORE = new CrystalTokenType("UNDERSCORE");
   IElementType UNINITIALIZED = new CrystalTokenType("UNINITIALIZED");
   IElementType UNION = new CrystalTokenType("UNION");
@@ -286,6 +298,7 @@ public interface CrystalTypes {
   IElementType WRAP_DOUBLE_STAR_ASSIGN = new CrystalTokenType("WRAP_DOUBLE_STAR_ASSIGN");
   IElementType WRAP_MINUS = new CrystalTokenType("WRAP_MINUS");
   IElementType WRAP_MINUS_ASSIGN = new CrystalTokenType("WRAP_MINUS_ASSIGN");
+  IElementType WRAP_NEG = new CrystalTokenType("WRAP_NEG");
   IElementType WRAP_PLUS = new CrystalTokenType("WRAP_PLUS");
   IElementType WRAP_PLUS_ASSIGN = new CrystalTokenType("WRAP_PLUS_ASSIGN");
   IElementType WRAP_STAR = new CrystalTokenType("WRAP_STAR");
@@ -316,6 +329,9 @@ public interface CrystalTypes {
       else if (type == ARRAY_LITERAL) {
         return new CrystalArrayLiteralImpl(node);
       }
+      else if (type == ARRAY_OF_TAIL) {
+        return new CrystalArrayOfTailImpl(node);
+      }
       else if (type == ASM_EXPRESSION) {
         return new CrystalAsmExpressionImpl(node);
       }
@@ -333,6 +349,9 @@ public interface CrystalTypes {
       }
       else if (type == BARE_COMMAND_EXPRESSION) {
         return new CrystalBareCommandExpressionImpl(node);
+      }
+      else if (type == BARE_COMMAND_SPACE_FIRST) {
+        return new CrystalBareCommandSpaceFirstImpl(node);
       }
       else if (type == BARE_METHOD_CALL_EXPRESSION) {
         return new CrystalBareMethodCallExpressionImpl(node);
@@ -376,6 +395,9 @@ public interface CrystalTypes {
       else if (type == DOT_CALL_ACCESS) {
         return new CrystalDotCallAccessImpl(node);
       }
+      else if (type == DOT_SPACE_STATEMENT) {
+        return new CrystalDotSpaceStatementImpl(node);
+      }
       else if (type == ELSE_CLAUSE) {
         return new CrystalElseClauseImpl(node);
       }
@@ -394,6 +416,9 @@ public interface CrystalTypes {
       else if (type == ENUM_DEFINITION) {
         return new CrystalEnumDefinitionImpl(node);
       }
+      else if (type == ESCAPED_MACRO_STATEMENT) {
+        return new CrystalEscapedMacroStatementImpl(node);
+      }
       else if (type == EXPRESSION) {
         return new CrystalExpressionImpl(node);
       }
@@ -408,6 +433,9 @@ public interface CrystalTypes {
       }
       else if (type == FOR_STATEMENT) {
         return new CrystalForStatementImpl(node);
+      }
+      else if (type == FRESH_VAR) {
+        return new CrystalFreshVarImpl(node);
       }
       else if (type == FUN_DEFINITION) {
         return new CrystalFunDefinitionImpl(node);
@@ -466,6 +494,9 @@ public interface CrystalTypes {
       else if (type == LIB_UNION_DEFINITION) {
         return new CrystalLibUnionDefinitionImpl(node);
       }
+      else if (type == MACRO_ARRAY_TAIL) {
+        return new CrystalMacroArrayTailImpl(node);
+      }
       else if (type == MACRO_BODY) {
         return new CrystalMacroBodyImpl(node);
       }
@@ -474,6 +505,9 @@ public interface CrystalTypes {
       }
       else if (type == MACRO_DEFINITION) {
         return new CrystalMacroDefinitionImpl(node);
+      }
+      else if (type == MACRO_DEFINITION_OPEN) {
+        return new CrystalMacroDefinitionOpenImpl(node);
       }
       else if (type == MACRO_INTERPOLATION) {
         return new CrystalMacroInterpolationImpl(node);
@@ -486,6 +520,9 @@ public interface CrystalTypes {
       }
       else if (type == METHOD_DEFINITION) {
         return new CrystalMethodDefinitionImpl(node);
+      }
+      else if (type == METHOD_VARIANT_HEADER) {
+        return new CrystalMethodVariantHeaderImpl(node);
       }
       else if (type == MODULE_DEFINITION) {
         return new CrystalModuleDefinitionImpl(node);

@@ -70,9 +70,9 @@ public class CrystalImplicitObjectCallImpl extends ASTWrapperPsiElement implemen
   }
 
   @Override
-  @Nullable
-  public CrystalBlock getBlock() {
-    return PsiTreeUtil.getChildOfType(this, CrystalBlock.class);
+  @NotNull
+  public List<CrystalBlock> getBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBlock.class);
   }
 
   @Override
@@ -161,14 +161,20 @@ public class CrystalImplicitObjectCallImpl extends ASTWrapperPsiElement implemen
 
   @Override
   @NotNull
+  public List<CrystalMacroArrayTail> getMacroArrayTailList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroArrayTail.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalMacroControl> getMacroControlList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }
 
   @Override
-  @Nullable
-  public CrystalMacroInterpolation getMacroInterpolation() {
-    return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
+  @NotNull
+  public List<CrystalMacroInterpolation> getMacroInterpolationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroInterpolation.class);
   }
 
   @Override
@@ -256,9 +262,9 @@ public class CrystalImplicitObjectCallImpl extends ASTWrapperPsiElement implemen
   }
 
   @Override
-  @Nullable
-  public CrystalTypeReference getTypeReference() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTypeReference.class);
+  @NotNull
+  public List<CrystalTypeReference> getTypeReferenceList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReference.class);
   }
 
   @Override

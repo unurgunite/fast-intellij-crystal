@@ -14,9 +14,12 @@ public interface CrystalMethodBody extends PsiElement {
   CrystalEnsureClause getEnsureClause();
 
   @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
   List<CrystalRescueClause> getRescueClauseList();
 
   @NotNull
-  CrystalStatementList getStatementList();
+  List<CrystalStatementList> getStatementListList();
 
 }

@@ -31,6 +31,9 @@ public interface CrystalLibExternalVar extends PsiElement {
   @Nullable
   CrystalCommandExpression getCommandExpression();
 
+  @NotNull
+  List<CrystalExpression> getExpressionList();
+
   @Nullable
   CrystalGroupedExpression getGroupedExpression();
 
@@ -53,7 +56,10 @@ public interface CrystalLibExternalVar extends PsiElement {
   CrystalInstanceVarAccess getInstanceVarAccess();
 
   @Nullable
-  CrystalMacroControl getMacroControl();
+  CrystalMacroArrayTail getMacroArrayTail();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
 
   @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
@@ -101,7 +107,7 @@ public interface CrystalLibExternalVar extends PsiElement {
   CrystalTypeReceiverExpression getTypeReceiverExpression();
 
   @NotNull
-  CrystalTypeReference getTypeReference();
+  List<CrystalTypeReference> getTypeReferenceList();
 
   @Nullable
   CrystalTypeofExpression getTypeofExpression();

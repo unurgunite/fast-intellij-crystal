@@ -99,6 +99,7 @@ object CrystalPsiUtils {
         element is CrystalMethodCallExpression ||
             element is CrystalBareMethodCallExpression ||
             element is CrystalBareCommandExpression ||
+            element is CrystalBareCommandSpaceFirst ||
             element is CrystalPropertyMacro
 
     // Labels, splats and whitespace carry no value inside argument wrappers

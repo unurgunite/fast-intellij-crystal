@@ -41,14 +41,20 @@ public class CrystalMethodBodyImpl extends ASTWrapperPsiElement implements Cryst
 
   @Override
   @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalRescueClause> getRescueClauseList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalRescueClause.class);
   }
 
   @Override
   @NotNull
-  public CrystalStatementList getStatementList() {
-    return notNullChild(PsiTreeUtil.getChildOfType(this, CrystalStatementList.class));
+  public List<CrystalStatementList> getStatementListList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalStatementList.class);
   }
 
 }

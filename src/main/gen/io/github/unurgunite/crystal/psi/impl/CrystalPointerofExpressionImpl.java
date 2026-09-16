@@ -149,6 +149,12 @@ public class CrystalPointerofExpressionImpl extends ASTWrapperPsiElement impleme
 
   @Override
   @NotNull
+  public List<CrystalMacroArrayTail> getMacroArrayTailList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroArrayTail.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalMacroControl> getMacroControlList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }

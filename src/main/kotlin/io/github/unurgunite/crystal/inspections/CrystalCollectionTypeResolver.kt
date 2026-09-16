@@ -36,9 +36,11 @@ object CrystalCollectionTypeResolver {
         }
 
     private fun resolveArrayLiteral(expr: CrystalArrayLiteral): ResolvedType? {
-        // Check for "of Type" annotation
-        val typeRef = expr.typeReference
-        if (typeRef != null) return ResolvedType("Array(${firstUnionMember(typeRef.text)})")
+        // Check for "of Type" annotation (possibly multi-type `[] of T1, T2, ...`).
+        // NOTE: getTypeReference() is gone — the multi-type `[] of` tail made the
+        // accessor a list; single `[] of T` still yields exactly one element.
+        val typeRefs = expr.typeReferenceList
+        if (typeRefs.isNotEmpty()) return ResolvedType("Array(${firstUnionMember(typeRefs.first().text)})")
 
         // Infer from elements
         val elements = expr.expressionList?.expressionList ?: emptyList()
@@ -91,7 +93,7 @@ object CrystalCollectionTypeResolver {
     }
 
     private fun resolveTupleLiteral(expr: CrystalTupleLiteral): ResolvedType? {
-        val elements = expr.expressionList.expressionList
+        val elements = expr.expressionList?.expressionList ?: return null
         if (elements.isEmpty()) return null
 
         val types = elements.mapNotNull { resolveType(it) }

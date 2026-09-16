@@ -20,6 +20,9 @@ public interface CrystalWhenClause extends PsiElement {
   List<CrystalExpression> getExpressionList();
 
   @NotNull
+  List<CrystalFreshVar> getFreshVarList();
+
+  @NotNull
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
 
   @NotNull

@@ -68,6 +68,9 @@ public interface CrystalPointerofExpression extends PsiElement {
   List<CrystalInstanceVarAccess> getInstanceVarAccessList();
 
   @NotNull
+  List<CrystalMacroArrayTail> getMacroArrayTailList();
+
+  @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
   @NotNull

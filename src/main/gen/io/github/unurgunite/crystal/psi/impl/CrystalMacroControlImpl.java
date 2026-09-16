@@ -47,6 +47,12 @@ public class CrystalMacroControlImpl extends ASTWrapperPsiElement implements Cry
 
   @Override
   @NotNull
+  public List<CrystalExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExpression.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalForStatement> getForStatementList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalForStatement.class);
   }

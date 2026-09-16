@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.inspections.CrystalCallArguments.DotCallInfo
 import io.github.unurgunite.crystal.inspections.CrystalOverloadEvaluator.OverloadMatch
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
+import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
@@ -53,6 +54,10 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
                     }
 
                     is CrystalBareCommandExpression -> {
+                        checkCall(element, holder)
+                    }
+
+                    is CrystalBareCommandSpaceFirst -> {
                         checkCall(element, holder)
                     }
 

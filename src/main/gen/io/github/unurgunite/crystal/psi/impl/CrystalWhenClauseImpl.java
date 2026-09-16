@@ -53,6 +53,12 @@ public class CrystalWhenClauseImpl extends ASTWrapperPsiElement implements Cryst
 
   @Override
   @NotNull
+  public List<CrystalFreshVar> getFreshVarList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalFreshVar.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalInstanceVarAccess> getInstanceVarAccessList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceVarAccess.class);
   }

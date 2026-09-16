@@ -41,6 +41,12 @@ public class CrystalConditionImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @Nullable
+  public CrystalFreshVar getFreshVar() {
+    return PsiTreeUtil.getChildOfType(this, CrystalFreshVar.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalInstanceVarAccess getInstanceVarAccess() {
     return PsiTreeUtil.getChildOfType(this, CrystalInstanceVarAccess.class);
   }

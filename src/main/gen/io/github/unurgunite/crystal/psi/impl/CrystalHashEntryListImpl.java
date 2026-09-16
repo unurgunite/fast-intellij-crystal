@@ -33,4 +33,16 @@ public class CrystalHashEntryListImpl extends ASTWrapperPsiElement implements Cr
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalHashEntry.class);
   }
 
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroInterpolation> getMacroInterpolationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroInterpolation.class);
+  }
+
 }

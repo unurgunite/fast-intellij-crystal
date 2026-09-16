@@ -22,8 +22,8 @@ public interface CrystalParameter extends PsiElement {
   @NotNull
   List<CrystalMacroControl> getMacroControlList();
 
-  @NotNull
-  List<CrystalMacroInterpolation> getMacroInterpolationList();
+  @Nullable
+  CrystalMacroInterpolation getMacroInterpolation();
 
   @NotNull
   List<CrystalTypeArguments> getTypeArgumentsList();

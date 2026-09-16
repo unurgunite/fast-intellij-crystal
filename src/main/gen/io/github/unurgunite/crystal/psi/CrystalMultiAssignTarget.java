@@ -46,6 +46,9 @@ public interface CrystalMultiAssignTarget extends PsiElement {
   @NotNull
   List<CrystalExpression> getExpressionList();
 
+  @Nullable
+  CrystalFreshVar getFreshVar();
+
   @NotNull
   List<CrystalGroupedExpression> getGroupedExpressionList();
 
@@ -66,6 +69,9 @@ public interface CrystalMultiAssignTarget extends PsiElement {
 
   @Nullable
   CrystalInstanceVarAccess getInstanceVarAccess();
+
+  @NotNull
+  List<CrystalMacroArrayTail> getMacroArrayTailList();
 
   @NotNull
   List<CrystalMacroControl> getMacroControlList();

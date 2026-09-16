@@ -4,6 +4,24 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ## [1.0.0] — 2026-09-13
 
+### Fixed
+
+- **Stdlib parse breaks wave 10 (85 → 2 files, 2172 files)** — macro-heavy
+  shapes, all verified legal with crystal 1.21.0: `**`/`<<`/`>>`/`//` in
+  string interpolation (xml.cr); macro-split def signatures via
+  `method_variant_header` (indexable/mutable.cr `map!`); `do`/`end` +
+  keywords + NEWLINE in `{{ }}`/`#{}` (`{{ x.map do ... end.splat }}`,
+  `{{ if ... else ... end }}`); heredoc inside `{% %}` as flat tokens
+  (`{% raise <<-TXT }}`); escaped `\{%`/`\{{` as body text (big_int.cr,
+  llvm.cr, ecr/macros.cr); comma-transparent macro controls in lists
+  (`{% begin %} [...] {% end %}`, `yield({...})`); expression-before-tokens
+  in `macro_array_tail` (`ENV["B"]`); postfix modifier on multi-assign
+  (`a, b = b, a if c`); `{{...}}*` splat params; unclosed-macro fallback
+  rule (macro TEXT with `{{...}}` params). Ten regression goldens, all with
+  zero `PsiErrorElement`. Remaining `spec/helpers/string.cr` +
+  `syntax/parser.cr` are EOF-at-length artifacts proven pre-existing on the
+  pre-wave-10 HEAD. Details in `docs/specs/wave-10-grammar.md`.
+
 ### Added
 
 - **Test coverage marathon (+281 tests, 717 → 998)** — every previously untested subsystem now has

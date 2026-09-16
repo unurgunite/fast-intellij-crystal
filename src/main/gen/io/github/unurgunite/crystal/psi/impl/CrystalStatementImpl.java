@@ -41,6 +41,12 @@ public class CrystalStatementImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @Nullable
+  public CrystalBareCommandSpaceFirst getBareCommandSpaceFirst() {
+    return PsiTreeUtil.getChildOfType(this, CrystalBareCommandSpaceFirst.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalBeginStatement getBeginStatement() {
     return PsiTreeUtil.getChildOfType(this, CrystalBeginStatement.class);
   }
@@ -55,6 +61,18 @@ public class CrystalStatementImpl extends ASTWrapperPsiElement implements Crysta
   @Nullable
   public CrystalConstantAssignment getConstantAssignment() {
     return PsiTreeUtil.getChildOfType(this, CrystalConstantAssignment.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalDotSpaceStatement getDotSpaceStatement() {
+    return PsiTreeUtil.getChildOfType(this, CrystalDotSpaceStatement.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalEscapedMacroStatement getEscapedMacroStatement() {
+    return PsiTreeUtil.getChildOfType(this, CrystalEscapedMacroStatement.class);
   }
 
   @Override
@@ -97,6 +115,12 @@ public class CrystalStatementImpl extends ASTWrapperPsiElement implements Crysta
   @Nullable
   public CrystalMacroDefinition getMacroDefinition() {
     return PsiTreeUtil.getChildOfType(this, CrystalMacroDefinition.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalMacroDefinitionOpen getMacroDefinitionOpen() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroDefinitionOpen.class);
   }
 
   @Override

@@ -6,6 +6,7 @@ import io.github.unurgunite.crystal.psi.CrystalArgument
 import io.github.unurgunite.crystal.psi.CrystalBareArgument
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
+import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
@@ -65,16 +66,15 @@ internal object CrystalCallArguments {
             }
 
             is CrystalBareCommandExpression -> {
-                val bareArgList = callExpr.bareArgumentList
-                if (bareArgList != null) {
-                    for (bareArg in bareArgList.bareArgumentList) {
-                        result.add(extractShapedArgInfo(bareArg))
-                    }
-                }
+                extractFromBareArgList(callExpr.bareArgumentList, result)
+            }
+
+            is CrystalBareCommandSpaceFirst -> {
+                extractFromBareArgList(callExpr.bareArgumentList, result)
             }
 
             is CrystalBareMethodCallExpression -> {
-                val argList = callExpr.callArgs.argumentList
+                val argList = callExpr.callArgs?.argumentList
                 if (argList != null) {
                     for (arg in argList.argumentList) {
                         result.add(extractShapedArgInfo(arg))
@@ -114,6 +114,17 @@ internal object CrystalCallArguments {
      * Shape flags + named label + value expression of one argument wrapper
      * (`CrystalArgument` or `CrystalBareArgument`).
      */
+    private fun extractFromBareArgList(
+        bareArgList: CrystalBareArgumentList?,
+        result: MutableList<ArgumentInfo>,
+    ) {
+        if (bareArgList != null) {
+            for (bareArg in bareArgList.bareArgumentList) {
+                result.add(extractShapedArgInfo(bareArg))
+            }
+        }
+    }
+
     private fun extractShapedArgInfo(arg: PsiElement): ArgumentInfo {
         val children = arg.node.getChildren(null)
         var isSplat = false
