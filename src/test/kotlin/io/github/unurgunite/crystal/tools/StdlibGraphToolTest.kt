@@ -32,16 +32,50 @@ class StdlibGraphToolTest : BasePlatformTestCase() {
         val outDir = java.io.File(workspaceRoot(), "stdlib-graph").also { it.mkdirs() }
         val tsv = java.io.File(outDir, "parse_errors.tsv")
         tsv.writeText("relPath\terrors\tfirstError\tline\n")
-        val total = AtomicLong(0)
-        val withErrors = AtomicLong(0)
-        val totalErrors = AtomicLong(0)
-        val deadline = System.currentTimeMillis() + 28 * 60_000L
+        val rows = collectParseErrorRows(root, System.currentTimeMillis() + 28 * 60_000L)
+        for (r in rows) {
+            tsv.appendText("${r.relPath}\t${r.errors}\t${r.firstError.replace("\t", " ")}\t${r.line.replace("\t", " ")}\n")
+        }
+        val total = rows.size
+        val withErrors = rows.count { it.errors > 0 }
+        val totalErrors = rows.sumOf { it.errors }
+        val top =
+            rows
+                .filter { it.errors > 0 }
+                .sortedByDescending { it.errors }
+        val sb = StringBuilder()
+        sb.append("TOTAL_FILES=$total FILES_WITH_ERRORS=$withErrors TOTAL_ERRORS=$totalErrors\n")
+        sb.append("TOP_FILES_BY_ERRORS:\n")
+        top.take(80).forEach { sb.append("  ${it.relPath} x${it.errors}\n") }
+        java.io.File(outDir, "parse_errors_summary.txt").writeText(sb.toString())
+        println("PARSE_ERROR_AGG: " + sb.toString().replace("\n", " | "))
+    }
+
+    /** One row of the parse-error aggregate: per-file PSI error count + first-error sample. */
+    private data class ParseErrRow(
+        val relPath: String,
+        val errors: Int,
+        val firstError: String,
+        val line: String,
+    )
+
+    /**
+     * Whole-stdlib PSI parse-error walk. Shared by [testAggregateParseErrors] (which
+     * persists the TSV) and [testBuildStructureJson] (which needs live counts).
+     * Each test computes its own rows so results never depend on JUnit method
+     * order or a stale `parse_errors.tsv` from a previous run.
+     */
+    private fun collectParseErrorRows(
+        root: VirtualFile,
+        deadlineMs: Long,
+    ): List<ParseErrRow> {
+        val rows = ArrayList<ParseErrRow>()
         VfsUtilCore.visitChildrenRecursively(
             root,
             object : VirtualFileVisitor<Any>() {
                 override fun visitFile(file: VirtualFile): Boolean {
                     if (file.isDirectory || file.extension != "cr") return true
-                    if (System.currentTimeMillis() > deadline) return false
+                    if (System.currentTimeMillis() > deadlineMs) return false
                     val relPath = VfsUtilCore.getRelativePath(file, root) ?: return true
                     val raw =
                         try {
@@ -70,33 +104,14 @@ class StdlibGraphToolTest : BasePlatformTestCase() {
                             val srcLine = if (firstOffset >= 0) lineAt(raw, firstOffset) else ""
                             Triple(n, firstDesc, srcLine)
                         }
-                    total.incrementAndGet()
-                    if (errs > 0) {
-                        withErrors.incrementAndGet()
-                        totalErrors.addAndGet(errs.toLong())
-                    }
-                    synchronized(tsv) {
-                        tsv.appendText("${relPath}\t${errs}\t${desc.replace("\t", " ")}\t${line.replace("\t", " ")}\n")
+                    synchronized(rows) {
+                        rows.add(ParseErrRow(relPath, errs, desc, line))
                     }
                     return true
                 }
             },
         )
-        val rows =
-            tsv
-                .readLines()
-                .drop(1)
-                .mapNotNull { l ->
-                    val p = l.split("\t")
-                    if (p.size >= 2) p[0] to (p[1].toIntOrNull() ?: 0) else null
-                }.filter { it.second > 0 }
-                .sortedByDescending { it.second }
-        val sb = StringBuilder()
-        sb.append("TOTAL_FILES=${total.get()} FILES_WITH_ERRORS=${withErrors.get()} TOTAL_ERRORS=${totalErrors.get()}\n")
-        sb.append("TOP_FILES_BY_ERRORS:\n")
-        rows.take(80).forEach { sb.append("  ${it.first} x${it.second}\n") }
-        java.io.File(outDir, "parse_errors_summary.txt").writeText(sb.toString())
-        println("PARSE_ERROR_AGG: " + sb.toString().replace("\n", " | "))
+        return rows.sortedBy { it.relPath }
     }
 
     fun testBuildGraph() {
@@ -243,7 +258,9 @@ class StdlibGraphToolTest : BasePlatformTestCase() {
         val table = CrystalReference.getStdlibSymbolTable(project)
         val outDir = java.io.File(workspaceRoot(), "stdlib-graph").also { it.mkdirs() }
 
-        val parseErrs = loadParseErrors(outDir)
+        val parseErrs =
+            collectParseErrorRows(root, System.currentTimeMillis() + 28 * 60_000L)
+                .associate { it.relPath to it.errors }
         val deadline = System.currentTimeMillis() + 28 * 60_000L
 
         val scan: StructureScan
@@ -267,19 +284,6 @@ class StdlibGraphToolTest : BasePlatformTestCase() {
         sb.append("FILES_WITH_PARSE_ERRORS=${scan.filesWithParseErrors}\n")
         java.io.File(outDir, "structure_summary.txt").writeText(sb.toString())
         println("StdlibStructure: " + sb.toString().replace("\n", " | "))
-    }
-
-    /** Saved per-file parse-error counts from the aggregate run, if present. */
-    private fun loadParseErrors(outDir: java.io.File): Map<String, Int> {
-        val parseErrs = HashMap<String, Int>()
-        val peFile = java.io.File(outDir, "parse_errors.tsv")
-        if (peFile.exists()) {
-            peFile.readLines().drop(1).forEach { l ->
-                val p = l.split("\t")
-                if (p.size >= 2) parseErrs[p[0]] = p[1].toIntOrNull() ?: 0
-            }
-        }
-        return parseErrs
     }
 
     /** Mutable counters + JSON emission for one whole-stdlib structure walk. */
