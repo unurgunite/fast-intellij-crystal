@@ -3,7 +3,6 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
 import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
 import io.github.unurgunite.crystal.inspections.CrystalOverloadEvaluator.ParamInfo

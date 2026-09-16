@@ -9,8 +9,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
-import io.github.unurgunite.crystal.completion.CrystalTypeInference
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex

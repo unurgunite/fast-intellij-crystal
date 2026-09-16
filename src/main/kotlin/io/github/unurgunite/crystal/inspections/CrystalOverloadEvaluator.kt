@@ -1,6 +1,5 @@
 package io.github.unurgunite.crystal.inspections
 
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.completion.CrystalLookupBuilders
 import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
