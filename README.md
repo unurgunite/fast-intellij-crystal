@@ -20,8 +20,8 @@ before they ship.
 
 | Metric | Before | After |
 |---|---|---|
-| Parse time, 2.5 KB file (`catalyst/src/catalyst/formatters/json.cr`) | 191 s | 94 ms |
-| Project index, 522 `.cr` files (`catalyst`) | 709 s, stuck at 95–99% | completes, IDE goes idle |
+| Parse time, 2.5 KB file ([catalyst](https://github.com/unurgunite/catalyst)`/src/catalyst/formatters/json.cr`) | 191 s | 94 ms |
+| Project index, 522 `.cr` files ([catalyst](https://github.com/unurgunite/catalyst)) | 709 s, stuck at 95–99% | completes, IDE goes idle |
 | Parse errors in `float.cr` (Crystal 1.21 stdlib) | present | 0 |
 | `StackOverflowError` on self-referential assignments | crash | unknown type, no crash |
 
