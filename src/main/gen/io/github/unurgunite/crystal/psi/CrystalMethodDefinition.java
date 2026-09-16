@@ -15,6 +15,9 @@ public interface CrystalMethodDefinition extends CrystalNamedElement, StubBasedP
   @Nullable
   CrystalMethodBody getMethodBody();
 
+  @NotNull
+  List<CrystalMethodVariantHeader> getMethodVariantHeaderList();
+
   @Nullable
   CrystalParameterList getParameterList();
 

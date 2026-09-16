@@ -29,8 +29,50 @@ public class CrystalWhenClauseImpl extends ASTWrapperPsiElement implements Cryst
 
   @Override
   @NotNull
-  public CrystalExpressionList getExpressionList() {
-    return notNullChild(PsiTreeUtil.getChildOfType(this, CrystalExpressionList.class));
+  public List<CrystalBareArgumentList> getBareArgumentListList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBareArgumentList.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalCallArgs> getCallArgsList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalCallArgs.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalClassVarAccess> getClassVarAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalClassVarAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalFreshVar> getFreshVarList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalFreshVar.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalInstanceVarAccess> getInstanceVarAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalInstanceVarAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroInterpolation> getMacroInterpolationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroInterpolation.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalRegexExpression> getRegexExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalRegexExpression.class);
   }
 
   @Override

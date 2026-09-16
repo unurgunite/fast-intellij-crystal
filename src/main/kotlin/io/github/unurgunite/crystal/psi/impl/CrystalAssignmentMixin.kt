@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.createLeafFromText
 
 /**
  * Mixin for CrystalAssignment PSI elements (e.g. `sas = Senf.new`, `x = 1`, `x += 1`).
@@ -17,8 +18,11 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * The assignment variable (left-hand side) is the IDENTIFIER, INSTANCE_VAR, or CLASS_VAR
  * at the beginning of the assignment.
  */
-abstract class CrystalAssignmentMixin(node: ASTNode) : ASTWrapperPsiElement(node), CrystalAssignment, PsiNameIdentifierOwner {
-
+abstract class CrystalAssignmentMixin(
+    node: ASTNode,
+) : ASTWrapperPsiElement(node),
+    CrystalAssignment,
+    PsiNameIdentifierOwner {
     override fun getNameIdentifier(): PsiElement? {
         // The assignment variable is the first child of type IDENTIFIER, INSTANCE_VAR, or CLASS_VAR.
         var child = node.firstChildNode
@@ -39,12 +43,13 @@ abstract class CrystalAssignmentMixin(node: ASTNode) : ASTWrapperPsiElement(node
         val ident = nameIdentifier ?: return this
         val tokenType = ident.node.elementType
         val bareName = name.removePrefix("@").removePrefix("@")
-        val fixedName = when (tokenType) {
-            CrystalTypes.INSTANCE_VAR -> "@$bareName"
-            CrystalTypes.CLASS_VAR -> "@@$bareName"
-            else -> bareName
-        }
-        val newNode = io.github.unurgunite.crystal.psi.createLeafFromText(project, fixedName, tokenType) ?: return this
+        val fixedName =
+            when (tokenType) {
+                CrystalTypes.INSTANCE_VAR -> "@$bareName"
+                CrystalTypes.CLASS_VAR -> "@@$bareName"
+                else -> bareName
+            }
+        val newNode = createLeafFromText(project, fixedName, tokenType) ?: return this
         ident.node.treeParent.replaceChild(ident.node, newNode)
         return this
     }

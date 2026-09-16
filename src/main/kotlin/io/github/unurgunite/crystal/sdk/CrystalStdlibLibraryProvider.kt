@@ -14,7 +14,6 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
         private val libCache = java.util.concurrent.ConcurrentHashMap<Project, CrystalStdlibLibrary>()
         private val lock = Any()
 
-        @Suppress("unused")
         internal fun clearCache() = libCache.clear()
     }
 
@@ -27,14 +26,15 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
         // checks (shard.yml / a .cr child in the project base path).
         val cached = libCache[project]
         if (cached != null) return listOf(cached)
-        val lib = synchronized(lock) {
-            libCache[project] ?: run {
-                if (!isCrystalProject(project)) return@run null
-                val stdlibRoot = CrystalStdlibResolver.resolveStdlibPath(project) ?: return@run null
-                val version = CrystalStdlibResolver.resolveCrystalVersion(project) ?: "unknown"
-                CrystalStdlibLibrary(stdlibRoot, version).also { libCache[project] = it }
+        val lib =
+            synchronized(lock) {
+                libCache[project] ?: run {
+                    if (!isCrystalProject(project)) return@run null
+                    val stdlibRoot = CrystalStdlibResolver.resolveStdlibPath(project) ?: return@run null
+                    val version = CrystalStdlibResolver.resolveCrystalVersion(project) ?: "unknown"
+                    CrystalStdlibLibrary(stdlibRoot, version).also { libCache[project] = it }
+                }
             }
-        }
         return listOfNotNull(lib)
     }
 
@@ -49,9 +49,8 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
 
 private class CrystalStdlibLibrary(
     private val root: VirtualFile,
-    private val crystalVersion: String
+    private val crystalVersion: String,
 ) : SyntheticLibrary() {
-
     override fun getSourceRoots(): Collection<VirtualFile> = listOf(root)
 
     override fun getBinaryRoots(): Collection<VirtualFile> = emptyList()

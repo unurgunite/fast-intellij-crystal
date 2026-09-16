@@ -1,0 +1,37 @@
+flowchart TB
+    Contributor["CrystalCompletionContributor\nIntelliJ dispatch surface"]
+    Contributor --> Cases["CrystalCompletionCases\nsuppress in strings/numbers\nclass-level extras"]
+
+    Cases --> TypeCtx{"type context?"}
+    TypeCtx -->|after colon| TypeProv["CrystalTypeCompletionProvider\nstdlib + project types"]
+    TypeCtx -->|after at-bracket| AnnProv["CrystalAnnotationCompletionProvider"]
+    TypeCtx -->|no| PosCtx{"position?"}
+
+    PosCtx -->|CONSTANT dot| DotStatic["CrystalDotCompletion\nstatic methods + new fallbacks\nrecord params > generic new"]
+    PosCtx -->|identifier dot| DotInst["CrystalDotCompletion\ninstance methods of\ninferred receiver type"]
+    PosCtx -->|CONSTANT double-colon| Nested["nested types via\nClassByEnclosingIndex"]
+    PosCtx -->|free text| Scope["CrystalScopeCompletion"]
+
+    DotStatic --> LookupBuild["CrystalLookupBuilders\nmethod PSI + (param : Type)\ntail + class/return text"]
+    DotInst --> Infer["type/CrystalTypeInference\ndepth ≤ 5"]
+    Infer --> LookupBuild
+
+    Infer --> ParamAnn["param annotation"]
+    ParamAnn --> AssignRHS["assignment RHS chain"]
+    AssignRHS --> Literal["type/CrystalLiteralTypeInference\nString/Char/Symbol/Bool/Nil\nnumbers, Array/Hash/Tuple"]
+    Literal --> RetType["type/CrystalMethodReturnTypeInference\nannotation > return stmts >\nlast expression"]
+    RetType --> ExprRes["type/CrystalExpressionTypeResolver"]
+
+    DotStatic --> Hierarchy["type/CrystalTypeHierarchy\nfindTypeByName, current file first\nsuperclass + include walk\nimplicit Object"]
+    DotInst --> Hierarchy
+    Hierarchy --> ByClassIdx["CrystalMethodByClassIndex\nown class first,\nancestors fading priority"]
+    Hierarchy --> MethodLookup["type/CrystalMethodLookup\ninitialize + enclosing class\nsignatures + record lookup"]
+    MethodLookup --> LookupBuild
+    ByClassIdx --> LookupBuild
+
+    Scope --> BlockParams["block params 120 >\nexplicit params 100 >\nfor-vars 90 > locals 50"]
+    BlockParams --> ClassVars["CrystalCompletionVarCollector\nclass/instance vars, file walk"]
+    ClassVars --> Enclosing["enclosing-class methods\n+ superclass"]
+    Enclosing --> Sigil{"prefix?"}
+    Sigil -->|"@ / @@"| VarsOnly["variables only"]
+    Sigil -->|"Uppercase / empty"| TypesPlus["+ stdlib types + all classes"]

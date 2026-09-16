@@ -1,0 +1,96 @@
+package io.github.unurgunite.crystal.project
+
+import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
+import org.jetbrains.jps.model.java.JavaSourceRootType
+
+/**
+ * Marks the "spec" directory as a Test Source Root when a Crystal project is opened.
+ * This gives the folder the green coloring in the project tree (like RubyMine).
+ *
+ * Must be idempotent and must not run while the initial indexing pass is in progress:
+ * modifying module roots mid-index invalidates and restarts the pass, which (combined
+ * with this activity running on every startup) previously livelocked project indexing.
+ */
+class CrystalSpecSourceRootConfigurator : ProjectActivity {
+    companion object {
+        /**
+         * Path-based ownership check, extracted for testability: unit-testable without
+         * touching the module model (mutating content roots in tests leaks async
+         * reindex work into later test classes and breaks their highlighting).
+         *
+         * Compares on directory boundaries: `/proj-other/spec` is NOT under `/proj`.
+         */
+        fun isUnderContentRoot(
+            specPath: String,
+            contentRootPath: String,
+        ): Boolean {
+            val root = contentRootPath.trimEnd('/')
+            return specPath == root || specPath.startsWith("$root/")
+        }
+    }
+
+    override suspend fun execute(project: Project) {
+        val basePath = project.basePath ?: return
+
+        // Only proceed if this looks like a Crystal project (has shard.yml + spec/)
+        LocalFileSystem.getInstance().findFileByPath("$basePath/shard.yml") ?: return
+        val specDir = LocalFileSystem.getInstance().findFileByPath("$basePath/spec") ?: return
+
+        // Defer the root modification until initial indexing has finished, so we never
+        // invalidate an in-progress indexing pass.
+        DumbService.getInstance(project).runWhenSmart {
+            configureSpecRoot(project, specDir)
+        }
+    }
+
+    private fun configureSpecRoot(
+        project: Project,
+        specDir: VirtualFile,
+    ) {
+        val modules = ModuleManager.getInstance(project).modules
+        if (modules.isEmpty()) return
+
+        for (module in modules) {
+            ModuleRootModificationUtil.updateModel(module) { model ->
+                model.contentEntries
+                    .firstOrNull { isOwnedContentEntry(it, specDir) }
+                    ?.let { markTestRoot(it, specDir) }
+            }
+        }
+    }
+
+    /**
+     * True when [specDir] lives under this content entry. Compare by PATH (not
+     * VirtualFile identity) so the check survives restarts and re-indexing.
+     */
+    private fun isOwnedContentEntry(
+        entry: com.intellij.openapi.roots.ContentEntry,
+        specDir: VirtualFile,
+    ): Boolean {
+        val contentRoot = entry.file ?: return false
+        return isUnderContentRoot(specDir.path, contentRoot.path)
+    }
+
+    /**
+     * Adds spec as a test source root unless already marked (idempotent).
+     */
+    private fun markTestRoot(
+        entry: com.intellij.openapi.roots.ContentEntry,
+        specDir: VirtualFile,
+    ) {
+        val alreadyMarked =
+            entry.sourceFolders.any { folder ->
+                folder.file?.path == specDir.path &&
+                    folder.rootType == JavaSourceRootType.TEST_SOURCE
+            }
+        if (!alreadyMarked) {
+            entry.addSourceFolder(specDir, JavaSourceRootType.TEST_SOURCE)
+        }
+    }
+}

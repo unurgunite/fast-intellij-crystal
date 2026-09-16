@@ -1,6 +1,8 @@
 package io.github.unurgunite.crystal.inspections
 
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.util.elementType
@@ -22,9 +24,11 @@ import io.github.unurgunite.crystal.psi.CrystalPropertyDeclaration
  * - Uninstantiated generics: Array, Hash, Range, Slice, Proc, Union, Enumerable, Indexable
  */
 class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
-
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return object : PsiElementVisitor() {
+    override fun buildVisitor(
+        holder: ProblemsHolder,
+        isOnTheFly: Boolean,
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
                 when (element) {
                     is CrystalPropertyDeclaration -> checkPropertyDeclaration(element, holder)
@@ -32,9 +36,11 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
                 }
             }
         }
-    }
 
-    private fun checkParameter(param: CrystalParameter, holder: ProblemsHolder) {
+    private fun checkParameter(
+        param: CrystalParameter,
+        holder: ProblemsHolder,
+    ) {
         // Only check parameters that declare instance variables: def initialize(@x : Type)
         val instanceVar = param.instanceVarAccess ?: return
         val varName = instanceVar.text // e.g. "@x"
@@ -43,7 +49,10 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
         checkTypeReference(typeRef, varName, param, holder)
     }
 
-    private fun checkPropertyDeclaration(decl: CrystalPropertyDeclaration, holder: ProblemsHolder) {
+    private fun checkPropertyDeclaration(
+        decl: CrystalPropertyDeclaration,
+        holder: ProblemsHolder,
+    ) {
         // Only check instance variable declarations
         val instanceVar = decl.instanceVarAccess ?: return
         val varName = instanceVar.text // e.g. "@schaerfe"
@@ -52,7 +61,12 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
         checkTypeReference(typeRef, varName, decl, holder)
     }
 
-    private fun checkTypeReference(typeRef: io.github.unurgunite.crystal.psi.CrystalTypeReference, varName: String, parentElement: PsiElement, holder: ProblemsHolder) {
+    private fun checkTypeReference(
+        typeRef: io.github.unurgunite.crystal.psi.CrystalTypeReference,
+        varName: String,
+        parentElement: PsiElement,
+        holder: ProblemsHolder,
+    ) {
         val typeText = typeRef.text
 
         // Handle union types: split on top-level PIPE tokens
@@ -66,7 +80,12 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
         }
     }
 
-    private fun checkSingleType(typeText: String, varName: String, parentElement: PsiElement, holder: ProblemsHolder) {
+    private fun checkSingleType(
+        typeText: String,
+        varName: String,
+        parentElement: PsiElement,
+        holder: ProblemsHolder,
+    ) {
         val trimmed = typeText.trim()
         val baseType = extractBaseTypeName(trimmed)
         // Only flag if: (1) base type is forbidden AND (2) it's NOT instantiated (no parentheses after the type name)
@@ -76,7 +95,7 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
             holder.registerProblem(
                 highlightElement,
                 "'$baseType' cannot be used as the type of instance variable '$varName', use a more specific type",
-                ProblemHighlightType.GENERIC_ERROR
+                ProblemHighlightType.GENERIC_ERROR,
             )
         }
     }
@@ -90,11 +109,12 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
         // For generic types like "Array(Int32)", extract just "Array"
         val parenIndex = trimmed.indexOf('(')
         val braceIndex = trimmed.indexOf('{')
-        val end = when {
-            parenIndex >= 0 -> parenIndex
-            braceIndex >= 0 -> braceIndex
-            else -> trimmed.length
-        }
+        val end =
+            when {
+                parenIndex >= 0 -> parenIndex
+                braceIndex >= 0 -> braceIndex
+                else -> trimmed.length
+            }
         return trimmed.substring(0, end).trim()
     }
 
@@ -114,10 +134,12 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
                     depth++
                     current.append(ch)
                 }
+
                 ')', ']', '}' -> {
                     depth--
                     current.append(ch)
                 }
+
                 '|' -> {
                     if (depth == 0) {
                         val component = current.toString().trim()
@@ -127,7 +149,10 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
                         current.append(ch)
                     }
                 }
-                else -> current.append(ch)
+
+                else -> {
+                    current.append(ch)
+                }
             }
         }
         val last = current.toString().trim()
@@ -157,16 +182,32 @@ class CrystalInstanceVarTypeInspection : LocalInspectionTool() {
          * Types that Crystal forbids as instance variable types.
          * These are abstract base types and uninstantiated generic types.
          */
-        private val FORBIDDEN_TYPES = setOf(
-            // Abstract base types
-            "Value", "Object", "Reference",
-            "Number", "Int", "Float",
-            "Struct", "Enum",
-            // Unbound generic types
-            "Pointer", "Tuple", "NamedTuple", "StaticArray", "Class",
-            // Uninstantiated generic types
-            "Array", "Hash", "Range", "Slice", "Proc", "Union",
-            "Enumerable", "Indexable"
-        )
+        private val FORBIDDEN_TYPES =
+            setOf(
+                // Abstract base types
+                "Value",
+                "Object",
+                "Reference",
+                "Number",
+                "Int",
+                "Float",
+                "Struct",
+                "Enum",
+                // Unbound generic types
+                "Pointer",
+                "Tuple",
+                "NamedTuple",
+                "StaticArray",
+                "Class",
+                // Uninstantiated generic types
+                "Array",
+                "Hash",
+                "Range",
+                "Slice",
+                "Proc",
+                "Union",
+                "Enumerable",
+                "Indexable",
+            )
     }
 }

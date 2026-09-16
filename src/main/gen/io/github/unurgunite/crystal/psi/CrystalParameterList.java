@@ -8,6 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface CrystalParameterList extends PsiElement {
 
   @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
   List<CrystalParameter> getParameterList();
 
 }

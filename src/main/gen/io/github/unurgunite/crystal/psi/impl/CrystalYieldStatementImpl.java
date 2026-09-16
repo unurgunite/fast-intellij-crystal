@@ -28,15 +28,21 @@ public class CrystalYieldStatementImpl extends ASTWrapperPsiElement implements C
   }
 
   @Override
-  @Nullable
-  public CrystalArgumentList getArgumentList() {
-    return PsiTreeUtil.getChildOfType(this, CrystalArgumentList.class);
+  @NotNull
+  public List<CrystalArgument> getArgumentList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalArgument.class);
   }
 
   @Override
   @Nullable
   public CrystalBareArgumentList getBareArgumentList() {
     return PsiTreeUtil.getChildOfType(this, CrystalBareArgumentList.class);
+  }
+
+  @Override
+  @NotNull
+  public List<CrystalMacroControl> getMacroControlList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalMacroControl.class);
   }
 
   @Override

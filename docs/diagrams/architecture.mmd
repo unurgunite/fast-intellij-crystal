@@ -1,0 +1,55 @@
+flowchart TB
+    subgraph Core["Language core"]
+        Flex["lexer/Crystal.flex\nJFlex tokenizer"]
+        BNF["parser/Crystal.bnf\nGrammarKit PEG"]
+        Gen["src/main/gen/\ncommitted output"]
+        PSI["psi/ + psi/references\n+ psi/stdlib + psi/util\nreferences + mixins"]
+        Stubs["stubs/\nStubIndex backbone"]
+        Type["type/\ntype-system kernel\ninference + resolvers"]
+        Flex --> Gen
+        BNF --> Gen
+        Gen --> PSI
+        PSI --> Stubs
+        PSI --> Type
+        Stubs --> Type
+    end
+
+    subgraph Intelligence["Intelligence"]
+        Completion["completion/\ndispatch + lookups"]
+        Navigation["navigation/\n+ parameterinfo/\ngoto + usages + param info"]
+        Inspections["inspections/\nchecks (engines in type/)"]
+        Documentation["documentation/\nhover + Ctrl+Q"]
+    end
+
+    subgraph Frontend["Editor frontend"]
+        Editor["editor/\nenter/brace/folding\ncommenter/quote/typed"]
+        Highlighting["highlighting/\nlexer colors + annotator\n+ TODO"]
+        Structure["structure/\nstructure view"]
+        Formatting["formatting/\ncrystal tool format"]
+        Root["root: language plumbing\nLanguage/File/FileType\nParserDefinition"]
+    end
+
+    subgraph Execution["Execution"]
+        Run["run/\nconfigs + spec SMRunner\n+ debug state interface"]
+        Debugger["debugger/\nLLDB-DAP\nservice implementation"]
+        SDK["sdk/ + project/\nSDK detect + wizard"]
+        Refactoring["refactoring/\nrename"]
+    end
+
+    PSI --> Completion
+    PSI --> Navigation
+    PSI --> Inspections
+    PSI --> Documentation
+    PSI --> Highlighting
+    Stubs --> Completion
+    Stubs --> Navigation
+    Stubs --> Inspections
+    Type --> Completion
+    Type --> Navigation
+    Type --> Inspections
+    Type --> Documentation
+    Type --> PSI
+    Root --> Editor
+    Run --> Debugger
+    SDK --> Formatting
+    SDK --> Refactoring

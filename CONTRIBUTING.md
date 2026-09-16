@@ -9,7 +9,7 @@ work**.
 Spend 2 minutes on these checks — it saves everyone time:
 
 1. **Search existing issues** — your problem may already be reported or
-   discussed. Use the search bar on the [Issues page](https://github.com/unurgunite/intellij-crystal/issues).
+   discussed. Use the search bar on the [Issues page](https://github.com/unurgunite/fast-intellij-crystal/issues).
 2. **Update to the latest plugin version** — Settings → Plugins → Check for
    Updates. Many "bugs" are already fixed in the latest release.
 3. **Reproduce with a minimal example** — strip your code down to the
@@ -110,6 +110,37 @@ It helps us:
 4. **Implementation** — When someone picks up the issue, it gets an
    `in-progress` label. For code contributions, see below.
 
+## Branches, Commits, Releases
+
+```
+feature/*  -- squash & merge -->  v*.*.*  -- merge commit -->  master
+system/*   -------------------------- merge commit -->  master
+```
+
+- **feature/*** — work branches, squash & merge into the release branch.
+- **v*.*** (e.g. `v1.0.0`) — release branch, merge commit into `master`.
+- **system/*** — infrastructure-only branches, merge commit directly into
+  `master`. Version checks are skipped for `system/*`.
+- **master** — default, direct push blocked. Only `v*.*.*` or `system/*`
+  branches may open PRs into `master` (enforced by CI).
+
+### Commits
+
+Format: `[1.0.0] Short description`
+Example: `[1.0.0] Add CI workflows`
+
+The version tag must match `version` in `gradle.properties`. CI rejects
+commits without a tag and PRs where the tag, the property, and the target
+`v*.*.*` branch disagree.
+
+### Releases
+
+The plugin version is always clean SemVer (`1.0.0`). Build traceability
+(commit SHA, CI run number) lives in the artifact file name only, e.g.
+`fast-crystal-1.0.0-build.42+abc1234.zip` — never in the version string,
+which JetBrains Marketplace requires to be SemVer. Marketplace uploads
+always bump the version; intermediate builds ship via GitHub Releases.
+
 ## Code Contributions
 
 Pull requests are welcome! Before starting work on a larger change:
@@ -117,17 +148,18 @@ Pull requests are welcome! Before starting work on a larger change:
 1. **Open an issue first** — describe the problem and proposed approach.
    This prevents duplicate work and ensures the direction aligns with the
    project's architecture.
-2. **Read [AGENTS.md](AGENTS.md)** — it contains the project's coding
-   conventions, build commands, architecture rules, and critical design
-   decisions. All code contributions must follow these rules.
+2. **Read the docs** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (module
+   map, pipelines, invariants), [docs/TESTING.md](docs/TESTING.md) (test
+   conventions — every implementation must have tests), and the behavioral
+   specs in [docs/specs/](docs/specs/README.md) for the area you touch.
 3. **Build and test** — `./gradlew build` (compile + tests). Every
-   implementation must have unit tests (see AGENTS.md → Testing Conventions).
+   implementation must have unit tests (see docs/TESTING.md).
 
 ### Build from source
 
 ```bash
-git clone https://github.com/unurgunite/intellij-crystal.git
-cd intellij-crystal
+git clone https://github.com/unurgunite/fast-intellij-crystal.git
+cd fast-intellij-crystal
 ./gradlew build          # compile + tests
 ./gradlew runIde         # launch a dev IDE with the plugin loaded
 ```

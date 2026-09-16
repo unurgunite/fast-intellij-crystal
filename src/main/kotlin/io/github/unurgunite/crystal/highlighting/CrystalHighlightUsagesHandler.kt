@@ -5,8 +5,8 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import com.intellij.util.Consumer
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 
 /**
  * Highlights all usages of a Crystal definition (class, module, struct, enum,
@@ -19,14 +19,13 @@ import com.intellij.util.Consumer
 class CrystalHighlightUsagesHandler(
     editor: Editor,
     file: PsiFile,
-    private val target: CrystalNamedElement
+    private val target: CrystalNamedElement,
 ) : HighlightUsagesHandlerBase<CrystalNamedElement>(editor, file) {
-
     override fun getTargets(): MutableList<CrystalNamedElement> = mutableListOf(target)
 
     override fun selectTargets(
         targets: List<CrystalNamedElement>,
-        selectionConsumer: Consumer<in List<CrystalNamedElement>>
+        selectionConsumer: Consumer<in List<CrystalNamedElement>>,
     ) {
         selectionConsumer.accept(targets)
     }

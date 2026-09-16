@@ -14,6 +14,9 @@ public interface CrystalStatement extends PsiElement {
   CrystalBareCommandExpression getBareCommandExpression();
 
   @Nullable
+  CrystalBareCommandSpaceFirst getBareCommandSpaceFirst();
+
+  @Nullable
   CrystalBeginStatement getBeginStatement();
 
   @Nullable
@@ -21,6 +24,12 @@ public interface CrystalStatement extends PsiElement {
 
   @Nullable
   CrystalConstantAssignment getConstantAssignment();
+
+  @Nullable
+  CrystalDotSpaceStatement getDotSpaceStatement();
+
+  @Nullable
+  CrystalEscapedMacroStatement getEscapedMacroStatement();
 
   @Nullable
   CrystalExpressionStatement getExpressionStatement();
@@ -42,6 +51,9 @@ public interface CrystalStatement extends PsiElement {
 
   @Nullable
   CrystalMacroDefinition getMacroDefinition();
+
+  @Nullable
+  CrystalMacroDefinitionOpen getMacroDefinitionOpen();
 
   @Nullable
   CrystalMethodDefinition getMethodDefinition();

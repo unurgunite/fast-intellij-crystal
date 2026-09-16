@@ -7,6 +7,9 @@ import com.intellij.psi.PsiElement;
 
 public interface CrystalGroupedExpression extends PsiElement {
 
+  @Nullable
+  CrystalAssignment getAssignment();
+
   @NotNull
   List<CrystalExpression> getExpressionList();
 

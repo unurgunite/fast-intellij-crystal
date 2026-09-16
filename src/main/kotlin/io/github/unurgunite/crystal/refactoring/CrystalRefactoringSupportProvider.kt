@@ -2,8 +2,8 @@ package io.github.unurgunite.crystal.refactoring
 
 import com.intellij.lang.refactoring.RefactoringSupportProvider
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
@@ -25,8 +25,10 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * TokenInplaceRenameHandler (token-based rename, the old behavior).
  */
 class CrystalRefactoringSupportProvider : RefactoringSupportProvider() {
-
-    override fun isMemberInplaceRenameAvailable(element: PsiElement, context: PsiElement?): Boolean {
+    override fun isMemberInplaceRenameAvailable(
+        element: PsiElement,
+        context: PsiElement?,
+    ): Boolean {
         // Composites that implement PsiNameIdentifierOwner via their BNF mixins
         if (element is CrystalNamedElement || element is CrystalInstanceVarAccess) return true
 

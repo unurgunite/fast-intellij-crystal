@@ -40,6 +40,18 @@ public class CrystalBareCommandExpressionImpl extends CrystalMethodCallExpressio
 
   @Override
   @Nullable
+  public CrystalExpression getExpression() {
+    return PsiTreeUtil.getChildOfType(this, CrystalExpression.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalMacroInterpolation getMacroInterpolation() {
+    return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalPostfixModifier getPostfixModifier() {
     return PsiTreeUtil.getChildOfType(this, CrystalPostfixModifier.class);
   }

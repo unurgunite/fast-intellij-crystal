@@ -20,6 +20,9 @@ public interface CrystalCaseStatement extends PsiElement {
   List<CrystalInClause> getInClauseList();
 
   @NotNull
+  List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
   List<CrystalWhenClause> getWhenClauseList();
 
 }

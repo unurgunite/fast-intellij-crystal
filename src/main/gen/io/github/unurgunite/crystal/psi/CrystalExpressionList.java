@@ -8,6 +8,12 @@ import com.intellij.psi.PsiElement;
 public interface CrystalExpressionList extends PsiElement {
 
   @NotNull
+  List<CrystalAssignment> getAssignmentList();
+
+  @NotNull
   List<CrystalExpression> getExpressionList();
+
+  @NotNull
+  List<CrystalMacroControl> getMacroControlList();
 
 }

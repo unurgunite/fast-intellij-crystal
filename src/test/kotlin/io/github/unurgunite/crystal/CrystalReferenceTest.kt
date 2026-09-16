@@ -3,17 +3,26 @@ package io.github.unurgunite.crystal
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
+import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
+import io.github.unurgunite.crystal.psi.CrystalStructDefinition
+import io.github.unurgunite.crystal.psi.CrystalTypePath
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 /**
  * Tests for Go to Definition (CrystalReference resolution) and CrystalNamedElement.
  */
 class CrystalReferenceTest : BasePlatformTestCase() {
-
     /** Find the first non-empty reference on the element (covers both intrinsic and contributed). */
-    private fun findReference(element: PsiElement) =
-        element.references.firstOrNull { it is CrystalReference }
+    private fun findReference(element: PsiElement) = element.references.firstOrNull { it is CrystalReference }
 
     // ==================== CrystalNamedElement ====================
 
@@ -64,34 +73,45 @@ class CrystalReferenceTest : BasePlatformTestCase() {
 
     fun testVariableReferenceResolvesToMethod() {
         // "greet" without args is parsed as variable_reference
-        val file = myFixture.configureByText("test.cr", """
-            def greet
-            end
-            greet
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def greet
+                end
+                greet
+                """.trimIndent(),
+            )
         val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
         // Find the standalone "greet" usage (not inside method_name)
-        val greetRef = varRefs.find { ref ->
-            ref.text == "greet" &&
-            ref.parent?.parent !is CrystalMethodDefinition
-        }
+        val greetRef =
+            varRefs.find { ref ->
+                ref.text == "greet" &&
+                    ref.parent?.parent !is CrystalMethodDefinition
+            }
         assertNotNull("Should find 'greet' variable reference", greetRef)
         val reference = findReference(greetRef!!)
         assertNotNull("variable_reference should have a CrystalReference", reference)
         val resolved = reference!!.resolve()
         assertNotNull("Should resolve to the method definition", resolved)
-        assertTrue("Should resolve to CrystalMethodDefinition",
-            resolved is CrystalMethodDefinition)
+        assertTrue(
+            "Should resolve to CrystalMethodDefinition",
+            resolved is CrystalMethodDefinition,
+        )
         assertEquals("greet", (resolved as CrystalMethodDefinition).name)
     }
 
     fun testMethodCallResolvesToMethod() {
         // "greet(x)" with args is parsed as method_call_expression
-        val file = myFixture.configureByText("test.cr", """
-            def greet(name)
-            end
-            greet("world")
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def greet(name)
+                end
+                greet("world")
+                """.trimIndent(),
+            )
         val calls = PsiTreeUtil.findChildrenOfType(file, CrystalMethodCallExpression::class.java)
         val greetCall = calls.find { it.text.startsWith("greet(\"world\")") }
         assertNotNull("Should find method call expression", greetCall)
@@ -99,17 +119,49 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         assertNotNull("method_call_expression should have a CrystalReference", reference)
         val resolved = reference!!.resolve()
         assertNotNull("Should resolve to the method definition", resolved)
-        assertTrue("Should resolve to CrystalMethodDefinition",
-            resolved is CrystalMethodDefinition)
+        assertTrue(
+            "Should resolve to CrystalMethodDefinition",
+            resolved is CrystalMethodDefinition,
+        )
+    }
+
+    fun testPrivateMacroCallResolvesToMacroDefinition() { // `private macro` + bare call in the same file: resolves through
+        // CrystalMacroIndex (macros are not in CrystalMethodIndex).
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                private macro my_helper(x)
+                  foo
+                end
+                my_helper(1)
+                """.trimIndent(),
+            )
+        val calls = PsiTreeUtil.findChildrenOfType(file, CrystalMethodCallExpression::class.java)
+        val helperCall = calls.find { it.text.startsWith("my_helper(1)") }
+        assertNotNull("Should find macro call expression", helperCall)
+        val reference = findReference(helperCall!!)
+        assertNotNull("macro call expression should have a CrystalReference", reference)
+        val resolved = reference!!.resolve()
+        assertNotNull("Should resolve to the macro definition", resolved)
+        assertTrue(
+            "Should resolve to CrystalMacroDefinition",
+            resolved is CrystalMacroDefinition,
+        )
+        assertEquals("my_helper", (resolved as CrystalMacroDefinition).name)
     }
 
     fun testTypePathResolvesToClass() {
         // In "Foo.new", Foo is parsed as variable_reference (CONSTANT), not type_path
-        val file = myFixture.configureByText("test.cr", """
-            class Foo
-            end
-            x = Foo.new
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                class Foo
+                end
+                x = Foo.new
+                """.trimIndent(),
+            )
         val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
         val fooRef = varRefs.find { it.text == "Foo" }
         assertNotNull("Should find Foo variable reference", fooRef)
@@ -117,20 +169,31 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         assertNotNull("Foo should have a CrystalReference", reference)
         val resolved = reference!!.resolve()
         assertNotNull("Should resolve to class definition", resolved)
-        assertTrue("Should resolve to CrystalClassDefinition",
-            resolved is CrystalClassDefinition)
+        assertTrue(
+            "Should resolve to CrystalClassDefinition",
+            resolved is CrystalClassDefinition,
+        )
     }
 
     // ==================== Return-type annotation navigation ====================
 
     fun testReturnTypeAnnotationResolvesToClass() {
-        CrystalStdlibResolver.resolveStdlibPath(project)?.path
-            ?.let { com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess.allowRootAccess(testRootDisposable, it) }
-        val file = myFixture.configureByText("test.cr", """
-            def foo : String
-              "x"
-            end
-        """.trimIndent())
+        CrystalStdlibResolver
+            .resolveStdlibPath(project)
+            ?.path
+            ?.let {
+                com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
+                    .allowRootAccess(testRootDisposable, it)
+            }
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def foo : String
+                  "x"
+                end
+                """.trimIndent(),
+            )
         val typePath = PsiTreeUtil.findChildOfType(file, CrystalTypePath::class.java)
         assertNotNull("Should find return-type type_path", typePath)
         val reference = findReference(typePath!!)
@@ -146,13 +209,17 @@ class CrystalReferenceTest : BasePlatformTestCase() {
         // type, deterministically (no dependency on the shared harness's stdlib VFS,
         // whose alias PSI can be a detached cross-provider element under full-suite
         // ordering).
-        val file = myFixture.configureByText("test.cr", """
-            class MeinTyp
-            end
-            def foo : MeinTyp
-              MeinTyp.new
-            end
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                class MeinTyp
+                end
+                def foo : MeinTyp
+                  MeinTyp.new
+                end
+                """.trimIndent(),
+            )
         val typePath = PsiTreeUtil.findChildOfType(file, CrystalTypePath::class.java)
         assertNotNull("Should find return-type type_path", typePath)
         val reference = findReference(typePath!!)
@@ -177,16 +244,21 @@ class CrystalReferenceTest : BasePlatformTestCase() {
     // ==================== Forward reference ====================
 
     fun testResolvesMethodDefinedAfterUsage() {
-        val file = myFixture.configureByText("test.cr", """
-            greet
-            def greet
-            end
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                greet
+                def greet
+                end
+                """.trimIndent(),
+            )
         val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
-        val greetRef = varRefs.find { ref ->
-            ref.text == "greet" &&
-            ref.parent?.parent !is CrystalMethodDefinition
-        }
+        val greetRef =
+            varRefs.find { ref ->
+                ref.text == "greet" &&
+                    ref.parent?.parent !is CrystalMethodDefinition
+            }
         assertNotNull(greetRef)
         val reference = findReference(greetRef!!)
         assertNotNull("Should have reference", reference)
@@ -213,32 +285,75 @@ class CrystalReferenceTest : BasePlatformTestCase() {
      * the file boundary would walk the entire test data tree and time out.
      */
     fun testTopLevelBareCallResolvesWithoutEscapingFileBoundary() {
-        val file = myFixture.configureByText("test.cr", """
-            arr = [1, 2, 3, 4]
-            a = arr[..2]
-            b = arr[2..]
-            puts "a: #{a}"
-            puts "b: #{b}"
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                arr = [1, 2, 3, 4]
+                a = arr[..2]
+                b = arr[2..]
+                puts "a: #{a}"
+                puts "b: #{b}"
 
-            def sahne(bonbon : String)
-              return bonbon
-            end
+                def sahne(bonbon : String)
+                  return bonbon
+                end
 
-            sahne
-        """.trimIndent())
+                sahne
+                """.trimIndent(),
+            )
         val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
-        val sahneRef = varRefs.find { ref ->
-            ref.text == "sahne" &&
-            ref.parent?.parent !is CrystalMethodDefinition
-        }
+        val sahneRef =
+            varRefs.find { ref ->
+                ref.text == "sahne" &&
+                    ref.parent?.parent !is CrystalMethodDefinition
+            }
         assertNotNull("Should find 'sahne' variable reference (the bare call)", sahneRef)
         val reference = findReference(sahneRef!!)
         assertNotNull("variable_reference should have a CrystalReference", reference)
         val resolved = reference!!.resolve()
         assertNotNull("Should resolve sahne to the method definition", resolved)
-        assertTrue("Should resolve to CrystalMethodDefinition",
-            resolved is CrystalMethodDefinition)
+        assertTrue(
+            "Should resolve to CrystalMethodDefinition",
+            resolved is CrystalMethodDefinition,
+        )
         assertEquals("sahne", (resolved as CrystalMethodDefinition).name)
+    }
+
+    // ==================== Cross-file (StubIndex path) ====================
+
+    fun testDirectCallResolvesToMethodInOtherFile() {
+        myFixture.addFileToProject(
+            "helpers.cr",
+            """
+            def greet
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.configureByText("main.cr", "greet")
+        val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
+        val greetRef = varRefs.find { it.text == "greet" }
+        assertNotNull("Should find greet variable reference", greetRef)
+        val resolved = findReference(greetRef!!)?.resolve()
+        assertNotNull("Should resolve greet across files", resolved)
+        assertTrue("Should be a method definition", resolved is CrystalMethodDefinition)
+    }
+
+    fun testClassReferenceResolvesAcrossFiles() {
+        myFixture.addFileToProject(
+            "models.cr",
+            """
+            class Apfel
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.configureByText("main.cr", "x = Apfel.new")
+        val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
+        val apfelRef = varRefs.find { it.text == "Apfel" }
+        assertNotNull("Should find Apfel variable reference", apfelRef)
+        val resolved = findReference(apfelRef!!)?.resolve()
+        assertNotNull("Should resolve Apfel class across files", resolved)
+        assertTrue("Should be a class definition", resolved is CrystalClassDefinition)
     }
 
     // ==================== Constants ====================
@@ -259,10 +374,14 @@ class CrystalReferenceTest : BasePlatformTestCase() {
     }
 
     fun testConstantReferenceResolvesToDefinition() {
-        val file = myFixture.configureByText("test.cr", """
-            DEFAULT = 1
-            puts DEFAULT
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                DEFAULT = 1
+                puts DEFAULT
+                """.trimIndent(),
+            )
         val varRefs = PsiTreeUtil.findChildrenOfType(file, CrystalVariableReference::class.java)
         val usage = varRefs.find { it.text == "DEFAULT" && it.parent?.parent !is CrystalConstantAssignment }
         assertNotNull("Should find 'DEFAULT' usage reference", usage)
@@ -275,13 +394,141 @@ class CrystalReferenceTest : BasePlatformTestCase() {
     }
 
     fun testConstantFindUsages() {
-        val file = myFixture.configureByText("test.cr", """
-            DEFAULT_CREATE_PERMISSIONS = 0o644
-            puts DEFAULT_CREATE_PERMISSIONS
-        """.trimIndent())
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                DEFAULT_CREATE_PERMISSIONS = 0o644
+                puts DEFAULT_CREATE_PERMISSIONS
+                """.trimIndent(),
+            )
         val constDef = PsiTreeUtil.findChildOfType(file, CrystalConstantAssignment::class.java)!!
         val usages = myFixture.findUsages(constDef)
         assertNotNull("Find Usages should return results", usages)
         assertTrue("Should find at least one usage of the constant", usages.isNotEmpty())
+    }
+
+    fun testLibFunCallResolvesToFunDefinition() {
+        // `fun` C bindings have no stubs, so CrystalClassIndex misses `lib C`.
+        // The reference falls back to a same-file PSI walk of the lib body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                lib C
+                  fun foo : Int32
+                end
+                x = C.foo
+                """.trimIndent(),
+            )
+        val dotCall =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .firstOrNull()
+        assertNotNull("Should find dot call access", dotCall)
+        val ref = dotCall!!.reference
+        assertNotNull("dot call should have a reference", ref)
+        val resolved = ref!!.resolve()
+        assertNotNull("Should resolve lib fun call", resolved)
+        assertEquals("foo", resolved!!.text)
+    }
+
+    fun testStructFieldAccessResolvesToFieldDeclaration() {
+        // `x : Type` field declarations are not methods — the reference falls
+        // back to a textual match inside the resolved struct body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                struct Point
+                  x : Int32
+                end
+                p = Point.new
+                y = p.x
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val fieldCall = dotCalls.find { it.text == ".x" }
+        assertNotNull("Should find .x dot call, found: ${dotCalls.map { it.text }}", fieldCall)
+        val resolved = fieldCall!!.reference?.resolve()
+        assertNotNull("Should resolve struct field access", resolved)
+        assertEquals("x", resolved!!.text)
+    }
+
+    fun testEnumPredicateOnTypedParamResolvesToConstant() {
+        // `c.dark_blue?` where `c : TrafficLight` — Crystal generates a
+        // `member?` predicate per enum constant, so the reference lands on
+        // the CONSTANT leaf inside the enum body.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                  DarkBlue
+                end
+                def walk(c : TrafficLight)
+                  c.dark_blue?
+                end
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".dark_blue?" }
+        assertNotNull("Should find .dark_blue? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        val resolved = predCall!!.reference?.resolve()
+        assertNotNull("Should resolve enum predicate", resolved)
+        assertEquals("DarkBlue", resolved!!.text)
+    }
+
+    fun testEnumPredicateOnEnumValueResolvesToConstant() {
+        // `TrafficLight::Red.red?` — namespace receiver, the predicate lives
+        // on the enclosing enum, not on the member.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                end
+                x = TrafficLight::Red.red?
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".red?" }
+        assertNotNull("Should find .red? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        val resolved = predCall!!.reference?.resolve()
+        assertNotNull("Should resolve enum-value predicate", resolved)
+        assertEquals("Red", resolved!!.text)
+    }
+
+    fun testEnumPredicateOnBareEnumNameDoesNotResolve() {
+        // `TrafficLight.red?` is invalid Crystal (predicates are instance
+        // methods, verified 1.21.0) — must not resolve, no false positive.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                enum TrafficLight
+                  Red
+                end
+                x = TrafficLight.red?
+                """.trimIndent(),
+            )
+        val dotCalls =
+            PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalDotCallAccess::class.java)
+                .toList()
+        val predCall = dotCalls.find { it.text == ".red?" }
+        assertNotNull("Should find .red? dot call, found: ${dotCalls.map { it.text }}", predCall)
+        assertNull("Bare-enum predicate must not resolve", predCall!!.reference?.resolve())
     }
 }

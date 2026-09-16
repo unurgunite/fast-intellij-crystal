@@ -7,6 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public class CrystalVisitor extends PsiElementVisitor {
 
+  public void visitAbstractMethodDefinition(@NotNull CrystalAbstractMethodDefinition o) {
+    visitPsiElement(o);
+  }
+
   public void visitAliasDefinition(@NotNull CrystalAliasDefinition o) {
     visitPsiElement(o);
   }
@@ -31,6 +35,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitArrayOfTail(@NotNull CrystalArrayOfTail o) {
+    visitPsiElement(o);
+  }
+
   public void visitAsmExpression(@NotNull CrystalAsmExpression o) {
     visitPsiElement(o);
   }
@@ -52,6 +60,10 @@ public class CrystalVisitor extends PsiElementVisitor {
   }
 
   public void visitBareCommandExpression(@NotNull CrystalBareCommandExpression o) {
+    visitPsiElement(o);
+  }
+
+  public void visitBareCommandSpaceFirst(@NotNull CrystalBareCommandSpaceFirst o) {
     visitPsiElement(o);
   }
 
@@ -111,6 +123,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitDotSpaceStatement(@NotNull CrystalDotSpaceStatement o) {
+    visitPsiElement(o);
+  }
+
   public void visitElseClause(@NotNull CrystalElseClause o) {
     visitPsiElement(o);
   }
@@ -135,6 +151,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitNamedElement(o);
   }
 
+  public void visitEscapedMacroStatement(@NotNull CrystalEscapedMacroStatement o) {
+    visitPsiElement(o);
+  }
+
   public void visitExpression(@NotNull CrystalExpression o) {
     visitPsiElement(o);
   }
@@ -153,6 +173,10 @@ public class CrystalVisitor extends PsiElementVisitor {
 
   public void visitForStatement(@NotNull CrystalForStatement o) {
     visitPsiElement(o);
+  }
+
+  public void visitFreshVar(@NotNull CrystalFreshVar o) {
+    visitNamedElement(o);
   }
 
   public void visitFunDefinition(@NotNull CrystalFunDefinition o) {
@@ -231,6 +255,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitMacroArrayTail(@NotNull CrystalMacroArrayTail o) {
+    visitPsiElement(o);
+  }
+
   public void visitMacroBody(@NotNull CrystalMacroBody o) {
     visitPsiElement(o);
   }
@@ -241,6 +269,10 @@ public class CrystalVisitor extends PsiElementVisitor {
 
   public void visitMacroDefinition(@NotNull CrystalMacroDefinition o) {
     visitNamedElement(o);
+  }
+
+  public void visitMacroDefinitionOpen(@NotNull CrystalMacroDefinitionOpen o) {
+    visitMacroDefinition(o);
   }
 
   public void visitMacroInterpolation(@NotNull CrystalMacroInterpolation o) {
@@ -257,6 +289,10 @@ public class CrystalVisitor extends PsiElementVisitor {
 
   public void visitMethodDefinition(@NotNull CrystalMethodDefinition o) {
     visitNamedElement(o);
+  }
+
+  public void visitMethodVariantHeader(@NotNull CrystalMethodVariantHeader o) {
+    visitPsiElement(o);
   }
 
   public void visitModuleDefinition(@NotNull CrystalModuleDefinition o) {

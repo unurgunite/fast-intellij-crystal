@@ -1,10 +1,19 @@
 package io.github.unurgunite.crystal.inspections
 
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.project.Project
-import com.intellij.psi.*
-import io.github.unurgunite.crystal.psi.*
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiWhiteSpace
+import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalParameter
+import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
  * Inspection that reports missing spaces before/after colon in parameter type
@@ -16,18 +25,22 @@ import io.github.unurgunite.crystal.psi.*
  * Exception: colon after `=` (default value) is exempt, e.g. `= :name` is valid.
  */
 class CrystalColonSpacingInspection : LocalInspectionTool() {
-
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return object : PsiElementVisitor() {
+    override fun buildVisitor(
+        holder: ProblemsHolder,
+        isOnTheFly: Boolean,
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
                 if (element is CrystalMethodDefinition) {
                     checkMethodDefinition(element, holder)
                 }
             }
         }
-    }
 
-    private fun checkMethodDefinition(method: CrystalMethodDefinition, holder: ProblemsHolder) {
+    private fun checkMethodDefinition(
+        method: CrystalMethodDefinition,
+        holder: ProblemsHolder,
+    ) {
         val paramList = method.parameterList ?: return
         for (param in paramList.parameterList) {
             checkParameterColonSpacing(param, holder)
@@ -35,25 +48,44 @@ class CrystalColonSpacingInspection : LocalInspectionTool() {
         checkReturnTypeColon(method, holder)
     }
 
-    private fun checkParameterColonSpacing(param: CrystalParameter, holder: ProblemsHolder) {
+    private fun checkParameterColonSpacing(
+        param: CrystalParameter,
+        holder: ProblemsHolder,
+    ) {
         val children = param.node.getChildren(null)
         for (i in children.indices) {
-            if (children[i].elementType != CrystalTypes.COLON) continue
-            if (isAfterEquals(children, i)) continue
-            checkColonSpacing(children, i, holder)
+            if (isCheckableParameterColon(children, i)) {
+                checkColonSpacing(children, i, holder)
+            }
         }
     }
 
-    private fun checkReturnTypeColon(method: CrystalMethodDefinition, holder: ProblemsHolder) {
+    private fun checkReturnTypeColon(
+        method: CrystalMethodDefinition,
+        holder: ProblemsHolder,
+    ) {
         val children = method.node.getChildren(null)
         for (i in children.indices) {
-            if (children[i].elementType != CrystalTypes.COLON) continue
-            if (!isReturnTypeColon(children, i)) continue
-            checkColonSpacing(children, i, holder)
+            if (isCheckableReturnTypeColon(children, i)) {
+                checkColonSpacing(children, i, holder)
+            }
         }
     }
 
-    private fun isAfterEquals(children: Array<ASTNode>, colonIndex: Int): Boolean {
+    private fun isCheckableParameterColon(
+        children: Array<ASTNode>,
+        index: Int,
+    ): Boolean = children[index].elementType == CrystalTypes.COLON && !isAfterEquals(children, index)
+
+    private fun isCheckableReturnTypeColon(
+        children: Array<ASTNode>,
+        index: Int,
+    ): Boolean = children[index].elementType == CrystalTypes.COLON && isReturnTypeColon(children, index)
+
+    private fun isAfterEquals(
+        children: Array<ASTNode>,
+        colonIndex: Int,
+    ): Boolean {
         for (j in colonIndex - 1 downTo 0) {
             val prev = children[j]
             if (prev is PsiWhiteSpace) continue
@@ -62,7 +94,10 @@ class CrystalColonSpacingInspection : LocalInspectionTool() {
         return false
     }
 
-    private fun isReturnTypeColon(children: Array<ASTNode>, colonIndex: Int): Boolean {
+    private fun isReturnTypeColon(
+        children: Array<ASTNode>,
+        colonIndex: Int,
+    ): Boolean {
         for (j in colonIndex - 1 downTo 0) {
             val prev = children[j]
             if (prev is PsiWhiteSpace) continue
@@ -73,24 +108,33 @@ class CrystalColonSpacingInspection : LocalInspectionTool() {
         return false
     }
 
-    private fun checkColonSpacing(children: Array<ASTNode>, colonIndex: Int, holder: ProblemsHolder) {
+    private fun checkColonSpacing(
+        children: Array<ASTNode>,
+        colonIndex: Int,
+        holder: ProblemsHolder,
+    ) {
         val colon = children[colonIndex]
 
         val hasSpaceBefore = colonIndex > 0 && children[colonIndex - 1] is PsiWhiteSpace
         val hasSpaceAfter = colonIndex < children.size - 1 && children[colonIndex + 1] is PsiWhiteSpace
 
         if (!hasSpaceBefore || !hasSpaceAfter) {
-            val message = buildString {
-                append("Space required around colon in type annotation")
-                if (!hasSpaceBefore && !hasSpaceAfter) append(" (before and after)")
-                else if (!hasSpaceBefore) append(" (before colon)")
-                else append(" (after colon)")
-            }
+            val message =
+                buildString {
+                    append("Space required around colon in type annotation")
+                    if (!hasSpaceBefore && !hasSpaceAfter) {
+                        append(" (before and after)")
+                    } else if (!hasSpaceBefore) {
+                        append(" (before colon)")
+                    } else {
+                        append(" (after colon)")
+                    }
+                }
             holder.registerProblem(
                 colon.psi,
                 message,
                 ProblemHighlightType.GENERIC_ERROR,
-                ColonSpacingQuickFix(colon, !hasSpaceBefore, !hasSpaceAfter)
+                ColonSpacingQuickFix(colon, !hasSpaceBefore, !hasSpaceAfter),
             )
         }
     }
@@ -98,13 +142,16 @@ class CrystalColonSpacingInspection : LocalInspectionTool() {
     private class ColonSpacingQuickFix(
         private val colonNode: ASTNode,
         private val insertBefore: Boolean,
-        private val insertAfter: Boolean
+        private val insertAfter: Boolean,
     ) : LocalQuickFix {
-
         override fun getName(): String = "Insert space(s) around colon"
+
         override fun getFamilyName(): String = "Crystal Colon Spacing"
 
-        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        override fun applyFix(
+            project: Project,
+            descriptor: ProblemDescriptor,
+        ) {
             val psiFile = colonNode.psi.containingFile ?: return
             val document = PsiDocumentManager.getInstance(project).getDocument(psiFile) ?: return
             val colonOffset = colonNode.startOffset

@@ -17,6 +17,12 @@ public interface CrystalMacroControl extends PsiElement {
   List<CrystalEnumDefinition> getEnumDefinitionList();
 
   @NotNull
+  List<CrystalExpression> getExpressionList();
+
+  @NotNull
+  List<CrystalForStatement> getForStatementList();
+
+  @NotNull
   List<CrystalFunDefinition> getFunDefinitionList();
 
   @NotNull
@@ -36,6 +42,9 @@ public interface CrystalMacroControl extends PsiElement {
 
   @NotNull
   List<CrystalMacroControl> getMacroControlList();
+
+  @NotNull
+  List<CrystalMacroInterpolation> getMacroInterpolationList();
 
   @NotNull
   List<CrystalTypeAliasLib> getTypeAliasLibList();

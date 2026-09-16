@@ -28,6 +28,12 @@ public class CrystalVariableReferenceImpl extends CrystalVariableReferenceMixin 
 
   @Override
   @Nullable
+  public CrystalFreshVar getFreshVar() {
+    return PsiTreeUtil.getChildOfType(this, CrystalFreshVar.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalMacroInterpolation getMacroInterpolation() {
     return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
   }

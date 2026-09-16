@@ -3,13 +3,15 @@ package io.github.unurgunite.crystal
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.psi.CrystalReference
+import io.github.unurgunite.crystal.psi.references.CrystalReference
+import io.github.unurgunite.crystal.psi.references.SymbolLoc
 
 class StdlibReferenceGraphTest : BasePlatformTestCase() {
     override fun setUp() {
@@ -31,19 +33,10 @@ class StdlibReferenceGraphTest : BasePlatformTestCase() {
         val failedSamples = ArrayList<String>()
         val textCache = HashMap<String, String>()
         for ((name, loc) in table) {
-            val text = textCache.getOrPut(loc.relPath) {
-                val file = VfsUtilCore.findRelativeFile(loc.relPath, root) ?: continue
-                String(file.contentsToByteArray(), Charsets.UTF_8)
-            }
-            if (loc.offset < 0 || loc.offset >= text.length) {
-                outOfRange++
-                if (failedSamples.size < 30) failedSamples.add("$name@${loc.relPath}:${loc.offset} (oob)")
-                continue
-            }
-            val c = text[loc.offset]
-            if (c.isWhitespace()) {
-                whitespace++
-                if (failedSamples.size < 30) failedSamples.add("$name@${loc.relPath}:${loc.offset} ('$c')")
+            val bad = checkSymbolOffset(name, loc, root, textCache)
+            if (bad != null) {
+                if (bad.first) outOfRange++ else whitespace++
+                if (failedSamples.size < 30) failedSamples.add(bad.second)
             }
         }
         println("SYMTAB_OFFSET_CHECK total=${table.size} whitespace=$whitespace outOfRange=$outOfRange")
@@ -51,8 +44,27 @@ class StdlibReferenceGraphTest : BasePlatformTestCase() {
         assertTrue(
             "Symbol-table offsets must point at identifier chars, not whitespace " +
                 "(whitespace=$whitespace, outOfRange=$outOfRange)",
-            whitespace == 0 && outOfRange == 0
+            whitespace == 0 && outOfRange == 0,
         )
+    }
+
+    /**
+     * One symbol-table entry: null when the offset points at a real identifier
+     * char (or the file is gone — skipped as before); otherwise
+     * (isOutOfRange, sample).
+     */
+    private fun checkSymbolOffset(
+        name: String,
+        loc: SymbolLoc,
+        root: VirtualFile,
+        textCache: HashMap<String, String>,
+    ): Pair<Boolean, String>? {
+        val file = VfsUtilCore.findRelativeFile(loc.relPath, root) ?: return null
+        val text = textCache.getOrPut(loc.relPath) { String(file.contentsToByteArray(), Charsets.UTF_8) }
+        if (loc.offset < 0 || loc.offset >= text.length) return true to "$name@${loc.relPath}:${loc.offset} (oob)"
+        val c = text[loc.offset]
+        if (c.isWhitespace()) return false to "$name@${loc.relPath}:${loc.offset} ('$c')"
+        return null
     }
 
     /**
@@ -60,27 +72,32 @@ class StdlibReferenceGraphTest : BasePlatformTestCase() {
      * as a method name (`def [](...)`) and as a subscript expression (`a[i]`, `foo()[i]`, `a[i][j]`).
      */
     fun testSubscriptAndBracketOperatorParses() {
-        val snippets = linkedMapOf(
-            "def[]" to "def [](x : Int) : Int\n x\nend\n",
-            "def[]=" to "def []=(i : Int, v : Int)\n @a[i] = v\nend\n",
-            "def[]?" to "def []?(i : Int) : Int?\n nil\nend\n",
-            "arr[i]" to "x = arr[i]\n",
-            "foo()[i]" to "a = foo()[i]\n",
-            "nested[i][j]" to "a = arr[i][j]\n"
-        )
+        val snippets =
+            linkedMapOf(
+                "def[]" to "def [](x : Int) : Int\n x\nend\n",
+                "def[]=" to "def []=(i : Int, v : Int)\n @a[i] = v\nend\n",
+                "def[]?" to "def []?(i : Int) : Int?\n nil\nend\n",
+                "arr[i]" to "x = arr[i]\n",
+                "foo()[i]" to "a = foo()[i]\n",
+                "nested[i][j]" to "a = arr[i][j]\n",
+            )
         var totalErrors = 0
         for ((name, text) in snippets) {
-            val psi = ReadAction.compute<PsiFile, Throwable> {
-                PsiFileFactory.getInstance(project)
-                    .createFileFromText("$name.cr", CrystalLanguage, text)
-            }
-            var errs = 0
-            psi.accept(object : PsiRecursiveElementVisitor() {
-                override fun visitErrorElement(element: PsiErrorElement) {
-                    errs++
-                    super.visitErrorElement(element)
+            val psi =
+                ReadAction.compute<PsiFile, Throwable> {
+                    PsiFileFactory
+                        .getInstance(project)
+                        .createFileFromText("$name.cr", CrystalLanguage, text)
                 }
-            })
+            var errs = 0
+            psi.accept(
+                object : PsiRecursiveElementVisitor() {
+                    override fun visitErrorElement(element: PsiErrorElement) {
+                        errs++
+                        super.visitErrorElement(element)
+                    }
+                },
+            )
             totalErrors += errs
         }
         assertTrue("bracket-index operator must parse with zero errors (got $totalErrors)", totalErrors == 0)

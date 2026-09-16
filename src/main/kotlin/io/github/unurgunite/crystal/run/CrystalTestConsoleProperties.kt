@@ -4,17 +4,17 @@ import com.intellij.execution.Executor
 import com.intellij.execution.testframework.TestConsoleProperties
 import com.intellij.execution.testframework.sm.SMCustomMessagesParsing
 import com.intellij.execution.testframework.sm.runner.OutputToGeneralTestEventsConverter
-import com.intellij.execution.testframework.sm.runner.SMTestLocator
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
+import com.intellij.execution.testframework.sm.runner.SMTestLocator
 import java.io.File
 
 class CrystalTestConsoleProperties(
     configuration: CrystalRunConfiguration,
     executor: Executor,
     private val testLocations: Map<String, List<CrystalSpecFileIndexer.TestLocation>> = emptyMap(),
-    private val junitOutputFile: File? = null
-) : SMTRunnerConsoleProperties(configuration, "CrystalSpec", executor), SMCustomMessagesParsing {
-
+    private val junitOutputFile: File? = null,
+) : SMTRunnerConsoleProperties(configuration, "CrystalSpec", executor),
+    SMCustomMessagesParsing {
     override fun getTestLocator(): SMTestLocator = CrystalTestLocator.INSTANCE
 
     init {
@@ -27,8 +27,6 @@ class CrystalTestConsoleProperties(
 
     override fun createTestEventsConverter(
         testFrameworkName: String,
-        consoleProperties: TestConsoleProperties
-    ): OutputToGeneralTestEventsConverter {
-        return CrystalTestEventsConverter(testFrameworkName, consoleProperties, testLocations, junitOutputFile)
-    }
+        consoleProperties: TestConsoleProperties,
+    ): OutputToGeneralTestEventsConverter = CrystalTestEventsConverter(testFrameworkName, consoleProperties, testLocations, junitOutputFile)
 }

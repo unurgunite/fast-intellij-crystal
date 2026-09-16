@@ -1,6 +1,10 @@
 package io.github.unurgunite.crystal.inspections
 
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -18,9 +22,11 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * information: `[] of Type` or `{} of KeyType => ValueType`.
  */
 class CrystalEmptyCollectionInspection : LocalInspectionTool() {
-
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return object : PsiElementVisitor() {
+    override fun buildVisitor(
+        holder: ProblemsHolder,
+        isOnTheFly: Boolean,
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
                 when (element) {
                     is CrystalArrayLiteral -> checkArrayLiteral(element, holder)
@@ -28,9 +34,11 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
                 }
             }
         }
-    }
 
-    private fun checkArrayLiteral(element: CrystalArrayLiteral, holder: ProblemsHolder) {
+    private fun checkArrayLiteral(
+        element: CrystalArrayLiteral,
+        holder: ProblemsHolder,
+    ) {
         // If it has 'of' type annotation, it's fine
         if (hasOfKeyword(element)) return
         // If it has elements, it's fine
@@ -40,11 +48,14 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
             element,
             "Empty array literal requires type: use '[] of Type'",
             ProblemHighlightType.GENERIC_ERROR,
-            AddArrayTypeAnnotationFix()
+            AddArrayTypeAnnotationFix(),
         )
     }
 
-    private fun checkHashLiteral(element: CrystalHashLiteral, holder: ProblemsHolder) {
+    private fun checkHashLiteral(
+        element: CrystalHashLiteral,
+        holder: ProblemsHolder,
+    ) {
         // If it has 'of' type annotation, it's fine
         if (hasOfKeyword(element)) return
         // If it has entries, it's fine
@@ -54,7 +65,7 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
             element,
             "Empty hash literal requires type: use '{} of KeyType => ValueType'",
             ProblemHighlightType.GENERIC_ERROR,
-            AddHashTypeAnnotationFix()
+            AddHashTypeAnnotationFix(),
         )
     }
 
@@ -66,11 +77,7 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
         var child = element.firstChild
         while (child != null) {
             val type = child.elementType
-            if (type != null
-                && type != CrystalTypes.LBRACKET && type != CrystalTypes.RBRACKET
-                && type != CrystalTypes.LBRACE && type != CrystalTypes.RBRACE
-                && type != CrystalTypes.NEWLINE && type != CrystalTypes.OF
-                && type != com.intellij.psi.TokenType.WHITE_SPACE) {
+            if (type != null && type !in EMPTY_WRAPPER_TOKENS) {
                 return true
             }
             child = child.nextSibling
@@ -89,9 +96,13 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
 
     private class AddArrayTypeAnnotationFix : LocalQuickFix {
         override fun getName() = "Add type annotation ([] of Type)"
+
         override fun getFamilyName() = name
 
-        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        override fun applyFix(
+            project: Project,
+            descriptor: ProblemDescriptor,
+        ) {
             val element = descriptor.psiElement ?: return
             val document = element.containingFile?.viewProvider?.document ?: return
             val endOffset = element.textRange.endOffset
@@ -104,20 +115,37 @@ class CrystalEmptyCollectionInspection : LocalInspectionTool() {
 
     private class AddHashTypeAnnotationFix : LocalQuickFix {
         override fun getName() = "Add type annotation ({} of KeyType => ValueType)"
+
         override fun getFamilyName() = name
 
-        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        override fun applyFix(
+            project: Project,
+            descriptor: ProblemDescriptor,
+        ) {
             val element = descriptor.psiElement ?: return
             val document = element.containingFile?.viewProvider?.document ?: return
             val endOffset = element.textRange.endOffset
             val insertText = " of  => "
             document.insertString(endOffset, insertText)
             // Move cursor after " of " (before " => ")
-            getEditor(project)?.caretModel?.moveToOffset(endOffset + 4)
+            getEditor(project)?.caretModel?.moveToOffset(endOffset + " of ".length)
         }
     }
 
     companion object {
+        // Structural tokens that never constitute collection content: brackets,
+        // braces, newlines, the `of` keyword and whitespace.
+        private val EMPTY_WRAPPER_TOKENS =
+            com.intellij.psi.tree.TokenSet.create(
+                CrystalTypes.LBRACKET,
+                CrystalTypes.RBRACKET,
+                CrystalTypes.LBRACE,
+                CrystalTypes.RBRACE,
+                CrystalTypes.NEWLINE,
+                CrystalTypes.OF,
+                com.intellij.psi.TokenType.WHITE_SPACE,
+            )
+
         private fun getEditor(project: Project): Editor? {
             val fileEditor = FileEditorManager.getInstance(project).selectedEditor
             return (fileEditor as? TextEditor)?.editor

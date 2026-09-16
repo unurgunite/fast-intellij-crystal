@@ -1,6 +1,12 @@
 # Block Highlighting
 
-Extend brace highlighting to keyword-based blocks (`def...end`, `if...end`, `class...end`, etc.) matching RubyMine's behavior where all related structural keywords are highlighted when cursor is on any of them.
+Keyword-based block highlighting (`def...end`, `if...end`, `class...end`, etc.)
+matching RubyMine's behavior: all related structural keywords are highlighted
+when the cursor is on any of them.
+
+Implemented in `CrystalBraceMatcher` (token pairs) +
+`CrystalCodeBlockSupportHandler` (PSI markers), covered by
+`CrystalCodeBlockSupportHandlerTest`.
 
 ## Terminology
 
@@ -81,52 +87,6 @@ For each keyword block type, the handler:
 | `def` | `def`, `end` | — | `def`, `end` |
 | `class` | `class`, `end` | — | `class`, `end` |
 
-## Files to change
-
-| File | Change |
-|------|--------|
-| `CrystalBraceMatcher.kt` | Add keyword `BracePair` entries |
-| `CrystalCodeBlockSupportHandler.kt` (new) | Implement `CodeBlockSupportHandler` |
-| `plugin.xml` | Register `codeBlockSupportHandler` extension |
-| Test file(s) | Unit tests for handler, parser tests if needed |
-
-## Bidirectional Name Resolution
-
-Clicking on a definition name (e.g., `module Kann`, `class Foo`, `def bar`) highlights all usages in the current file and enables Rename (Shift+F6). Previously only the usage side worked (clicking on a usage highlights the definition).
-
-### Architecture
-
-Two extension points handle different scopes:
-
-| Extension Point | Scope | Triggered By |
-|----------------|-------|-------------|
-| `HighlightUsagesHandlerFactory` | Current file only | Ctrl+Shift+F7, auto-caret highlighting |
-| `FindUsagesHandlerFactory` | Entire project | Alt+F7, Rename (Shift+F6) |
-
-### How it works
-
-**Problem**: The `CONSTANT`/`IDENTIFIER` leaf inside a definition (e.g., `Kann` in `module Kann`) has no `PsiReference` — `createCrystalReference` returns null for `CrystalNamedElement` parents. The platform's default `TargetElementUtilBase.findTargetElement()` also fails because the leaf itself is not a `PsiNamedElement`.
-
-**Solution**: Register custom factories that detect the definition-name case and delegate to handlers using `ReferencesSearch`:
-
-1. `CrystalHighlightUsagesHandlerFactory` — detects when caret is on a `CONSTANT`/`IDENTIFIER` leaf whose parent is a `CrystalNamedElement`, creates `CrystalHighlightUsagesHandler`
-2. `CrystalHighlightUsagesHandler` — uses `ReferencesSearch.search(target, LocalSearchScope(file))` to find all usages in the current file
-3. `CrystalFindUsagesHandlerFactory` — creates `CrystalFindUsagesHandler` for project-wide usage search and rename
-4. `CrystalFindUsagesHandler` — uses `ReferencesSearch.search(target, scope)` with configurable scope
-
-### Behavior
-
-| Cursor on | Highlighting | Rename | Find Usages |
-|-----------|-------------|--------|-------------|
-| `module Kann` (definition name) | All usages in file | Yes | Yes |
-| `Kann` (usage) | Definition + all usages | Yes | Yes |
-| `class` (keyword) | No highlighting | No | No |
-| `def` (keyword) | No highlighting | No | No |
-
-## Dependencies
-
-- IntelliJ 2026.1+ (already targeted, build 261+)
-- `PairedBraceMatcher` — standard API, no new deps
-- `CodeBlockSupportHandler` — new EP `com.intellij.codeBlockSupportHandler`
-- `HighlightUsagesHandlerFactory` — EP `com.intellij.highlightUsagesHandlerFactory`
-- `FindUsagesHandlerFactory` — EP `com.intellij.findUsagesHandlerFactory`
+Definition-name usage highlighting (clicking `module Kann` highlights usages,
+Rename/Find Usages from the definition side) lives in
+[find-usages.md](find-usages.md).

@@ -7,6 +7,9 @@ import com.intellij.psi.PsiElement;
 
 public interface CrystalNextStatement extends PsiElement {
 
+  @Nullable
+  CrystalAssignment getAssignment();
+
   @NotNull
   List<CrystalExpression> getExpressionList();
 

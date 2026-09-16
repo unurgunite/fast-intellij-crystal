@@ -6,7 +6,11 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
-import io.github.unurgunite.crystal.psi.*
+import io.github.unurgunite.crystal.psi.CrystalClassDefinition
+import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
+import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
+import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
+import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 
 /**
  * Custom ReferencesSearcher for instance variables (@name) and class variables (@@name).
@@ -15,12 +19,14 @@ import io.github.unurgunite.crystal.psi.*
  * This searcher manually finds all matching instance/class var accesses in the enclosing class.
  */
 class CrystalInstanceVarReferencesSearcher : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
-
-    override fun processQuery(queryParameters: ReferencesSearch.SearchParameters, consumer: Processor<in PsiReference>) {
+    override fun processQuery(
+        queryParameters: ReferencesSearch.SearchParameters,
+        consumer: Processor<in PsiReference>,
+    ) {
         val target = queryParameters.elementToSearch
         if (target !is CrystalInstanceVarAccess && target !is CrystalClassVarAccess) return
 
-        val varName = target.text  // "@name" or "@@name"
+        val varName = target.text // "@name" or "@@name"
         val enclosingClass = findEnclosingClass(target) ?: return
         val classBody = getClassBody(enclosingClass) ?: return
 
@@ -31,14 +37,18 @@ class CrystalInstanceVarReferencesSearcher : QueryExecutorBase<PsiReference, Ref
         // Report each one's reference (except the target itself, if it resolves to itself)
         for (access in allAccesses) {
             if (access === target) continue
-            val ref = access.reference ?: continue
-            consumer.process(ref)
+            access.reference?.let { consumer.process(it) }
         }
     }
 
-    private fun collectVarAccesses(element: PsiElement, varName: String, results: MutableList<PsiElement>) {
+    private fun collectVarAccesses(
+        element: PsiElement,
+        varName: String,
+        results: MutableList<PsiElement>,
+    ) {
         if ((element is CrystalInstanceVarAccess || element is CrystalClassVarAccess) &&
-            element.text == varName) {
+            element.text == varName
+        ) {
             results.add(element)
             return
         }
@@ -51,21 +61,19 @@ class CrystalInstanceVarReferencesSearcher : QueryExecutorBase<PsiReference, Ref
         }
     }
 
-    private fun findEnclosingClass(element: PsiElement): PsiElement? {
-        return PsiTreeUtil.getParentOfType(
+    private fun findEnclosingClass(element: PsiElement): PsiElement? =
+        PsiTreeUtil.getParentOfType(
             element,
             CrystalClassDefinition::class.java,
             CrystalStructDefinition::class.java,
-            CrystalModuleDefinition::class.java
+            CrystalModuleDefinition::class.java,
         )
-    }
 
-    private fun getClassBody(classDef: PsiElement): PsiElement? {
-        return when (classDef) {
+    private fun getClassBody(classDef: PsiElement): PsiElement? =
+        when (classDef) {
             is CrystalClassDefinition -> classDef.classBody
             is CrystalStructDefinition -> classDef.classBody
             is CrystalModuleDefinition -> classDef.classBody
             else -> null
         }
-    }
 }

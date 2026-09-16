@@ -13,21 +13,23 @@ import java.nio.charset.StandardCharsets
 import java.util.EnumSet
 
 class CrystalFormattingService : AsyncDocumentFormattingService() {
-
     override fun getFeatures(): Set<FormattingService.Feature> = EnumSet.noneOf(FormattingService.Feature::class.java)
 
-    override fun canFormat(file: PsiFile): Boolean =
-        file.fileType == CrystalFileType
+    override fun canFormat(file: PsiFile): Boolean = file.fileType == CrystalFileType
 
     override fun getNotificationGroupId(): String = "Crystal Formatting"
 
     override fun getName(): String = "crystal tool format"
 
     override fun createFormattingTask(request: AsyncFormattingRequest): FormattingTask {
-        val ioFile = request.ioFile ?: return object : FormattingTask {
-            override fun run() { request.onTextReady(null) }
-            override fun cancel(): Boolean = true
-        }
+        val ioFile =
+            request.ioFile ?: return object : FormattingTask {
+                override fun run() {
+                    request.onTextReady(null)
+                }
+
+                override fun cancel(): Boolean = true
+            }
 
         return object : FormattingTask {
             @Volatile
@@ -38,27 +40,15 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
                     val project = request.context.project
                     val crystalPath = CrystalSettings.getInstance(project).getEffectiveCrystalPath()
 
-                    val commandLine = GeneralCommandLine(crystalPath, "tool", "format", "-")
-                        .withCharset(StandardCharsets.UTF_8)
-                        .withWorkDirectory(ioFile.parent)
-
-                    val handler = CapturingProcessHandler(commandLine)
-                    processHandler = handler
-
-                    val input = request.documentText
-                    handler.processInput.use { stream ->
-                        stream.write(input.toByteArray(StandardCharsets.UTF_8))
-                    }
-
-                    val output = handler.runProcess(5000)
-
-                    if (output.exitCode == 0) {
-                        request.onTextReady(output.stdout)
+                    val formatted = formatStdin(crystalPath, request.documentText, ioFile.parent)
+                    if (formatted != null) {
+                        request.onTextReady(formatted)
                     } else {
-                        val errorMessage = parseFormatError(output.stderr, ioFile.name)
-                        request.onError("Crystal Format Error", errorMessage)
+                        request.onError("Crystal Format Error", lastFormatError ?: "Unknown error")
                     }
-                } catch (e: Exception) {
+                } catch (e: java.io.IOException) {
+                    request.onError("Crystal Format Error", e.message ?: "Unknown error")
+                } catch (e: com.intellij.execution.ExecutionException) {
                     request.onError("Crystal Format Error", e.message ?: "Unknown error")
                 }
             }
@@ -71,12 +61,56 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
     }
 
     /**
+     * Runs `crystal tool format -` over stdin text. Returns the formatted text on
+     * success, or null on failure (details in [lastFormatError]). Extracted for
+     * testability — the formatting task above only wires it to the IDE request.
+     */
+    internal var lastFormatError: String? = null
+        private set
+
+    internal fun formatStdin(
+        crystalPath: String,
+        text: String,
+        workDir: String,
+    ): String? {
+        lastFormatError = null
+        return try {
+            val commandLine =
+                GeneralCommandLine(crystalPath, "tool", "format", "-")
+                    .withCharset(StandardCharsets.UTF_8)
+                    .withWorkDirectory(workDir)
+
+            val handler = CapturingProcessHandler(commandLine)
+            handler.processInput.use { stream ->
+                stream.write(text.toByteArray(StandardCharsets.UTF_8))
+            }
+
+            val output = handler.runProcess(5000)
+            if (output.exitCode == 0) {
+                output.stdout
+            } else {
+                lastFormatError = parseFormatError(output.stderr, "STDIN")
+                null
+            }
+        } catch (e: java.io.IOException) {
+            lastFormatError = e.message ?: "Unknown error"
+            null
+        } catch (e: com.intellij.execution.ExecutionException) {
+            lastFormatError = e.message ?: "Unknown error"
+            null
+        }
+    }
+
+    /**
      * Parse stderr from `crystal tool format` into a clear, actionable error message.
      *
      * Expected format: syntax error in 'FILE:LINE:COL': DESCRIPTION
      * The compiler sees stdin, so FILE is always "STDIN".
      */
-    internal fun parseFormatError(stderr: String, fileName: String): String {
+    internal fun parseFormatError(
+        stderr: String,
+        fileName: String,
+    ): String {
         if (stderr.isBlank()) {
             return "Formatting failed. Please check that the Crystal compiler is installed and accessible."
         }

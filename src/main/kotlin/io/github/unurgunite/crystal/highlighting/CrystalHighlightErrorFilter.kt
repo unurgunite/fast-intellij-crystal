@@ -19,6 +19,15 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  * For all other parser errors, the original highlight is preserved.
  */
 class CrystalHighlightErrorFilter : HighlightErrorFilter() {
+    companion object {
+        // How far up the tree to look for a BAD_CHARACTER sibling when deciding
+        // whether a parser error is just fallout from an invalid single-quote string.
+        private const val MAX_CAUSE_WALK_UP_LEVELS = 3
+
+        // Shortest multi-char single-quoted text is `'ab'` (4 chars); anything
+        // shorter is a valid char literal or empty quotes, not our error shape.
+        private const val MIN_INVALID_QUOTED_LENGTH = 3
+    }
 
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
         // This filter is registered globally (no language restriction), so the platform
@@ -44,8 +53,14 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
      */
     private fun isCausedByBadCharacter(element: PsiErrorElement): Boolean {
         var current: com.intellij.psi.PsiElement? = element
-        // Traverse up to 3 levels looking for BAD_CHARACTER siblings
-        repeat(3) {
+        // Traverse up to MAX_CAUSE_WALK_UP_LEVELS levels looking for BAD_CHARACTER siblings.
+        // The error element itself may BE the BAD_CHARACTER-adjacent leaf's parent chain:
+        // for `e = 'hello world'` the PsiErrorElement sits directly under FILE with
+        // no BAD_CHARACTER sibling anywhere (the quote lexes inside INTERPOLATION-free
+        // STRING state) — so also treat an error whose own text is single-quoted
+        // multi-char content as single-quote fallout.
+        if (isSingleQuotedText(element.text)) return true
+        repeat(MAX_CAUSE_WALK_UP_LEVELS) {
             current = current?.parent ?: return false
             var sibling = current.firstChild
             while (sibling != null) {
@@ -57,6 +72,10 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
         }
         return false
     }
+
+    /** Multi-char single-quoted text (`'hello world'`) — the invalid-char-literal shape. */
+    private fun isSingleQuotedText(text: String): Boolean =
+        text.length > MIN_INVALID_QUOTED_LENGTH && text.startsWith("'") && text.endsWith("'")
 
     /**
      * Check if this PsiErrorElement is caused by a HEREDOC_START without matching HEREDOC_END.
