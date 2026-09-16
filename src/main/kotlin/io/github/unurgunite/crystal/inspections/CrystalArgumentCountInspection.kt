@@ -5,9 +5,6 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.DotCallInfo
 import io.github.unurgunite.crystal.inspections.CrystalOverloadEvaluator.OverloadMatch
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
@@ -17,6 +14,11 @@ import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.type.CrystalCallArguments
+import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
+import io.github.unurgunite.crystal.type.CrystalDotCallScan
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
  * Inspection that validates argument count against method parameter definitions.
@@ -116,7 +118,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         // Only filter when methods actually have an enclosing type; top-level defs stay.
         methods =
             methods.filter { method ->
-                val enclosing = CrystalCompletionHelper.getEnclosingClassName(method)
+                val enclosing = CrystalMethodLookup.getEnclosingClassName(method)
                 enclosing == null || enclosing == info.receiverName
             }
 
@@ -151,7 +153,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         }
         // No record found — try regular class initialize
         val initMethod =
-            CrystalCompletionHelper.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
+            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
         if (initMethod != null) {
             checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
             return true

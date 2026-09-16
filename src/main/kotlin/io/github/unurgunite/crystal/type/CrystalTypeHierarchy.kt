@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.completion
+package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -131,7 +131,7 @@ object CrystalTypeHierarchy {
         for (method in elements) {
             val name = method.name ?: continue
             // Deduplicate by name+signature to keep overloads with different params
-            val key = "$name${CrystalLookupBuilders.getParameterSignature(method)}"
+            val key = "$name${CrystalMethodLookup.getParameterSignature(method)}"
             if (seen.add(key)) result.add(method)
         }
     }

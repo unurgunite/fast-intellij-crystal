@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement

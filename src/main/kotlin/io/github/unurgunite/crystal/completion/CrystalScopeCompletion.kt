@@ -16,7 +16,9 @@ import io.github.unurgunite.crystal.psi.CrystalClassDefinition
 import io.github.unurgunite.crystal.psi.CrystalForStatement
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
  * Free-text completion: scope items (block params, for-vars, method params,
@@ -87,7 +89,7 @@ internal object CrystalScopeCompletion {
             val paramList = currentBlock.parameterList
             if (paramList != null) {
                 for (param in paramList.parameterList) {
-                    val name = CrystalLookupBuilders.extractParameterName(param) ?: continue
+                    val name = extractParameterName(param) ?: continue
                     addParameterLookup(name, seen, result, CrystalCompletionContributor.PRIORITY_BLOCK_PARAMETER)
                 }
             }
@@ -143,7 +145,7 @@ internal object CrystalScopeCompletion {
     ) {
         if (method == null) return
         for (param in method.parameterList?.parameterList ?: emptyList()) {
-            val name = CrystalLookupBuilders.extractParameterName(param) ?: continue
+            val name = extractParameterName(param) ?: continue
             addParameterLookup(name, seen, result, CrystalCompletionContributor.PRIORITY_EXPLICIT_PARAMETER)
         }
     }
@@ -209,7 +211,7 @@ internal object CrystalScopeCompletion {
         result: CompletionResultSet,
     ) {
         if (method == null) return
-        val enclosingClassName = CrystalCompletionHelper.getEnclosingClassName(method) ?: return
+        val enclosingClassName = CrystalMethodLookup.getEnclosingClassName(method) ?: return
         val project = position.project
         val searchScope = GlobalSearchScope.allScope(project)
         addClassMethods(enclosingClassName, CrystalCompletionContributor.PRIORITY_OWN_CLASS_METHOD, searchScope, project, seen, result)

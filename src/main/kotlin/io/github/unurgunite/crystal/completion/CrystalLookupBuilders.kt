@@ -7,6 +7,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalParameter
+import io.github.unurgunite.crystal.psi.util.extractParameterName
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
  * Lookup-element builders for completion: methods, classes, `new` constructors.
@@ -15,25 +17,19 @@ import io.github.unurgunite.crystal.psi.CrystalParameter
 object CrystalLookupBuilders {
     /**
      * Formats the parameter list of a method as a string like "(a, b, c)".
+     *
+     * Canonical implementation lives in [CrystalMethodLookup]; this delegate
+     * stays for binary/source compatibility of existing callers.
      */
-    fun getParameterSignature(method: CrystalMethodDefinition): String {
-        val paramList = method.parameterList ?: return "()"
-        val params = paramList.parameterList
-        if (params.isEmpty()) return "()"
-
-        val paramStrings =
-            params.map { param ->
-                val name = extractParameterName(param) ?: "?"
-                val typeRef = param.typeReference
-                if (typeRef != null) "$name : ${typeRef.text}" else name
-            }
-        return "(${paramStrings.joinToString(", ")})"
-    }
+    fun getParameterSignature(method: CrystalMethodDefinition): String = CrystalMethodLookup.getParameterSignature(method)
 
     /**
      * Returns the return type annotation of a method, or null.
+     *
+     * Canonical implementation lives in [CrystalMethodLookup]; this delegate
+     * stays for binary/source compatibility of existing callers.
      */
-    fun getReturnType(method: CrystalMethodDefinition): String? = method.typeReference?.text
+    fun getReturnType(method: CrystalMethodDefinition): String? = CrystalMethodLookup.getReturnType(method)
 
     /**
      * Builds a LookupElement for a method.
@@ -44,7 +40,7 @@ object CrystalLookupBuilders {
     ): LookupElement {
         method.name ?: return LookupElementBuilder.create("")
         val signature = getParameterSignature(method)
-        val className = CrystalCompletionHelper.getEnclosingClassName(method)
+        val className = CrystalMethodLookup.getEnclosingClassName(method)
         val returnType = getReturnType(method)
 
         var builder =
@@ -95,7 +91,7 @@ object CrystalLookupBuilders {
         project: Project,
         currentFile: PsiFile? = null,
     ): LookupElementBuilder {
-        val initMethod = CrystalCompletionHelper.getInitializeMethod(className, project, currentFile)
+        val initMethod = CrystalMethodLookup.getInitializeMethod(className, project, currentFile)
         val signature = if (initMethod != null) getParameterSignature(initMethod) else "()"
         val tailText = if (signature == "()") "" else signature
 
@@ -111,23 +107,12 @@ object CrystalLookupBuilders {
      * Handles both normal parameters (`radius`) and shorthand instance
      * variable assignment (`@radius`) — the `@` prefix is stripped.
      *
+     * Canonical implementation lives in `psi.util.extractParameterName`;
+     * this delegate stays for binary/source compatibility of existing callers.
+     *
      * @return the parameter name, or `null` if the parameter is a splat/block prefix
      */
-    fun extractParameterName(param: CrystalParameter): String? {
-        // Normal case: IDENTIFIER child (e.g. `radius : Float64`)
-        val identNode = param.node.findChildByType(io.github.unurgunite.crystal.psi.CrystalTypes.IDENTIFIER)
-        if (identNode != null) return identNode.text
-
-        // Shorthand: INSTANCE_VAR_ACCESS child (e.g. `@radius : Float64`)
-        // Strip the `@` prefix so it's treated like a normal parameter name
-        val instanceVarNode = param.node.findChildByType(io.github.unurgunite.crystal.psi.CrystalTypes.INSTANCE_VAR_ACCESS)
-        if (instanceVarNode != null) {
-            return stripAtPrefix(instanceVarNode.text)
-        }
-
-        return null
-    }
-
-    /** Shorthand `@name` parameter → `name`. */
-    private fun stripAtPrefix(varText: String): String = if (varText.startsWith("@")) varText.substring(1) else varText
+    fun extractParameterName(param: CrystalParameter): String? =
+        io.github.unurgunite.crystal.psi.util
+            .extractParameterName(param)
 }

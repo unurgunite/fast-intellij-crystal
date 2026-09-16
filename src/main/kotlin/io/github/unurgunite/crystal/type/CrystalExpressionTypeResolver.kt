@@ -1,9 +1,8 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.tree.IElementType
-import io.github.unurgunite.crystal.completion.CrystalTypeInference
 import io.github.unurgunite.crystal.psi.CrystalBareArgument
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement

@@ -451,6 +451,11 @@
 
         <projectService serviceImplementation="io.github.unurgunite.crystal.sdk.CrystalSettings"/>
 
+        <!-- Debug state factory: run/ depends on the interface only (no run→debugger import) -->
+        <applicationService
+                serviceInterface="io.github.unurgunite.crystal.run.CrystalDebugStateFactory"
+                serviceImplementation="io.github.unurgunite.crystal.debugger.CrystalDebuggerStateFactory"/>
+
         <completion.contributor
                 language="Crystal"
                 implementationClass="io.github.unurgunite.crystal.completion.CrystalCompletionContributor"/>

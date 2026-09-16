@@ -1,4 +1,4 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 /**
  * Determines whether an argument type is compatible with a parameter type,

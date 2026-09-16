@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal.inspections
 
+import io.github.unurgunite.crystal.type.CrystalTypeCompatibility
 import junit.framework.TestCase
 
 class CrystalTypeCompatibilityTest : TestCase() {

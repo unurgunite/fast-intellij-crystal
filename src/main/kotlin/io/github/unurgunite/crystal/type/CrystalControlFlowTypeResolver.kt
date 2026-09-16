@@ -1,15 +1,15 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver.ResolvedType
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver.resolveType
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.ResolvedType
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.resolveType
 
 /**
  * Types of control-flow expressions: ternaries, binary operators,

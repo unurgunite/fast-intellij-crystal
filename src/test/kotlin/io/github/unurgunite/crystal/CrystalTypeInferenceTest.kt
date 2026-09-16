@@ -1,7 +1,7 @@
 package io.github.unurgunite.crystal
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import io.github.unurgunite.crystal.completion.CrystalTypeInference
+import io.github.unurgunite.crystal.type.CrystalTypeInference
 
 class CrystalTypeInferenceTest : BasePlatformTestCase() {
     fun testInferIntegerLiteral() {

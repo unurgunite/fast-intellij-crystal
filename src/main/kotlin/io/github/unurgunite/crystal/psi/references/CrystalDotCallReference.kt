@@ -7,8 +7,6 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
 import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
 import io.github.unurgunite.crystal.psi.CrystalFunDefinition
 import io.github.unurgunite.crystal.psi.CrystalLibDefinition
@@ -24,6 +22,8 @@ import io.github.unurgunite.crystal.psi.util.createLeafFromText
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
 
 /**
  * Reference from a DOT-call method-name identifier to its definition.
@@ -48,7 +48,7 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
  *
  * 4. `.new` constructor on a class — resolved via [CrystalMethodByClassIndex] for
  *    `def self.new` if it exists. If not found, falls through to `record` macro,
- *    then to `def initialize` via [CrystalCompletionHelper.getInitializeMethod].
+ *    then to `def initialize` via [CrystalMethodLookup.getInitializeMethod].
  *    This makes Find Usages on both `.new` and `initialize` work correctly.
  *
  * 5. Project-scoped name-only fallback — when the receiver type is unknown (bare
@@ -248,9 +248,9 @@ class CrystalDotCallReference(
         // For .new: fall through to record → initialize resolution
         if (methodName != "new") return null
         val file = element.containingFile ?: return null
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(className, file)
+        val recordDef = CrystalRecordLookup.findRecordDefinition(className, file)
         if (recordDef != null) return recordDef
-        val init = CrystalCompletionHelper.getInitializeMethod(className, project, file)
+        val init = CrystalMethodLookup.getInitializeMethod(className, project, file)
         if (init != null) return init
         return CrystalReference.resolveStdlibSymbol(project, className)
     }

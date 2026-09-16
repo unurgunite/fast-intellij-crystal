@@ -10,6 +10,7 @@ import io.github.unurgunite.crystal.psi.references.CrystalDotCallReference
 import io.github.unurgunite.crystal.psi.references.CrystalReference
 import io.github.unurgunite.crystal.psi.util.CrystalDefinitionFinder
 import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
+import io.github.unurgunite.crystal.type.CrystalTypeInference
 
 /**
  * Tests for [CrystalDotCallReference] — the PsiReference that powers identifier

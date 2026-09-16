@@ -6,15 +6,15 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.util.PsiTreeUtil
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
-import io.github.unurgunite.crystal.navigation.ivar.CrystalInstanceVarFinder
 import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
+import io.github.unurgunite.crystal.psi.CrystalInstanceVarFinder
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalRequireStatement
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
 
 /**
  * Handles Go to Definition (Ctrl+Click / Ctrl+B) for:
@@ -141,11 +141,11 @@ class CrystalGotoDeclarationHandler : GotoDeclarationHandler {
         if (selfNew.isNotEmpty()) return selfNew.toList()
 
         // 2. "record" macro — auto-generates "new" with the record fields as parameters
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(className, sourceElement.containingFile)
+        val recordDef = CrystalRecordLookup.findRecordDefinition(className, sourceElement.containingFile)
         if (recordDef != null) return listOf(recordDef)
 
         // 3. Default: "def initialize" (called by the built-in "Class#new")
-        val initMethod = CrystalCompletionHelper.getInitializeMethod(className, project, sourceElement.containingFile)
+        val initMethod = CrystalMethodLookup.getInitializeMethod(className, project, sourceElement.containingFile)
         if (initMethod != null) return listOf(initMethod)
 
         return emptyList()

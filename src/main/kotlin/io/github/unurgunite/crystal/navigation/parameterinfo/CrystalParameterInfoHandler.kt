@@ -15,8 +15,6 @@ import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.CrystalLanguage
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
 import io.github.unurgunite.crystal.lexer.CrystalTokenTypes
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
@@ -28,6 +26,8 @@ import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.psi.CrystalRecordDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
 
 /**
  * Provides parameter info (Ctrl+P) for Crystal method calls.
@@ -123,7 +123,7 @@ class CrystalParameterInfoHandler : ParameterInfoHandler<PsiElement, Any> {
 
         // 1. Try initialize method (most common case)
         val project = context.project
-        val initMethod = CrystalCompletionHelper.getInitializeMethod(className, project, argsHolder.containingFile)
+        val initMethod = CrystalMethodLookup.getInitializeMethod(className, project, argsHolder.containingFile)
         if (initMethod != null) {
             context.itemsToShow = arrayOf(initMethod)
             return argsHolder
@@ -131,7 +131,7 @@ class CrystalParameterInfoHandler : ParameterInfoHandler<PsiElement, Any> {
 
         // 2. Try record macro (record Foo, bar : String, baz : Int32)
         val file = argsHolder.containingFile ?: return null
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(className, file)
+        val recordDef = CrystalRecordLookup.findRecordDefinition(className, file)
         if (recordDef != null) {
             context.itemsToShow = arrayOf(CrystalParameterInfoIndex.extractRecordParameterList(recordDef))
             return argsHolder

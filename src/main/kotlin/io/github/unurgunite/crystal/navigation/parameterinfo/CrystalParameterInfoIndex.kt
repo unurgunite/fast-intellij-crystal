@@ -1,12 +1,11 @@
 package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalRecordDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
 
 /**
  * Cursor indexing for parameter info: which parameter the cursor sits on
@@ -106,7 +105,7 @@ internal object CrystalParameterInfoIndex {
      * Extracts a parameter list from a `record` macro call for parameter info display.
      */
     fun extractRecordParameterList(recordDef: CrystalRecordDefinition): RecordParameterInfo {
-        val fields = CrystalRecordCompletion.extractRecordFields(recordDef)
+        val fields = CrystalRecordLookup.extractRecordFields(recordDef)
         if (fields.isEmpty()) return RecordParameterInfo(emptyList())
 
         val params =

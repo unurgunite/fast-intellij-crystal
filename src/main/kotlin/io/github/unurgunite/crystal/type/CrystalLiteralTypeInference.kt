@@ -1,8 +1,8 @@
-package io.github.unurgunite.crystal.completion
+package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver
 import io.github.unurgunite.crystal.psi.CrystalExpression
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
 
 /**
  * Type inference for Crystal literal shapes: scalar literals (strings, chars,

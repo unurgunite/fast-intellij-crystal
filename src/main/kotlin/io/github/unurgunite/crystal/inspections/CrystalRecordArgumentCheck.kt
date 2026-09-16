@@ -3,9 +3,10 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
 import io.github.unurgunite.crystal.inspections.CrystalOverloadEvaluator.ParamInfo
+import io.github.unurgunite.crystal.type.CrystalCallArguments
+import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
 
 /**
  * Arity validation against `record` macro parameters (`record Config, ...`).
@@ -22,8 +23,8 @@ internal object CrystalRecordArgumentCheck {
         contextElement: PsiElement,
     ): List<ParamInfo>? {
         val file = contextElement.containingFile ?: return null
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(className, file) ?: return null
-        return CrystalRecordCompletion.extractRecordFields(recordDef).map {
+        val recordDef = CrystalRecordLookup.findRecordDefinition(className, file) ?: return null
+        return CrystalRecordLookup.extractRecordFields(recordDef).map {
             ParamInfo(it.name, it.defaultText != null)
         }
     }

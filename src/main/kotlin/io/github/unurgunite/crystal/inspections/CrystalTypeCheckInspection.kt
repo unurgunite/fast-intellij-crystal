@@ -5,9 +5,6 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.DotCallInfo
 import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalBareArgumentList
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
@@ -18,6 +15,14 @@ import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.type.CrystalCallArguments
+import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
+import io.github.unurgunite.crystal.type.CrystalDotCallScan
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
+import io.github.unurgunite.crystal.type.CrystalLocalScope
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalTypeCompatibility
 
 /**
  * Inspection that validates argument types against parameter type annotations
@@ -128,7 +133,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         if (info.receiverName.isNotEmpty() && info.receiverName[0].isUpperCase()) {
             methods =
                 methods.filter { method ->
-                    CrystalCompletionHelper.getEnclosingClassName(method) == info.receiverName
+                    CrystalMethodLookup.getEnclosingClassName(method) == info.receiverName
                 }
         }
 

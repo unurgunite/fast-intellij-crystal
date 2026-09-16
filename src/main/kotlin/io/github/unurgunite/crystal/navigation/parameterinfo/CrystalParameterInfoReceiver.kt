@@ -1,7 +1,6 @@
 package io.github.unurgunite.crystal.navigation.parameterinfo
 
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.isNameToken
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.prevMeaningfulLeaf
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalBareCallScanner.prevMeaningfulSibling
@@ -10,6 +9,7 @@ import io.github.unurgunite.crystal.psi.CrystalCallArgs
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
  * Receiver resolution for parameter info: the receiver of a DOT-call and the
@@ -75,5 +75,5 @@ internal object CrystalParameterInfoReceiver {
         return sibling
     }
 
-    fun findEnclosingTypeName(method: CrystalMethodDefinition): String? = CrystalCompletionHelper.getEnclosingClassName(method)
+    fun findEnclosingTypeName(method: CrystalMethodDefinition): String? = CrystalMethodLookup.getEnclosingClassName(method)
 }

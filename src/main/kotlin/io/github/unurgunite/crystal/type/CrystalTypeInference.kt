@@ -1,15 +1,16 @@
-package io.github.unurgunite.crystal.completion
+package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
-import io.github.unurgunite.crystal.completion.CrystalMethodReturnTypeInference.inferReturnTypeOfMethodList
-import io.github.unurgunite.crystal.completion.CrystalMethodReturnTypeInference.splitTypeNames
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver
 import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.extractParameterName
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
+import io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference.inferReturnTypeOfMethodList
+import io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference.splitTypeNames
 
 /**
  * Basic type inference for Crystal variables.
@@ -70,7 +71,7 @@ object CrystalTypeInference {
 
         val paramList = method.parameterList ?: return null
         for (param in paramList.parameterList) {
-            val paramName = CrystalLookupBuilders.extractParameterName(param)
+            val paramName = extractParameterName(param)
             if (paramName == name) {
                 // Has type annotation?
                 val typeRef = param.typeReference

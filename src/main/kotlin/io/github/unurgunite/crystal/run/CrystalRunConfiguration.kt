@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal.run
 
+import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfiguration
@@ -10,9 +11,9 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessHandlerFactory
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
-import io.github.unurgunite.crystal.debugger.CrystalDebugRunState
 import org.jdom.Element
 
 class CrystalRunConfiguration(
@@ -64,9 +65,14 @@ class CrystalRunConfiguration(
         executor: Executor,
         environment: ExecutionEnvironment,
     ): RunProfileState {
-        // Debug executor → use DAP-based debug run state
+        // Debug executor → DAP-based debug run state via the debugger service
+        // (interface indirection: run/ must not import debugger/ directly).
         if (executor.id == DefaultDebugExecutor.EXECUTOR_ID) {
-            return CrystalDebugRunState(environment, this)
+            return ApplicationManager
+                .getApplication()
+                .getService(CrystalDebugStateFactory::class.java)
+                ?.create(environment, this)
+                ?: throw ExecutionException("Crystal debugger unavailable")
         }
         return if (command == CrystalCommand.SPEC) {
             CrystalTestRunState(environment, this)

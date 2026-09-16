@@ -2,13 +2,13 @@ package io.github.unurgunite.crystal.documentation
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalTypeInference
 import io.github.unurgunite.crystal.documentation.CrystalDocHtml.escapeHtml
 import io.github.unurgunite.crystal.documentation.CrystalDocHtml.highlightCrystalCode
 import io.github.unurgunite.crystal.documentation.CrystalDocHtml.wrapTypeLinks
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.type.CrystalTypeInference
 
 /**
  * Variable documentation: name extraction behind reference/expression

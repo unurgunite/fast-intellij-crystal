@@ -8,6 +8,8 @@ import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalTypeInference
 
 /**
  * DOT-call completion: `CONSTANT.` (static methods + `new` fallbacks) and
@@ -82,7 +84,7 @@ internal object CrystalDotCompletion {
         nsAccess: CrystalNamespaceAccess?,
     ) {
         // Fallback 1: record macro — offer "new" with record parameters
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(beforeDotText, parameters.originalFile)
+        val recordDef = CrystalRecordLookup.findRecordDefinition(beforeDotText, parameters.originalFile)
         if (recordDef != null) {
             result.addElement(CrystalRecordCompletion.buildRecordNewLookup(recordDef, beforeDotText))
         } else if (nsAccess == null && CrystalCompletionHelper.canInstantiate(beforeDotText, project)) {

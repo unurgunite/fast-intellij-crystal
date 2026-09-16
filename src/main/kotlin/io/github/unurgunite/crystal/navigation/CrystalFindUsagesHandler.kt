@@ -12,11 +12,11 @@ import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.usageView.UsageInfo
 import com.intellij.util.Processor
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
  * Find Usages handler for Crystal definition elements (class, module, struct,
@@ -55,7 +55,7 @@ class CrystalFindUsagesHandler(
                 val scope = GlobalSearchScope.projectScope(project)
                 val targetElement = element
                 val enclosingClassName =
-                    CrystalCompletionHelper.getEnclosingClassName(element)
+                    CrystalMethodLookup.getEnclosingClassName(element)
                         ?: return@runBlocking
 
                 // Find the class definition via CrystalClassIndex

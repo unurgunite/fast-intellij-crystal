@@ -1,8 +1,6 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver.ResolvedType
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver.resolveType
 import io.github.unurgunite.crystal.psi.CrystalArrayLiteral
 import io.github.unurgunite.crystal.psi.CrystalCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalHashLiteral
@@ -13,6 +11,8 @@ import io.github.unurgunite.crystal.psi.CrystalRegexExpression
 import io.github.unurgunite.crystal.psi.CrystalSizeofExpression
 import io.github.unurgunite.crystal.psi.CrystalSymbolStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTupleLiteral
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.ResolvedType
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.resolveType
 
 /**
  * Fixed-shape and collection-literal types: regex/heredoc/sizeof have a type

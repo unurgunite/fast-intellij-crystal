@@ -4,6 +4,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoHandler
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoMethodName
 import io.github.unurgunite.crystal.navigation.parameterinfo.CrystalParameterInfoReceiver
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
     private val handler = CrystalParameterInfoHandler()
@@ -111,7 +112,7 @@ class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
         // Check that getInitializeMethod resolves the class
         val project = myFixture.project
         val initMethod =
-            io.github.unurgunite.crystal.completion.CrystalCompletionHelper.getInitializeMethod(
+            io.github.unurgunite.crystal.type.CrystalMethodLookup.getInitializeMethod(
                 "Apfelsaft",
                 project,
                 argsHolder.containingFile,
@@ -139,7 +140,7 @@ class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
         // The early .new short-circuit should resolve to initialize via getInitializeMethod
         // For Foo without initialize, it should return null (no stdlib "new" methods loaded)
         val initMethod =
-            io.github.unurgunite.crystal.completion.CrystalCompletionHelper.getInitializeMethod(
+            io.github.unurgunite.crystal.type.CrystalMethodLookup.getInitializeMethod(
                 "Foo",
                 myFixture.project,
                 argsHolder.containingFile,
@@ -166,7 +167,7 @@ class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
 
         // Should resolve to Foo's initialize method directly
         val initMethod =
-            io.github.unurgunite.crystal.completion.CrystalCompletionHelper.getInitializeMethod(
+            io.github.unurgunite.crystal.type.CrystalMethodLookup.getInitializeMethod(
                 "Foo",
                 myFixture.project,
                 argsHolder.containingFile,

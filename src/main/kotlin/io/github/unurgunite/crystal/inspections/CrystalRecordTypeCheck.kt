@@ -3,10 +3,13 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElement
-import io.github.unurgunite.crystal.completion.CrystalCompletionHelper
-import io.github.unurgunite.crystal.completion.CrystalRecordCompletion
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.type.CrystalCallArguments
+import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
+import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalTypeCompatibility
 
 /**
  * Type validation against `record` macro parameters (`record Config, ...`).
@@ -53,7 +56,7 @@ internal object CrystalRecordTypeCheck {
             return emptyList()
         }
         val initMethod =
-            CrystalCompletionHelper.getInitializeMethod(className, argsElement.project, argsElement.containingFile)
+            CrystalMethodLookup.getInitializeMethod(className, argsElement.project, argsElement.containingFile)
         return if (initMethod != null) listOf(initMethod) else emptyList()
     }
 
@@ -66,8 +69,8 @@ internal object CrystalRecordTypeCheck {
         contextElement: PsiElement,
     ): List<RecordParamInfo>? {
         val file = contextElement.containingFile ?: return null
-        val recordDef = CrystalRecordCompletion.findRecordDefinition(className, file) ?: return null
-        return CrystalRecordCompletion.extractRecordFields(recordDef).map {
+        val recordDef = CrystalRecordLookup.findRecordDefinition(className, file) ?: return null
+        return CrystalRecordLookup.extractRecordFields(recordDef).map {
             RecordParamInfo(it.name, it.typeText, it.defaultText != null)
         }
     }

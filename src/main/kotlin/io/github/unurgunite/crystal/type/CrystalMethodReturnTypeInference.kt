@@ -1,10 +1,9 @@
-package io.github.unurgunite.crystal.completion
+package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
@@ -39,7 +38,7 @@ object CrystalMethodReturnTypeInference {
         val results = mutableListOf<String>()
         for (method in methods) {
             if (className != null) {
-                val enclosing = CrystalCompletionHelper.getEnclosingClassName(method)
+                val enclosing = CrystalMethodLookup.getEnclosingClassName(method)
                 if (enclosing != className) continue
             }
             results.addAll(inferReturnTypeOfMethod(method))

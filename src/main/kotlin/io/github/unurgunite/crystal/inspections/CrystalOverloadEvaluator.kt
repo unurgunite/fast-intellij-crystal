@@ -1,11 +1,11 @@
 package io.github.unurgunite.crystal.inspections
 
-import io.github.unurgunite.crystal.completion.CrystalLookupBuilders
-import io.github.unurgunite.crystal.inspections.CrystalCallArguments.ArgumentInfo
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
 
 /**
  * Overload matching for arity checks: evaluates each candidate signature against
@@ -193,7 +193,7 @@ internal object CrystalOverloadEvaluator {
 
             CrystalTypes.DOUBLE_STAR -> return ParamMarker.DOUBLE_SPLAT
         }
-        val name = CrystalLookupBuilders.extractParameterName(param) ?: return null
+        val name = extractParameterName(param) ?: return null
         regularParams.add(ParamInfo(name, param.expression != null))
         return null
     }

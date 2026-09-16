@@ -1,13 +1,13 @@
-package io.github.unurgunite.crystal.inspections
+package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
-import io.github.unurgunite.crystal.inspections.CrystalExpressionTypeResolver.ResolvedType
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.ResolvedType
 
 /**
  * Return-type lookup for method call expressions: `Klasse.new` yields the class,
