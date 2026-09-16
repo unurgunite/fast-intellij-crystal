@@ -1,6 +1,7 @@
 # Architecture — Fast Crystal Plugin (`io.github.unurgunite.crystal`)
 
-Module map and key pipelines. Behavioral details live in `docs/specs/`;
+Module map and key pipelines. Behavioral specs live in `docs/specs/`
+([index](specs/README.md)); point-in-time grammar reports in `docs/reports/`;
 diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` rendered — re-render with
 `bash docs/diagrams/render.sh`, needs `mermaid-cli` + Chromium).
 

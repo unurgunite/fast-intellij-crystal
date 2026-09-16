@@ -1,4 +1,8 @@
-# Wave 9 grammar fixes
+# Wave 9 grammar fixes (report, 2026-09 — historical, not a living spec)
+
+> Point-in-time report. Lasting invariants from this wave (PEG ordering,
+> reverted experiments) are referenced by the grammar specs where they still
+> apply; the rest is history.
 
 ## Shorthand `&.` keyword methods
 
@@ -54,7 +58,8 @@ nondeterminism leaking across tests in one JVM (pinning `gpub.max.level=6000`,
 max-workers=1, and regen-goldens do not fix it — the flip follows order, not
 content). CI runs goldens non-blocking (`-PgoldenOnly=true`).
 
-## Open gaps (verified legal, deferred)
+## Open gaps (verified legal at wave 9, deferred — recheck against current
+grammar before working; wave 10 did not claim them)
 
 - Named args in index (`a[0, foo: 1]`), ternary in index (`a[b ? c : d]`),
   space-call paren-first (`foo (1), 2`), bare-in-bare first arg

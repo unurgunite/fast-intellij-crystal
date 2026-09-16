@@ -148,11 +148,12 @@ Pull requests are welcome! Before starting work on a larger change:
 1. **Open an issue first** — describe the problem and proposed approach.
    This prevents duplicate work and ensures the direction aligns with the
    project's architecture.
-2. **Read [AGENTS.md](AGENTS.md)** — it contains the project's coding
-   conventions, build commands, architecture rules, and critical design
-   decisions. All code contributions must follow these rules.
+2. **Read the docs** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (module
+   map, pipelines, invariants), [docs/TESTING.md](docs/TESTING.md) (test
+   conventions — every implementation must have tests), and the behavioral
+   specs in [docs/specs/](docs/specs/README.md) for the area you touch.
 3. **Build and test** — `./gradlew build` (compile + tests). Every
-   implementation must have unit tests (see AGENTS.md → Testing Conventions).
+   implementation must have unit tests (see docs/TESTING.md).
 
 ### Build from source
 

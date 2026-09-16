@@ -7716,7 +7716,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                       // MACRO_BODY_CONTENT for the def text and the `{{` must
   //                       // parse as SOMETHING, or one error node orphans the
   //                       // whole macro tail. Tolerated leniency (same precedent
-  //                       // as `{% %}` in `def` params, wave-9 spec).
+  //                       // as `{% %}` in `def` params, see docs/reports/wave-9-grammar.md).
   //                       // NLS inside (Reflect(X) in enumerable.cr puts `{{` /
   //                       // `}}` on their own lines): NLS is private (inlines, no
   //                       // shape change when absent).

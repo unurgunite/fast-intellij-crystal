@@ -211,15 +211,8 @@ with the full namespace path.
 enclosing classes (e.g. `Foo::Sub` and `Bar::Sub`), resolution correctly identifies
 the right class by comparing the full qualified name chain.
 
-**Method completion:** When typing `Foo::Sub.<caret>`, only methods from `Foo::Sub`
-are suggested (not from `Bar::Sub`). The completion contributor detects the namespace
-receiver, builds the full path via `buildNamespacePath`, and filters
-`CrystalMethodByClassIndex` results by the enclosing class's qualified name.
-
-**Auto-popup for `::`:** Typing `::` after a CONSTANT (e.g. `Foo::<caret>`) now
-triggers the completion popup automatically — no Ctrl+Space needed. The
-`CrystalTypedHandler.checkAutoPopup()` detects the second `:` of `::` and calls
-`AutoPopupController.scheduleAutoPopup()`.
+(DOT-completion after a namespace receiver and the `::` auto-popup are
+specified in [completion.md](completion.md), not here.)
 
 ---
 

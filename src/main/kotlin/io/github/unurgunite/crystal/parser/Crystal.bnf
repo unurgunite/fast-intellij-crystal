@@ -543,7 +543,7 @@ macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression |
                       // MACRO_BODY_CONTENT for the def text and the `{{` must
                       // parse as SOMETHING, or one error node orphans the
                       // whole macro tail. Tolerated leniency (same precedent
-                      // as `{% %}` in `def` params, wave-9 spec).
+                      // as `{% %}` in `def` params, see docs/reports/wave-9-grammar.md).
                       // NLS inside (Reflect(X) in enumerable.cr puts `{{` /
                       // `}}` on their own lines): NLS is private (inlines, no
                       // shape change when absent).
@@ -672,7 +672,7 @@ private parameter_item ::= bare_splat_separator | DOTDOTDOT | parameter | macro_
 // parameter lists (a syntax error in real crystal — only the `->()` proc form
 // allows macro-generated parameters, verified 2026-09-14). Deliberate union:
 // the grammar is context-insensitive and must accept all macro-branch texts
-// (same precedent as `fun {{...}}` names, wave-9 spec). Harmless leniency.
+// (same precedent as `fun {{...}}` names, see docs/reports/wave-9-grammar.md). Harmless leniency.
 
 private param_prefix ::= annotation_usage
                        | macro_control

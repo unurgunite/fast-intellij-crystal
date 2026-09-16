@@ -1,4 +1,8 @@
-# Wave 10 grammar fixes
+# Wave 10 grammar fixes (report, 2026-09-16 — historical, not a living spec)
+
+> Point-in-time report: stdlib parse errors 85 → 2 files. The "Reverted
+> experiments (do not retry)" section below is the lasting value — consult it
+> before touching the same grammar areas.
 
 Stdlib parse errors 85 → 2 files (2172 files, crystal 1.21.0 as oracle;
 remaining `spec/helpers/string.cr` + `syntax/parser.cr` are EOF-at-length

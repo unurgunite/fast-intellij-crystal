@@ -30,6 +30,19 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   `CrystalLocalScopeResolveTest` (5), `CrystalStdlibFileResolveTest` (7),
   `crystalUnderscore` moved to `CrystalPsiUtilsTest` (+4 edge cases), union
   members + depth-budget `inferTypeList` tests (2).
+- **Docs restructure (no more mixed-genre `docs/specs/`)** — `specs/` holds
+  living behavior only (10 specs + `README.md` index); test conventions →
+  `docs/TESTING.md` (stale count fixed, suite/golden layout documented); wave
+  9/10 → `docs/reports/` marked historical (open-gaps list flagged for
+  recheck); code-style decision → `docs/decision-log/`; ECR language tutorial
+  deleted (incl. a stray German intro), IDE design sketch preserved in
+  `docs/proposals/` as UNIMPLEMENTED; stale implementation plans rewritten to
+  pure behavior (string-interpolation matrix, type-inference
+  Implemented-vs-roadmap, find-usages split out of block-highlighting,
+  hover/completion namespace overlap deduped). `CONTRIBUTING.md` cites tracked
+  docs instead of untracked `AGENTS.md`; BNF wave comments point at
+  `reports/`; `ARCHITECTURE.md` index updated. BNF change is comment-only —
+  generated parser byte-identical.
 - **Stdlib parse breaks wave 10 (85 → 2 files, 2172 files)** — macro-heavy
   shapes, all verified legal with crystal 1.21.0: `**`/`<<`/`>>`/`//` in
   string interpolation (xml.cr); macro-split def signatures via
@@ -44,7 +57,7 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   rule (macro TEXT with `{{...}}` params). Ten regression goldens, all with
   zero `PsiErrorElement`. Remaining `spec/helpers/string.cr` +
   `syntax/parser.cr` are EOF-at-length artifacts proven pre-existing on the
-  pre-wave-10 HEAD. Details in `docs/specs/wave-10-grammar.md`.
+  pre-wave-10 HEAD. Details in `docs/reports/wave-10-grammar.md`.
 
 ### Added
 

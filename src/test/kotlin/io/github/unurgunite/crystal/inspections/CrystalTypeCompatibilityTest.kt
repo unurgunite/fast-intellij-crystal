@@ -36,7 +36,8 @@ class CrystalTypeCompatibilityTest : TestCase() {
     }
 
     fun testTypeAliasesExpandBeforeCheck() {
-        // AGENTS.md rule: Int/UInt/Float are unions and must expand, never escape as unknown
+        // `Int`/`UInt`/`Float` are unions in `normalizeType` and must expand,
+        // never escape as unknown (see `CrystalTypeCompatibility`).
         assertTrue(compat("Int8", "Int"))
         assertTrue(compat("Int128", "Int"))
         // Lossless widening is deliberately allowed (UInt8 fits Int16 member):

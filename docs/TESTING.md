@@ -1,6 +1,17 @@
 # Test Conventions
 
-Rules learned while building the suite (895 tests). Follow them for every new test.
+Rules learned while building the suite (958 tests in `test`, 92 parser goldens
+run separately via `-PgoldenOnly=true`). Follow them for every new test.
+
+## Suite layout
+
+- `./gradlew test` — full suite minus parser goldens (excluded in
+  `build.gradle.kts`) and minus the diagnostic `StdlibGraphToolTest`
+  (0 asserts; runnable via manual `stdlibParseErrors` / `stdlibBuildGraph` /
+  `stdlibStructure` / `stdlibCheckFile` tasks).
+- `./gradlew test -PgoldenOnly=true` — 92 `CrystalParserTest` goldens,
+  non-blocking in CI (GrammarKit GPUB memo nondeterminism across tests in one
+  JVM; see `docs/reports/wave-9-grammar.md`).
 
 ## Fixture files live under `temp://`
 

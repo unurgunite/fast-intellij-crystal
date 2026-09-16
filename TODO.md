@@ -56,7 +56,15 @@ neighbours and deleted; 4 `ProvidersTest` dups removed (pipeline coverage in
 `TypeAnnotationTest` strengthened instead); new `DotCallReceiverTest` (8),
 `LocalScopeResolveTest` (5), `StdlibFileResolveTest` (7), `crystalUnderscore`
 moved to `PsiUtilsTest` + 4 cases, union/depth `inferTypeList` tests (2).
-Wave-10 grammar details in `docs/specs/wave-10-grammar.md`.
+Wave-10 grammar details in `docs/reports/wave-10-grammar.md`.
+Docs restructure: `docs/specs/` holds living behavior only (10 specs +
+`README.md` index); test conventions → `docs/TESTING.md` (count fixed,
+suite/golden layout documented); waves → `docs/reports/` (marked historical);
+code-style decision → `docs/decision-log/`; ECR tutorial deleted, IDE sketch →
+`docs/proposals/` as UNIMPLEMENTED; stale plans rewritten to behavior
+(string-interp matrix, type-inference Implemented-vs-roadmap, find-usages
+split out of block-highlighting, hover/completion deduped); CONTRIBUTING no
+longer cites untracked `AGENTS.md`; BNF wave comments point at `reports/`.
 
 ### P2 — Implement Members
 
