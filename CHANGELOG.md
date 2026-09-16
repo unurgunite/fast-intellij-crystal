@@ -4,6 +4,16 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ## [Unreleased]
 
+### Fixed
+
+- **Shipped XML resources repaired** — color schemes referenced the renamed-away
+  `CRYSTAL_PARAMETER` key (code uses `CRYSTAL_PARAMETER_V2`), so per-theme
+  parameter colors silently never applied; all 21 live templates were scoped to
+  `OTHER` instead of the `CRYSTAL` context; change-notes had `1.1.15`/`1.1.13`
+  typos for `0.1.15`/`0.1.13`; plugin description and contributor docs linked
+  the old `intellij-crystal` repo. New `CrystalLiveTemplatesTest` pins template
+  scoping (21 templates, CRYSTAL-only).
+
 ### Changed
 
 - **Docs follow the new package layout** — `README.md` Architecture section

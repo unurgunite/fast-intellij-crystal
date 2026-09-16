@@ -11,7 +11,7 @@
 
 <p>
   <b>Early Beta</b> — This plugin is under active development and bugs are to be expected.
-  If you encounter a problem, please <a href="https://github.com/unurgunite/intellij-crystal/issues/new/choose">open a GitHub issue</a>
+  If you encounter a problem, please <a href="https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose">open a GitHub issue</a>
   with a minimal reproduction — that helps us fix it faster than a negative review would.
 </p>
 
@@ -165,14 +165,14 @@
   <li><b>Changed</b> — Force Re-index shows background progress bar with status updates</li>
 </ul>
 
-<h3>1.1.15</h3>
+<h3>0.1.15</h3>
 <ul>
   <li><b>Parameter info (Ctrl+P)</b> for <code>ClassName.new</code> — now shows <code>initialize</code> method parameters when calling <code>new</code> on a class</li>
   <li><b>Type check for <code>ClassName.new</code></b> — argument type validation now works for <code>new</code> calls, resolving to <code>initialize</code> parameters</li>
   <li><b>Bug fix</b> — <code>findTypeByName</code> now prefers the class from the current file when multiple classes with the same name exist in the project</li>
 </ul>
 
-<h3>1.1.13</h3>
+<h3>0.1.13</h3>
 <ul>
   <li><b>Code folding</b> — multi-line arrays (<code>[...]</code>) and hashes (<code>{...}</code>) can now be collapsed, matching RubyMine behavior</li>
   <li><b>Code folding</b> — all block constructs keep keyword and signature visible when collapsed; placeholder shows <code> ... end</code> (or <code>[ ... ]</code> / <code>{ ... }</code> for arrays/hashes), matching RubyMine behavior</li>
