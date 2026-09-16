@@ -4,99 +4,83 @@
 
 # Fast Crystal Plugin for JetBrains IDEs
 
-[![JetBrains Plugin](https://img.shields.io/badge/Plugin-v0.1.18-gray?style=plastic&logo=jetbrains&logoColor=white&labelColor=purple&label=JetBrains)](https://github.com/unurgunite/intellij-crystal)
-[![IntelliJ Platform](https://img.shields.io/badge/Platform-2026.1+-gray?style=plastic&logo=intellijidea&logoColor=white&labelColor=black&label=IntelliJ)](https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html)
-[![Crystal](https://img.shields.io/badge/Crystal-1.x-gray?style=plastic&logo=crystal&logoColor=white&labelColor=darkslategray&label=Crystal)](https://crystal-lang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg?style=plastic&logo=mit&labelColor=beige)](LICENSE)
+[![IntelliJ Platform](https://img.shields.io/badge/IntelliJ_Platform-2026.1+-blue)](https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html)
+[![Crystal](https://img.shields.io/badge/Crystal-1.x-black)](https://crystal-lang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBrains IDEs — built for speed.
+Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBrains IDEs:
+editing, navigation, completion, inspections, running, and debugging.
+Built on a GrammarKit parser with StubIndex-backed resolution; requires
+IntelliJ Platform 2026.1+ and a Crystal toolchain.
 
-## Why a separate project?
+The repo ships a `stdlib-graph/` harness (`stdlibParseErrors`, `stdlibStructure`,
+`stdlibBuildGraph`, `stdlibCheckFile`) that parses and resolves the entire Crystal
+standard library through the plugin's own parser, so regressions show up as numbers
+before they ship.
 
-Fast Crystal Plugin started as a fork, but it is developed independently with one priority: **the IDE must never hang**. Every change is measured, not vibed — the repo ships a `stdlib-graph/` harness (`stdlibParseErrors`, `stdlibStructure`, `stdlibBuildGraph`, `stdlibCheckFile`) that parses and resolves the entire Crystal standard library through the plugin's own parser, so regressions show up as numbers before they ship.
-
-Principles we enforce (see `AGENTS.md`):
-
-- **PEG longest-match-first** — longer/more specific grammar alternatives always precede shorter ones sharing a prefix. Violations cause silent misparses (e.g. `def Float64.new!` parsed as a method named `Float64`).
-- **No prefix-sharing alternatives** — two alternatives starting with the same sub-rule make PEG re-parse the prefix per alternative. The ternary rules did this and cost **O(3^depth)**: a 2.5KB file took **191s** to parse; after the fix, **94ms**. A full project index that hung 95–99% for **709s** completes now.
-- **StubIndex-only at runtime** — no `FileTypeIndex` full-project scans on hover, completion, or Go to Definition (those caused 90s+ freezes).
-- **One stdlib registration** — no duplicate library roots (those caused an infinite reindex loop).
-- **Scoped error filtering** — file-type checks before any PSI tree walk, so foreign files (`.groovy`, `.rb`) never pay for our highlighting.
-- **Bounded caches, stable locations** — the stdlib symbol cache is a sub-second text scan storing `(path, offset)` pairs, never stale PSI elements; type inference carries a recursion budget instead of `StackOverflowError`.
-
-| Before | After | Measured on |
+| Metric | Before | After |
 |---|---|---|
-| 191s parse, 2.5KB file | 94ms | `catalyst/src/catalyst/formatters/json.cr` |
-| 709s project index, stuck at 95–99% | completes, IDE goes idle | `catalyst` (522 `.cr` files) |
-| `float.cr` parse error | 0 errors | Crystal 1.21 stdlib |
-| `StackOverflowError` in highlighter | unknown type, no crash | self-referential assignments |
+| Parse time, 2.5 KB file (`catalyst/src/catalyst/formatters/json.cr`) | 191 s | 94 ms |
+| Project index, 522 `.cr` files (`catalyst`) | 709 s, stuck at 95–99% | completes, IDE goes idle |
+| Parse errors in `float.cr` (Crystal 1.21 stdlib) | present | 0 |
+| `StackOverflowError` on self-referential assignments | crash | unknown type, no crash |
 
-> [!WARNING]
-> Early Beta — This plugin is in active development. Bugs are to be expected.
-> Please [open an issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose)
-> and fill out the template carefully (current/expected examples are required)
-> so we can triage effectively.
+> [!NOTE]
+> Early Beta — bugs are to be expected. Please [open an issue](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose)
+> and fill out the template (current/expected examples are required).
 
-![New Project Wizard](docs/img/screenshots/001_new_project.png)
+![New project wizard](docs/img/screenshots/001_new_project.png)
+*New project wizard.*
 
-![Test Runner](docs/img/screenshots/002_testrunner.png)
+![Test runner](docs/img/screenshots/002_testrunner.png)
+*Spec runner with gutter icons and result tree.*
 
 ![Debugger](docs/img/screenshots/003_debugger.png)
-
+*Debugging via lldb-dap: breakpoints, variables, stepping.*
 
 ## Features
 
 ### Syntax & Editing
 
-- **Syntax Highlighting** — 60+ keywords, operators, strings with interpolation, numbers, symbols, regex, percent literals, heredocs, annotations, macros
-- **Semantic Highlighting** — PSI-based annotator distinguishes variables, methods, types, parameters, and macro fresh vars
-- **Keyword Block Highlighting** — cursor on `if`, `else`, `elsif`, `end`, `begin`, `rescue`, `ensure`, `case`, `when`, `def`, `class`, `module` etc. highlights all related structural keywords of the enclosing block
+- **Syntax Highlighting** — keywords, operators, strings with interpolation, numbers, symbols, regex, percent literals, heredocs, annotations, macros
+- **Semantic Highlighting** — PSI-based: variables, methods, types, parameters, macro fresh vars
+- **Keyword Block Highlighting** — cursor on `if`, `else`, `elsif`, `end`, `begin`, `rescue`, `ensure`, `case`, `when`, `def`, `class`, `module` highlights the related structural keywords of the enclosing block
 - **Color Settings Page** — customizable colors for all token types
-- **Code Folding** — collapse blocks, methods, classes, multi-line comments, arrays, hashes
+- **Code Folding** — blocks, methods, classes, multi-line comments, arrays, hashes
 - **Brace Matching** — parentheses, brackets, braces, percent literal delimiters, `do`/`end` pairs
-- **Auto-Insert** — automatic closing quotes, brackets, `end` after block keywords, auto-indentation after block openers
-- **Line Commenter** — toggle `#` comments
-- **Postfix Control Flow** — parser recognizes `expr if condition`, `expr unless condition`, `expr while condition`
-- **TODO/FIXME Indexing** — highlights and indexes task comments
+- **Auto-Insert** — closing quotes and brackets, `end` after block keywords, indentation after block openers
+- **TODO Indexing** — highlights and indexes task comments
 
 ### Navigation
 
-- **Go to Definition** (Ctrl+Click / Ctrl+B) — jump to class, module, struct, enum, method definitions, instance/class variable declarations (`@name`, `@@name`), and DOT-call methods (`obj.method`, `Class.method`)
-- **Namespace Access** — hovering and Go to Definition for intermediate namespace segments (e.g. `Inner` in `Outer::Inner.method`)
-- **Go to Symbol** (Ctrl+Alt+Shift+N) — find any symbol in the project
-- **Go to Class** (Ctrl+N) — find classes, modules, structs, enums
-- **Find Usages** (Alt+F7) — find all usages of methods, classes, instance variables (`@name`), and class variables (`@@name`) within the enclosing class
-- **Structure View** — PSI-based tree with nested types, methods, macros, constants
-- **Parameter Info** (Ctrl+P) — shows method signature at call site for parenthesized calls, bare calls, DOT-calls, `ClassName.new(...)`, and overloads; project-wide via StubIndex
-- **Quick Documentation** (Ctrl+Q) — rendered doc comments with syntax-highlighted signature and Markdown support; clicking type names navigates to their documentation
-- **Hover Type Info** — hovering over a variable shows the inferred type in a two-line popup (`String (Variable)` / `my_variable`), including local variables, instance variables, and method arguments; method return types inferred from body when no annotation exists
-- **Parameter Hover** — hovering over a parameter name shows a parameter-specific popup with type (hyperlinked) and name
-- **Definition Hover** — hovering over a definition name (e.g. `def butter`) shows the documentation popup
+- **Go to Definition** (Ctrl+Click / Ctrl+B) — classes, modules, structs, enums, methods, instance and class variables (`@name`, `@@name`), DOT-call methods (`obj.method`, `Class.method`), intermediate namespace segments (`Inner` in `Outer::Inner.method`)
+- **Go to Symbol** (Ctrl+Alt+Shift+N) — any symbol in the project
+- **Go to Class** (Ctrl+N) — classes, modules, structs, enums
+- **Find Usages** (Alt+F7) — methods, classes, instance and class variables within the enclosing class
+- **Structure View** — nested types, methods, macros, constants
+- **Parameter Info** (Ctrl+P) — method signatures at the call site: parenthesized, bare, and DOT-calls, `ClassName.new(...)`, overloads; project-wide via StubIndex
+- **Quick Documentation** (Ctrl+Q) — doc comments with syntax-highlighted signature and Markdown; type names link to their documentation
+- **Hover Popups** — inferred types for variables and parameters, documentation for definitions
 
 ### Code Completion
 
-- **Context-aware completion** (Ctrl+Space) — dot-completion on classes (static methods) and variables (instance methods via type inference), free-text completion for classes/methods/locals/stdlib types, type completion after `:` in annotations, inside generics (`Array(<caret>)`), and in union types (`String | <caret>`)
-- **Overloaded methods** — multiple overloads of the same method appear as separate entries, each showing its parameter signature
-- **Record macro completion** — completion, parameter info, and argument inspections for record macros
-- **Auto-completion for `::`** — typing `::` after a CONSTANT triggers the completion popup automatically
-- **Parameter priority boost** — parameters appear higher in the completion popup with bold styling
+- **Context-Aware Completion** (Ctrl+Space) — static methods on classes, instance methods on variables via type inference, classes/methods/locals/stdlib types in free text, types after `:` in annotations, inside generics (`Array(<caret>)`) and unions (`String | <caret>`)
+- **Overloaded Methods** — each overload appears as a separate entry with its parameter signature
+- **Record Macro Support** — completion, parameter info, and argument inspections for record macros
 
 ### Refactoring
 
-- **Rename** (Shift+F6) — in-place rename with preview dialog and automatic compiler verification (`crystal build --no-codegen`)
-- **Names Validator** — validates Crystal identifier rules (including `?` and `!` suffixes)
+- **Rename** (Shift+F6) — in-place rename with preview dialog, Crystal identifier validation, and automatic compiler verification (`crystal build --no-codegen`)
 
 ### Code Formatting
 
 - **Reformat Code** (Ctrl+Alt+L) — delegates to `crystal tool format` via stdin/stdout
-- No configuration needed — Crystal's formatter has no options
 
 ### Run & Debug
 
-- **Run Configurations** — crystal run, build, and spec with configurable arguments, environment variables, and working directory
+- **Run Configurations** — `crystal run`, `build`, and `spec` with configurable arguments, environment variables, and working directory; right-click a `.cr` file to run it
 - **Debugger** — breakpoints, variable inspection, and stepping via lldb-dap (DAP protocol)
 - **Test Runner** — integrated spec runner with gutter icons, single-test execution, and result tree
-- **Context-aware** — right-click a `.cr` file to run it
 
 ### Code Generation
 
@@ -104,20 +88,16 @@ Principles we enforce (see `AGENTS.md`):
 
 ### Inspections
 
-- **Type checking** — validates argument types against parameter annotations (supports numeric autocasting, union types, nilable types, overloads)
-- **Argument count** — validates number of arguments against method signature (supports named args, splat, double-splat, default values)
-- **Unused variables** — reports assigned-but-never-read local variables
-- **Empty collection literals** — reports `[] of T` / `{} of K => V` style issues
-- **Missing type in lib fun** — reports parameters without type annotations in lib fun definitions
-- **Colon spacing** — reports missing space after `:` in type annotations (e.g. `x:Int32`)
-- **Instance variable type** — validates instance variable types against declarations
-- **Invalid single-quote string** — reports non-ASCII characters in single-quote strings
+- **Type Checking** — argument types against parameter annotations (numeric autocasting, union and nilable types, overloads)
+- **Argument Count** — argument count against method signatures (named args, splat, double-splat, defaults)
+- **Unused Variables** — assigned-but-never-read local variables
+- **Smaller Checks** — empty collection literals, untyped `lib fun` parameters, colon spacing (`x:Int32`), instance variable types, invalid single-quote strings
 
 ### Parser
 
-- **GrammarKit BNF parser** — covers classes, modules, structs, enums, methods, macros, control flow, postfix if/unless/while/until/rescue, typed declarations, expressions with operator precedence, type references with generics (variadic `*T`, defaults `T = X`), union types, blocks, literals, percent literals (`%w[]`, `%i[]`, `%x()`) with string interpolation, regex with string interpolation, backtick command literals with string interpolation, lib blocks (fun, union, struct, enum, external vars, varargs), top-level fun, wrapping operators, `previous_def`, `out` parameters, pattern matching (pin `^var`, guards), annotations on parameters, rescue in method body with typed rescue (union types, variable binding), condition assignments (`while x = expr`), metaclass types (`T.class`), backslash line continuation, method chaining across newlines, trailing commas, `&.method` shorthand with operators and bracket access (`&.[]`, `&.[1]`), `::Foo` global namespace prefix, external parameter names, command literals, `$?` global variable, range with omitted start in bracket access (`arr[..2]`, `arr[1..]`), postfix `?`/`!` after macro interpolation
+- **Grammar Coverage** — classes, modules, structs, enums, methods, macros, control flow (including postfix modifiers), expressions with operator precedence, generics and unions, blocks, all literal forms with interpolation, `lib` bindings, pattern matching. Full rule set: [`Crystal.bnf`](src/main/kotlin/io/github/unurgunite/crystal/parser/Crystal.bnf)
 - **StubIndex** — project-wide index for classes and methods (instant navigation even in large projects)
-- **Error-tolerant** — pin/recovery rules ensure the parser works with incomplete code while typing
+- **Error-Tolerant** — pin/recovery rules keep the parser working with incomplete code while typing
 
 ## Requirements
 
@@ -135,16 +115,13 @@ This plugin depends on the **Crystal compiler** and (optionally) the **LLDB DAP*
 Both binaries must be available in your `PATH`. The plugin additionally checks
 `/usr/bin/lldb-dap` and `/usr/local/bin/lldb-dap` for auto-detection.
 
-> Planned: automatic detection of versioned binaries (e.g. `lldb-dap-22`) and a
-> custom install path setting will be added in a future release.
-
 #### Linux — Arch / Manjaro / EndeavourOS / CachyOS
 
 ```bash
 sudo pacman -S crystal shards lldb
 ```
 
-The `lldb` package already ships `lldb-dap`.
+The `lldb` package ships `lldb-dap`.
 
 #### Linux — Debian / Ubuntu / Mint / Pop!_OS
 
@@ -155,52 +132,68 @@ curl -fsSL https://crystal-lang.org/install.sh | sudo bash
 ```
 
 LLDB DAP — the default `lldb` package in Debian/Ubuntu repos is often too old or
-does not ship `lldb-dap`. Use the official LLVM apt script for a current release:
+does not ship `lldb-dap`. Use the official LLVM apt script for a current release
+(23 as of September 2026):
 
 ```bash
 wget https://apt.llvm.org/llvm.sh
 chmod +x llvm.sh
-sudo ./llvm.sh 22
-sudo apt install lldb-22   # ensures lldb-dap-22 is included
+sudo ./llvm.sh 23
+sudo apt install lldb-23
 ```
 
-The binary is installed as `/usr/bin/lldb-dap-22`. Either add it to your `PATH` as
+The binary is installed as `/usr/bin/lldb-dap-23`. Either add it to your `PATH` as
 `lldb-dap`, or symlink it so the plugin finds it automatically:
 
 ```bash
-sudo ln -s /usr/bin/lldb-dap-22 /usr/bin/lldb-dap
+sudo ln -s /usr/bin/lldb-dap-23 /usr/bin/lldb-dap
 ```
 
 #### Linux — Fedora / RHEL / Rocky
 
+Crystal is not in the official Fedora repositories yet (native packaging is in
+progress) — follow the [official install guide](https://crystal-lang.org/install/).
+
+For the debugger:
+
 ```bash
-sudo dnf install crystal lldb
+sudo dnf install lldb
 ```
 
 #### Linux — openSUSE
 
+Crystal requires the OBS `devel:languages:crystal` repository:
+
 ```bash
-sudo zypper install crystal lldb
+sudo zypper ar -f https://download.opensuse.org/repositories/devel:/languages:/crystal/openSUSE_Tumbleweed/devel:languages:crystal.repo
+sudo zypper --gpg-auto-import-keys install crystal
+```
+
+For the debugger:
+
+```bash
+sudo zypper install lldb
 ```
 
 #### macOS
 
-Crystal and LLVM via Homebrew (recommended):
+Crystal and LLDB via Homebrew (recommended). Note: Homebrew split LLDB out of
+the `llvm` formula, so `llvm` alone no longer provides `lldb-dap`:
 
 ```bash
-brew install crystal llvm
+brew install crystal lldb
 ```
 
-Homebrew does not install into `/usr/local/bin/` on Apple Silicon. Either add
-the LLVM `bin/` directory to your `PATH`, or create a symlink:
+If `lldb-dap` is not on your `PATH` afterwards, symlink it so the plugin finds
+it automatically (works on both Intel and Apple Silicon):
 
 ```bash
-sudo ln -s "$(brew --prefix llvm)/bin/lldb-dap" /usr/local/bin/lldb-dap
+sudo ln -s "$(brew --prefix lldb)/bin/lldb-dap" /usr/local/bin/lldb-dap
 ```
 
-The system `lldb` provided by Xcode Command Line Tools
-(`xcode-select --install`) does not always include `lldb-dap`. Homebrew LLVM is
-the more reliable option.
+The system `lldb` from Xcode Command Line Tools (`xcode-select --install`) also
+provides `lldb-dap` (`xcrun -f lldb-dap`); Homebrew is the more predictable
+option across macOS versions.
 
 #### Windows
 
@@ -221,11 +214,11 @@ and select either:
 
 **2. Crystal**
 
-Download the latest `*-msvc-*` build from the
+Download a `*-windows-x86_64-msvc-*` build from the
 [Crystal releases page](https://github.com/crystal-lang/crystal/releases/latest):
 
-- `crystal-<version>-msvc-unsupported.exe` — GUI installer, adds Crystal to `PATH` automatically (recommended)
-- `crystal-<version>-msvc-unsupported.zip` — portable archive
+- `crystal-<version>-windows-x86_64-msvc-unsupported.exe` — GUI installer, adds Crystal to `PATH` automatically (recommended)
+- `crystal-<version>-windows-x86_64-msvc-unsupported.zip` — portable archive
 
 For a MinGW-w64-based alternative, see the
 [official Crystal Windows guide](https://crystal-lang.org/install/on_windows/).
@@ -261,8 +254,8 @@ automatically.
 ### From Source
 
 ```bash
-git clone https://github.com/unurgunite/intellij-crystal.git
-cd intellij-crystal
+git clone https://github.com/unurgunite/fast-intellij-crystal.git
+cd fast-intellij-crystal
 ./gradlew buildPlugin
 ```
 
@@ -282,40 +275,11 @@ Crystal.bnf (GrammarKit) →  Parser (PSI tree, structure)
 Stubs                    →  StubIndex (project-wide search, Go to Definition)
 ```
 
-### Design Decisions
+![Package architecture](docs/diagrams/architecture.svg)
 
-- **All features plugin-native**: No external LSP dependency — everything works offline and instantly
-- **StubIndex over FileBasedIndex**: Industry standard for IntelliJ plugins, enables instant project-wide navigation
-- **External formatter**: Crystal's built-in `crystal tool format` is canonical — no need to reimplement
-- **Rename strategy**: Token-based + preview dialog + compiler verification
-- **Generated files committed**: Standard convention for GrammarKit-based plugins to ensure reproducible builds
+Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Development
-
-### Project Structure
-
-```
-src/main/kotlin/io/github/unurgunite/crystal/
-├── lexer/              # JFlex lexer definition + token types
-├── parser/             # GrammarKit BNF grammar
-├── psi/                # PSI element types and stub mixins
-├── stubs/              # StubIndex infrastructure
-├── highlighting/       # Syntax highlighter + color settings
-├── structure/          # Structure View (PSI-based)
-├── navigation/         # Go to Symbol/Class, Find Usages, Parameter Info, Go to Definition
-├── formatting/         # External formatter (crystal tool format)
-├── refactoring/        # Rename support + compiler verification
-├── run/                # Run configurations
-└── *.kt                # Core (language, file type, icons, commenter, etc.)
-
-src/main/gen/           # Generated lexer, parser, and PSI classes (committed)
-src/main/resources/     # plugin.xml, icons, live templates
-src/test/               # Lexer tests + test data
-```
-
-### Build
-
-Requires JDK 21.
 
 ```bash
 ./gradlew build          # Compile + tests (no distributable ZIP)
@@ -325,15 +289,17 @@ Requires JDK 21.
 ./gradlew runIde         # Launch development IDE
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow and conventions.
+
 ## Contributing
 
 Issues and pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md)
 before opening an issue — it explains the three issue types and what
 information we need.
 
-- 🐛 [Report a bug](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something doesn't work as expected
-- ✨ [Request a feature](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
-- 🦥 [Report a UX issue](https://github.com/unurgunite/intellij-crystal/issues/new/choose) — something works but feels clunky
+- [Report a bug](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — something doesn't work as expected
+- [Request a feature](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
+- [Report a UX issue](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — something works but feels clunky
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to report issues and contribute.
 

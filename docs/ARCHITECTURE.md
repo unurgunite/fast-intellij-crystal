@@ -83,7 +83,7 @@ Debug: compile `bin/<name> --debug` → `crystal-lldb` over `lldb-dap`.
 
 ![Spec run pipeline](diagrams/spec-run.svg)
 
-## Invariants (see AGENTS.md for the full list)
+## Invariants
 
 - **StubIndex-only runtime lookups** — no `FileTypeIndex`/project VFS walks
   (90s+ stalls); stdlib fallback bounded to the stdlib root.
