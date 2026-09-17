@@ -6,7 +6,16 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 ### Added
 
-(TODO: P2 Implement Members, P3 Inlay Hints)
+- **Implement Members (Code → Generate)** — new `generation/` package with
+  `CrystalImplementMethodsHandler` registered via
+  `com.intellij.codeInsight.implementMethod`: discovers unimplemented
+  `abstract def` methods across the ancestor chain (superclass + includes,
+  nearest-concrete-wins, name + arity identity) and generates stubs raising
+  `NotImplementedError` with copied signatures (params, return type, forall).
+  Macro-generated names are skipped. Covered by
+  `CrystalImplementMembersTest` (11 tests).
+
+(TODO: P3 Inlay Hints)
 
 ### Removed
 
