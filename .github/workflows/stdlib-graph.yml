@@ -46,7 +46,31 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build stdlib graph
-        run: ./gradlew stdlibParseErrors stdlibBuildGraph stdlibStructure
+        # --no-configuration-cache: the IntelliJ Platform Gradle plugin uses
+        # build services at configuration time (ExtractorService), which the
+        # configuration cache cannot serialize — one-shot CI runs gain
+        # nothing from the cache anyway.
+        run: ./gradlew stdlibParseErrors stdlibBuildGraph stdlibStructure --no-configuration-cache
+
+      - name: Upload stdlib diagnostics
+        # Always upload: the TSV/summaries show what the scan found even on
+        # green runs; the XML/HTML reports are what we need on red ones
+        # (console logs truncate the actual assertion + ClassNotFound name).
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stdlib-diagnostics
+          path: |
+            build/test-results/stdlibParseErrors/
+            build/test-results/stdlibBuildGraph/
+            build/test-results/stdlibStructure/
+            build/reports/tests/stdlibParseErrors/
+            build/reports/tests/stdlibBuildGraph/
+            build/reports/tests/stdlibStructure/
+            stdlib-graph/*.txt
+            stdlib-graph/*.tsv
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Assemble Pages site
         # index.html is self-contained (data inlined, no external fetches);

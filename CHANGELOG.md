@@ -2,17 +2,19 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
-## [Unreleased]
+## [1.0.1] — 2026-09-17
 
 ### Fixed
 
-- **Shipped XML resources repaired** — color schemes referenced the renamed-away
-  `CRYSTAL_PARAMETER` key (code uses `CRYSTAL_PARAMETER_V2`), so per-theme
-  parameter colors silently never applied; all 21 live templates were scoped to
-  `OTHER` instead of the `CRYSTAL` context; change-notes had `1.1.15`/`1.1.13`
-  typos for `0.1.15`/`0.1.13`; plugin description and contributor docs linked
-  the old `intellij-crystal` repo. New `CrystalLiveTemplatesTest` pins template
-  scoping (21 templates, CRYSTAL-only).
+- **Stdlib-graph CI green on fresh runners** — the `stdlib*` Gradle tasks
+  skipped `prepareTestSandbox`, so on runners without a warm build cache the
+  IntelliJ test framework booted against an empty plugin sandbox and died
+  with `ClassNotFoundException: CrystalFileType` before the first test ran.
+  The tasks now depend on `prepareTestSandbox` like the `test` task does.
+  Also fixed: IntelliJ Platform Gradle plugin build services break the
+  configuration cache, so the stdlib-graph workflow runs with
+  `--no-configuration-cache`, and now uploads JUnit/HTML diagnostics on
+  failure instead of leaving a truncated console log.
 
 ### Changed
 

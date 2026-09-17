@@ -106,6 +106,11 @@
 ]]></description>
 
     <change-notes><![CDATA[
+<h3>1.0.1</h3>
+<ul>
+  <li><b>CI fix</b> — stdlib-graph workflow green on fresh runners (test sandbox wiring, no configuration cache, failure diagnostics upload)</li>
+</ul>
+
 <h3>1.0.0</h3>
 <ul>
   <li><b>Fast Crystal Plugin 1.0.0</b> — first release of the independent project: indexing stall fixes (ternary parse 191s→94ms, type-inference StackOverflow guard, <code>def Type.name</code> parse), full project navigation via StubIndex, and 60+ inspections/completions documented in the changelog below</li>

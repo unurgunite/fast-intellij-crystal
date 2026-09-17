@@ -146,6 +146,11 @@ fun Test.stdlibTool(name: String) {
     classpath = dt.classpath
     jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g" + "-Dgrammar.kit.gpub.max.level=6000")
     filter.includeTestsMatching("*StdlibGraphToolTest.$name")
+    // Same sandbox setup as the `test` task: the IntelliJ test framework
+    // resolves the plugin-under-test from the prepared sandbox. Without this
+    // the stdlib tasks run un-instrumented classes against an empty sandbox
+    // and platform startup dies with CNFE on our own FileType (seen on CI).
+    dependsOn("prepareTestSandbox")
 }
 tasks.register<Test>("stdlibParseErrors") { stdlibTool("testAggregateParseErrors") }
 tasks.register<Test>("stdlibBuildGraph") { stdlibTool("testBuildGraph") }
