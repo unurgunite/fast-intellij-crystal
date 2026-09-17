@@ -2,6 +2,12 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
+## [1.1.0] — Unreleased
+
+### Added
+
+(TODO: P2 Implement Members, P3 Inlay Hints)
+
 ## [1.0.1] — 2026-09-17
 
 ### Fixed
