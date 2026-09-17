@@ -14,8 +14,12 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   `NotImplementedError` with copied signatures (params, return type, forall).
   Macro-generated names are skipped. Covered by
   `CrystalImplementMembersTest` (11 tests).
-
-(TODO: P3 Inlay Hints)
+- **Inlay Hints (Settings → Editor → Inlay Hints → Crystal)** — new `inlay/`
+  package with `CrystalInlayHintsProvider` on the declarative (stateless)
+  API: inferred local-variable types render as `: Type` after unannotated
+  assignments (`x = 1` → `: Int32`), reusing `CrystalTypeInference`. Skips
+  annotated names, `@ivar`s, `Nil`, and nested RHS assignments. Covered by
+  `CrystalInlayHintsTest` (11 tests, incl. factory wiring).
 
 ### Removed
 
