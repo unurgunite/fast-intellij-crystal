@@ -440,6 +440,9 @@
                 language="Crystal"
                 implementationClass="io.github.unurgunite.crystal.generation.CrystalImplementMethodsHandler"/>
 
+        <codeInsight.declarativeInlayProviderFactory
+                implementation="io.github.unurgunite.crystal.inlay.CrystalInlayHintsProviderFactory"/>
+
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex"/>
