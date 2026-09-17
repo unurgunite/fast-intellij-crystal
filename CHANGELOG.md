@@ -8,6 +8,14 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
 
 (TODO: P2 Implement Members, P3 Inlay Hints)
 
+### Removed
+
+- **Thin `completion/` delegates** — `LookupBuilders.getParameterSignature` /
+  `getReturnType` / `extractParameterName` and
+  `RecordCompletion.findRecordDefinition` / `extractRecordFields` forwarded to
+  `type/` verbatim with zero outside callers; deleted, internal call sites use
+  `CrystalMethodLookup` / `CrystalRecordLookup` / `psi.util` directly.
+
 ## [1.0.1] — 2026-09-17
 
 ### Fixed

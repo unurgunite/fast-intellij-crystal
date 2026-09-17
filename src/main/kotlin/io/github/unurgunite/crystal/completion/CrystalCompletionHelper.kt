@@ -91,7 +91,7 @@ object CrystalCompletionHelper {
         if (CrystalMethodLookup.isStaticMethod(method)) return
         val name = method.name ?: return
         // Deduplicate by name+signature so overloads with different params appear separately
-        val key = "$name${CrystalLookupBuilders.getParameterSignature(method)}"
+        val key = "$name${CrystalMethodLookup.getParameterSignature(method)}"
         if (seen.add(key)) {
             result.add(CrystalLookupBuilders.buildMethodLookup(method, priority))
         }
