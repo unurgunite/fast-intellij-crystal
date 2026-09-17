@@ -436,6 +436,10 @@
                 language="Crystal"
                 implementationClass="io.github.unurgunite.crystal.navigation.parameterinfo.CrystalAsmParameterInfoHandler"/>
 
+        <codeInsight.implementMethod
+                language="Crystal"
+                implementationClass="io.github.unurgunite.crystal.generation.CrystalImplementMethodsHandler"/>
+
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex"/>
