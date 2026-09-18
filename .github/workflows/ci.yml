@@ -119,6 +119,38 @@ jobs:
         # Full suite minus CrystalParserTest golden files, which run in the
         # parser-golden step below (excluded via build.gradle.kts)
 
+      - name: Guard against silent empty/skip runs
+        # A green `test` that ran 0 tests (broken filter, empty suite) must
+        # fail the job: otherwise "CI green" means nothing. Parses the JUnit
+        # XML the Gradle Test task just wrote. Threshold: the suite currently
+        # has ~990 tests; 500 leaves headroom for future deletions while still
+        # catching a degenerate run.
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          files = glob.glob('build/test-results/test/*.xml')
+          if not files:
+              print("FAIL: no JUnit XML found — the test task produced no results")
+              sys.exit(1)
+          tests = failures = errors = skipped = 0
+          for path in files:
+              root = ET.parse(path).getroot()
+              tests += int(root.get('tests', 0))
+              failures += int(root.get('failures', 0))
+              errors += int(root.get('errors', 0))
+              skipped += int(root.get('skipped', 0))
+          ran = tests - skipped
+          print(f"tests={tests} ran={ran} failures={failures} errors={errors} skipped={skipped} files={len(files)}")
+          if failures or errors:
+              print("FAIL: test failures/errors present")
+              sys.exit(1)
+          if ran < 500:
+              print(f"FAIL: only {ran} tests ran (< 500) — suite did not execute properly")
+              sys.exit(1)
+          print("Test-count guard passed")
+          EOF
+
       - name: Parser golden files (known-flaky, non-blocking)
         id: parser-golden
         continue-on-error: true
