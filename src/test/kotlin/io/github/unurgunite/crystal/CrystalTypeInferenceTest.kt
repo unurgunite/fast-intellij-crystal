@@ -249,6 +249,93 @@ puts a
         assertTrue("Deep chain must terminate, got: $types", types.isEmpty() || types == listOf("String"))
     }
 
+    fun testIvarFromShorthandParamHasType() {
+        // Direct ivar query: `@name` typed by `initialize(@name : String)`.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Path
+              def initialize(@name : String)
+              end
+              def show
+                puts @name
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("@name", file.text.indexOf("puts"))
+        assertEquals(
+            "String",
+            CrystalTypeInference.inferType("@name", file.findElementAt(useOffset)!!, project),
+        )
+    }
+
+    fun testIvarFromPropertyDeclarationHasType() {
+        // `@name : String` property declaration types the ivar from any method.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Path
+              @name : String
+              def show
+                puts @name
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("@name", file.text.indexOf("puts"))
+        assertEquals(
+            "String",
+            CrystalTypeInference.inferType("@name", file.findElementAt(useOffset)!!, project),
+        )
+    }
+
+    fun testIvarFromAssignmentHasType() {
+        // `@count = 42` in one method types `@count` reads without any declaration.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Counter
+              def reset
+                @count = 42
+              end
+              def show
+                puts @count
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("@count", file.text.indexOf("puts"))
+        assertEquals(
+            "Int32",
+            CrystalTypeInference.inferType("@count", file.findElementAt(useOffset)!!, project),
+        )
+    }
+
+    fun testPlainParamDoesNotTypeIvar() {
+        // `def foo(name : String)` declares NO ivar: `@name` stays unknown.
+        // (Guards the declaration detector against the stripped param name.)
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Path
+              def foo(name : String)
+                puts @name
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("@name")
+        assertNull(
+            "plain param must not type @name",
+            CrystalTypeInference.inferType("@name", file.findElementAt(useOffset)!!, project),
+        )
+    }
+
     fun testLocalAssignedFromIvarIsUnknown() {
         // `path.cr` shape: `name = @name` where `@name` is a plain ivar (no
         // param carries the type), then `name.starts_with?(...)`. The RHS has

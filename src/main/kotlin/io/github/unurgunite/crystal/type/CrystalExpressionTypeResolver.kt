@@ -6,10 +6,12 @@ import com.intellij.psi.tree.IElementType
 import io.github.unurgunite.crystal.psi.CrystalBareArgument
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement
+import io.github.unurgunite.crystal.psi.CrystalClassVarAccess
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalExpressionStatement
 import io.github.unurgunite.crystal.psi.CrystalGroupedExpression
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
+import io.github.unurgunite.crystal.psi.CrystalInstanceVarAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.psi.CrystalStringExpression
@@ -101,10 +103,8 @@ object CrystalExpressionTypeResolver {
         if (expr is CrystalIfStatement) return CrystalControlFlowTypeResolver.resolveIfExpression(expr)
         if (expr is CrystalCaseStatement) return CrystalControlFlowTypeResolver.resolveCaseExpression(expr)
 
-        // Variable references → delegate to existing type inference (unions preserved as "A | B")
-        if (expr is CrystalVariableReference) {
-            return resolveVariableReference(expr)
-        }
+        // Variable / ivar references (unions preserved as "A | B")
+        resolveReferenceOperand(expr)?.let { return it }
 
         // Method call expressions → resolve return type
         if (expr is CrystalMethodCallExpression || expr is CrystalBareMethodCallExpression) {
@@ -179,12 +179,30 @@ object CrystalExpressionTypeResolver {
             else -> ResolvedType("Float64", isUnsuffixedNumericLiteral = true)
         }
     }
+}
 
-    private fun resolveVariableReference(expr: CrystalVariableReference): ResolvedType? {
-        val name = expr.text
-        val project = expr.project
-        val inferred = CrystalTypeInference.inferTypeList(name, expr, project)
-        if (inferred.isNotEmpty()) return ResolvedType(inferred.joinToString(" | "))
-        return null
-    }
+/**
+ * Variable / ivar reference operand of an expression, if any: plain locals
+ * delegate to the generic inference, `@ivar` / `@@cvar` to the declared-type
+ * index first. File-level to keep the object above under detekt's
+ * TooManyFunctions budget.
+ */
+private fun resolveReferenceOperand(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    if (expr is CrystalVariableReference) return resolveVariableReference(expr)
+    if (expr is CrystalInstanceVarAccess || expr is CrystalClassVarAccess) return resolveInstanceVar(expr)
+    return null
+}
+
+/** Plain local-variable reference → generic inference (unions preserved as "A | B"). */
+private fun resolveVariableReference(expr: CrystalVariableReference): CrystalExpressionTypeResolver.ResolvedType? {
+    val inferred = CrystalTypeInference.inferTypeList(expr.text, expr, expr.project)
+    if (inferred.isNotEmpty()) return CrystalExpressionTypeResolver.ResolvedType(inferred.joinToString(" | "))
+    return null
+}
+
+/** `@ivar` / `@@cvar` → declared types (shorthand params, properties), then assignments. */
+private fun resolveInstanceVar(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    val inferred = CrystalInstanceVarTypeInference.inferIvarType(expr.text, expr, expr.project, 0)
+    if (inferred.isNotEmpty()) return CrystalExpressionTypeResolver.ResolvedType(inferred.joinToString(" | "))
+    return null
 }

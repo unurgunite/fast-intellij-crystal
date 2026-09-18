@@ -54,6 +54,15 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   indexed stdlib while CI (small ambient index) stayed green. Type lookups
   are now explicitly prioritized (stdlib basics 60, project types 55, free
   text 15 — own scope items still win).
+- **Go to Definition on calls through ivar-aliased locals** — `name = @name`
+  (the `path.cr` shape, `@name` typed by `initialize(@name : String)`) left
+  the local untyped, so `name.starts_with?(...)` never resolved and `@name`
+  itself had no type either. New `CrystalInstanceVarTypeInference` indexes
+  `@`-shorthand parameters and property declarations once per file version
+  (qualified `Type#ivar` keys) with `@ivar = expr` assignments as fallback;
+  both DOT-call receivers and the expression resolver consult it. Covered by
+  inference tests (shorthand param, property, assignment, plain-param guard)
+  and resolve tests landing in `string.cr`.
 
 ### Changed
 
