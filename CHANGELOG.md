@@ -73,6 +73,14 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   500 tests actually ran or any failure/error is present. Covered by
   environment-independent priority regression tests (provider-level priority
   asserts + a synthetic 700-class flooded-index fixture test).
+- **Plugin verification pinned to released IDEs** — added the missing
+  `pluginVerifier()` dependency (without it `verifyPlugin` fails with
+  "executable not found") and pinned `ides.select` to
+  `IntellijIdeaUltimate` / `RELEASE` / `sinceBuild 261`. The default
+  `recommended()` set also pulls EAP builds (263-EAP), whose platform APIs
+  legitimately differ from the release the plugin compiles against
+  (`intellijIdea 2026.1.3`) — e.g. the `DapBreakpointsDescription`
+  constructor, unresolved on 263-EAP while 261/262 verify Compatible.
 
 ## [1.0.1] — 2026-09-17
 
