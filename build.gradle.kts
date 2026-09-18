@@ -39,7 +39,7 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         id = "io.github.unurgunite.crystal"
-        name = "Fast Crystal Plugin"
+        name = "Fast Crystal"
         version = project.version.toString()
         vendor {
             name = "unurgunite"
@@ -61,10 +61,9 @@ intellijPlatform {
     }
 
     pluginVerification {
-        // "Fast Crystal Plugin" intentionally contains the word "Plugin" (council decision:
-        // the name must answer "why this one, not upstream" in 2 seconds). Mute the
-        // verifier's naming-style check; it is not a functional defect.
-        freeArgs.addAll("-mute", "TemplateWordInPluginName")
+        // NOTE: the plugin name must NOT contain the word "Plugin" — the IDE
+        // rejects such descriptors at load time ("Invalid plugin descriptor").
+        // "Fast Crystal" keeps the differentiator without the banned word.
         ides {
             // Verify only against RELEASED IDEs in the supported range (sinceBuild
             // 261 -> 261.x, 262.x): the default recommended() set also pulls EAP

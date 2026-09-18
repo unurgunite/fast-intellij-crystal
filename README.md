@@ -2,7 +2,7 @@
   <img src="src/main/resources/META-INF/pluginIcon.svg" width="150" alt="Crystal Logo">
 </p>
 
-# Fast Crystal Plugin for JetBrains IDEs
+# Fast Crystal for JetBrains IDEs
 
 [![IntelliJ Platform](https://img.shields.io/badge/IntelliJ_Platform-2026.1+-blue)](https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html)
 [![Crystal](https://img.shields.io/badge/Crystal-1.x-black)](https://crystal-lang.org)
@@ -245,10 +245,10 @@ automatically.
 
 ### From JetBrains Marketplace
 
-> **Note:** the Marketplace listing for Fast Crystal Plugin is pending publication. Until then, install from source below.
+> **Note:** the Marketplace listing for Fast Crystal is pending publication. Until then, install from source below.
 
 1. In your IDE, open *Settings → Plugins → Marketplace*
-2. Search for **Fast Crystal Plugin**
+2. Search for **Fast Crystal**
 3. Click **Install** and restart the IDE
 
 ### From Source

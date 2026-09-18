@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
+All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
 ## [1.1.0] — Unreleased
 
@@ -204,8 +204,10 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   initialized second died in `TextAttributesKey.mergeKeys` (order-dependent: green locally, red in
   CI's `buildSearchableOptions`). Keys now live in `CRYSTAL_REGEXP.*` with identical fallbacks,
   plus a reflection-based regression test pinning the `CRYSTAL_` namespace.
-- **`verifyPlugin` muted for `TemplateWordInPluginName`** — "Fast Crystal Plugin" keeps the word
-  "Plugin" by council decision; the verifier's naming-style check is muted via `freeArgs`.
+- **Plugin renamed to "Fast Crystal"** — the IDE rejects descriptors whose
+  `<name>` contains the word "Plugin" ("Invalid plugin descriptor"), so local
+  installs from disk failed to load. The `TemplateWordInPluginName` verifier
+  mute is removed along with the old name.
 - **Removed dead lexer stub builder** — the 286-line `CrystalStubBuilder` and its
   `languageStubDefinition` registration were never invoked by the platform (verified with
   a file-write probe: zero calls during stub indexing; stubs come from `DefaultStubBuilder`).
