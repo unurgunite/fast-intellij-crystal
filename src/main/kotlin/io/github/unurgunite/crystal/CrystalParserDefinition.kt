@@ -23,7 +23,13 @@ class CrystalParserDefinition : ParserDefinition {
             object : IStubFileElementType<PsiFileStub<CrystalFile>>(CrystalLanguage) {
                 override fun getExternalId(): String = "crystal.FILE"
 
-                override fun getStubVersion(): Int = 2
+                // Bump on ANY grammar/lexer change that alters the stub tree shape.
+                // Stale stubs built by an older parser (or from older file bytes)
+                // fail live-index reconciliation with
+                // `UpToDateStubIndexMismatch: Stub count (7) doesn't match
+                // stubbed node length (12)` (e.g. io/delimited.cr, 2026-09).
+                // Version 3 forces a full stdlib reindex with the current parser.
+                override fun getStubVersion(): Int = 3
             }
     }
 

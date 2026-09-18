@@ -99,6 +99,12 @@ standard IDE features (P2–P3) come first:
 
 ## Done
 
+- Live-index `UpToDateStubIndexMismatch` (`Stub count (7) doesn't match
+  stubbed node length (12)`, e.g. `io/delimited.cr`): same-file parsing
+  proven deterministic (30/30 identical 12-node parses, so no grammar
+  nondeterminism); fixed by stub-version bump 2 → 3 forcing full reindex.
+  Rule: bump `getStubVersion()` on any grammar/lexer change altering stub
+  tree shape.
 - Scope-aware rename (35 tests in `CrystalRename{PsiNameIdentifierOwner,Resolve,BlockParameter}Test`;
   `PsiNameIdentifierOwner` on variable references/parameters/assignments; resolve promotion;
   `@`/`@@` prefix preserved; validator accepts prefixed identifiers).

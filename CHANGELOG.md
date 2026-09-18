@@ -29,6 +29,17 @@ All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be docume
   `type/` verbatim with zero outside callers; deleted, internal call sites use
   `CrystalMethodLookup` / `CrystalRecordLookup` / `psi.util` directly.
 
+### Fixed
+
+- **Stub index version 2 → 3 (forces full reindex)** — live indexing could
+  fail with `UpToDateStubIndexMismatch: Stub count (7) doesn't match stubbed
+  node length (12)` (e.g. `io/delimited.cr`) when the index held stubs built
+  by an older parser or from older file bytes. Same-file parsing is
+  deterministic (verified: 30/30 identical 12-node parses), so the fix is a
+  stub-version bump that discards stale stubs and rebuilds them with the
+  current parser. Rule going forward: bump `getStubVersion()` on any
+  grammar/lexer change that alters the stub tree shape.
+
 ## [1.0.1] — 2026-09-17
 
 ### Fixed
