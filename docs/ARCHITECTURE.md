@@ -1,4 +1,4 @@
-# Architecture — Fast Crystal Plugin (`io.github.unurgunite.crystal`)
+# Architecture — Fast Crystal (`io.github.unurgunite.crystal`)
 
 Module map and key pipelines. Behavioral specs live in `docs/specs/`
 ([index](specs/README.md)); point-in-time grammar reports in `docs/reports/`;
