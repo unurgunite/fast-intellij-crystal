@@ -91,6 +91,10 @@ object CrystalTypeInference {
      * - x = receiver.method → return type of method on the inferred receiver type
      * - x = method_name → return type (union) of top-level/enclosing method
      * Reassigned variables accumulate all candidate types (unions are preserved).
+     *
+     * Candidates come from [CrystalAssignmentIndex] (one cached walk per file
+     * version), not a fresh whole-file scan — inference recurses, and a fresh
+     * scan per level drowned the IDE on big files (`path.cr`).
      */
     private fun inferFromAssignmentList(
         name: String,
@@ -99,7 +103,7 @@ object CrystalTypeInference {
         depth: Int,
     ): List<String> {
         val containingFile = context.containingFile ?: return emptyList()
-        val assignments = PsiTreeUtil.collectElementsOfType(containingFile, CrystalAssignment::class.java)
+        val assignments = CrystalAssignmentIndex.assignmentsFor(containingFile, name)
         val results = mutableListOf<String>()
         for (assignment in assignments.reversed()) {
             results.addAll(inferFromSingleAssignment(assignment, name, context, project, depth))

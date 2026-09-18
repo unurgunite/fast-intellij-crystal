@@ -3,7 +3,10 @@ package io.github.unurgunite.crystal.highlighting
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
@@ -26,9 +29,7 @@ internal object CrystalHeredocValidation {
         val file = element.containingFile ?: return
 
         // Find the matching end delimiter
-        val endElement = findHeredocEndElement(file, delimiter)
-
-        if (endElement == null) {
+        if (!hasHeredocEndAfter(file, element.textOffset, delimiter)) {
             holder
                 .newAnnotation(
                     com.intellij.lang.annotation.HighlightSeverity.ERROR,
@@ -66,13 +67,49 @@ internal object CrystalHeredocValidation {
         }
     }
 
-    private fun findHeredocEndElement(
+    /**
+     * True when a HEREDOC_END with [delimiter] sits after [startOffset].
+     *
+     * End offsets are collected once per file version (dropped on any PSI
+     * change): the old code built the whole-file element list on EVERY
+     * heredoc start the annotator visited, freezing the IDE on files with
+     * many heredocs. Only offsets + delimiters are cached (no PSI), so the
+     * cache can never go stale. Ends before the start do not count — an end
+     * delimiter closes the nearest preceding unmatched start.
+     */
+    private fun hasHeredocEndAfter(
         file: PsiFile,
+        startOffset: Int,
         delimiter: String,
-    ): PsiElement? =
-        PsiTreeUtil.findChildrenOfType(file, PsiElement::class.java).find {
-            it.node.elementType == CrystalTypes.HEREDOC_END && it.text.trim() == delimiter
-        }
+    ): Boolean {
+        val ends =
+            CachedValuesManager.getCachedValue(file) {
+                CachedValueProvider.Result(collectHeredocEnds(file), PsiModificationTracker.MODIFICATION_COUNT)
+            }
+        return ends.any { it.offset > startOffset && it.delimiter == delimiter }
+    }
+
+    /** All HEREDOC_END tokens of [file] in document order (offsets only, no PSI). */
+    private fun collectHeredocEnds(file: PsiFile): List<HeredocEnd> {
+        val ends = ArrayList<HeredocEnd>()
+        file.accept(
+            object : PsiRecursiveElementWalkingVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    if (element.node?.elementType == CrystalTypes.HEREDOC_END) {
+                        ends.add(HeredocEnd(element.textOffset, element.text.trim()))
+                    }
+                    super.visitElement(element)
+                }
+            },
+        )
+        return ends
+    }
+
+    /** One heredoc end delimiter: document offset plus delimiter text. */
+    private data class HeredocEnd(
+        val offset: Int,
+        val delimiter: String,
+    )
 
     /**
      * Find the minimum indentation among content lines in the heredoc literal.

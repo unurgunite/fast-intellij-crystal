@@ -323,6 +323,38 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         assertTrue("Complete heredoc should not report missing delimiter", heredocErrors.isEmpty())
     }
 
+    fun testHeredocEndBeforeStartDoesNotCount() {
+        // An end delimiter lexically before the start must not satisfy it:
+        // the second heredoc has no closing TEST of its own.
+        myFixture.configureByText("test.cr", "a = <<-TEST\n  content\nTEST\nb = <<-TEST\n  orphan")
+        val highlights = myFixture.doHighlighting()
+        val errors = highlights.filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
+        val heredocErrors = errors.filter { it.description?.contains("Missing heredoc end delimiter") == true }
+        assertEquals("Unclosed second heredoc must report exactly one error", 1, heredocErrors.size)
+    }
+
+    fun testHeredocEndCacheInvalidatesAfterEdit() {
+        // The per-file end-delimiter scan is cached: closing the heredoc
+        // afterwards must clear the error, not serve the stale scan.
+        val file = myFixture.configureByText("test.cr", "a = <<-TEST\n  content")
+
+        fun missingEndCount(): Int {
+            val highlights = myFixture.doHighlighting()
+            return highlights.count {
+                it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR &&
+                    it.description?.contains("Missing heredoc end delimiter") == true
+            }
+        }
+        assertEquals(1, missingEndCount())
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+            myFixture.getDocument(file).setText("a = <<-TEST\n  content\nTEST")
+        }
+        com.intellij.psi.PsiDocumentManager
+            .getInstance(project)
+            .commitAllDocuments()
+        assertEquals(0, missingEndCount())
+    }
+
     fun testHeredocEndDelimiterIndentExceedsContent() {
         // Content has minimum indent of 2, but end delimiter is indented to 3
         myFixture.configureByText("test.cr", "a = <<-TEST\n  line1\n   line2\n   TEST")
