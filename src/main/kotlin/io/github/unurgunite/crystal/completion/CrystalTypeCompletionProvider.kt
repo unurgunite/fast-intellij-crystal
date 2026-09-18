@@ -175,33 +175,43 @@ object CrystalTypeCompletionProvider {
 
     /**
      * Returns LookupElements for stdlib types only (used in free-text completion when prefix is uppercase).
+     * Prioritized above the unprioritized index tail so basics surface instead of
+     * being buried past the lookup cap, but below scope items (own code wins).
      */
-    fun getStdlibTypeLookups(): List<LookupElementBuilder> =
+    fun getStdlibTypeLookups(): List<com.intellij.codeInsight.lookup.LookupElement> =
         STDLIB_TYPES.map { typeName ->
-            LookupElementBuilder
-                .create(typeName)
-                .withIcon(AllIcons.Nodes.Class)
-                .withTypeText("stdlib", true)
+            CrystalCompletionContributor.prioritizedLookup(
+                typeName,
+                AllIcons.Nodes.Class,
+                "stdlib",
+                CrystalCompletionContributor.PRIORITY_FREE_TEXT_TYPE,
+            )
         }
 
     /**
      * Returns LookupElements for all type completions in the given context.
      * Always includes hardcoded STDLIB_TYPES as baseline. When Crystal stdlib is indexed,
      * additional types from the index are added.
+     *
+     * Both groups are prioritized above the lookup cap cut (thousands of indexed
+     * symbols would otherwise bury them in empty-prefix completion); index names
+     * already covered by STDLIB_TYPES are skipped to avoid duplicate entries.
      */
     fun getTypeLookups(
         position: PsiElement,
         project: Project,
-    ): List<LookupElementBuilder> {
-        val result = mutableListOf<LookupElementBuilder>()
+    ): List<com.intellij.codeInsight.lookup.LookupElement> {
+        val result = mutableListOf<com.intellij.codeInsight.lookup.LookupElement>()
 
         // 1. Hardcoded stdlib types (always available, reliable baseline)
         for (typeName in STDLIB_TYPES) {
             result.add(
-                LookupElementBuilder
-                    .create(typeName)
-                    .withIcon(AllIcons.Nodes.Class)
-                    .withTypeText("stdlib", true),
+                CrystalCompletionContributor.prioritizedLookup(
+                    typeName,
+                    AllIcons.Nodes.Class,
+                    "stdlib",
+                    CrystalCompletionContributor.PRIORITY_STDLIB_TYPE,
+                ),
             )
         }
 
@@ -210,10 +220,12 @@ object CrystalTypeCompletionProvider {
         for (typeName in allTypes) {
             if (typeName !in STDLIB_TYPES) {
                 result.add(
-                    LookupElementBuilder
-                        .create(typeName)
-                        .withIcon(AllIcons.Nodes.Class)
-                        .withTypeText("project", true),
+                    CrystalCompletionContributor.prioritizedLookup(
+                        typeName,
+                        AllIcons.Nodes.Class,
+                        "project",
+                        CrystalCompletionContributor.PRIORITY_PROJECT_TYPE,
+                    ),
                 )
             }
         }
@@ -221,10 +233,12 @@ object CrystalTypeCompletionProvider {
         // 3. `self` if inside a class or struct
         if (isInsideClassOrStruct(position)) {
             result.add(
-                LookupElementBuilder
-                    .create("self")
-                    .withIcon(AllIcons.Nodes.Type)
-                    .withTypeText("current type", true),
+                CrystalCompletionContributor.prioritizedLookup(
+                    "self",
+                    AllIcons.Nodes.Type,
+                    "current type",
+                    CrystalCompletionContributor.PRIORITY_STDLIB_TYPE,
+                ),
             )
         }
 

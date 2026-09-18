@@ -101,6 +101,15 @@ class CrystalCompletionContributor : CompletionContributor() {
         internal const val PRIORITY_OWN_CLASS_METHOD = 30.0
         internal const val PRIORITY_SUPERCLASS_METHOD = 20.0
 
+        // Type names: above the unprioritized index tail (so stdlib basics are
+        // not buried past the lookup cap by thousands of indexed symbols),
+        // below scope items (locals/params/methods of the user's own code win
+        // in free text). Annotation context offers only types, so the split
+        // between stdlib basics and project types is just stable ordering.
+        internal const val PRIORITY_STDLIB_TYPE = 60.0
+        internal const val PRIORITY_PROJECT_TYPE = 55.0
+        internal const val PRIORITY_FREE_TEXT_TYPE = 15.0
+
         internal fun prioritizedLookup(
             name: String,
             icon: javax.swing.Icon,
