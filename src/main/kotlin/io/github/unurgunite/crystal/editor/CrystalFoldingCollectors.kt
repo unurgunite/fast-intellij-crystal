@@ -68,12 +68,21 @@ internal object CrystalFoldingCollectors {
                 startStack.add(OpenEntry(element, keywordFoldStart(elements, element, tokenType, i)))
             } else if (tokenType == CrystalTypes.END && startStack.isNotEmpty()) {
                 val entry = startStack.removeAt(startStack.lastIndex)
-                addIfMultiline(
-                    entries,
-                    entry.element,
-                    TextRange(entry.foldStartOffset, element.textRange.endOffset),
-                    document,
-                )
+                val foldEnd = element.textRange.endOffset
+                // The conditional fold-start scan looks for the first NEWLINE /
+                // THEN / SEMICOLON *after* the opener and can overshoot past this
+                // `end` (e.g. single-line `begin foo rescue bar end` has none of
+                // them in between). Such regions are single-line and never
+                // foldable — skip instead of building an inverted TextRange,
+                // which throws IllegalArgumentException in the folding pass.
+                if (entry.foldStartOffset < foldEnd) {
+                    addIfMultiline(
+                        entries,
+                        entry.element,
+                        TextRange(entry.foldStartOffset, foldEnd),
+                        document,
+                    )
+                }
             }
             i++
         }
