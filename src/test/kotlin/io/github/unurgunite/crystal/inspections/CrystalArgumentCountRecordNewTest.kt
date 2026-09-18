@@ -289,4 +289,24 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testRecordLookupInvalidatesAfterEdit() {
+        // The per-file record map is cached: replacing the record with a
+        // class must hide it from lookup, not serve the stale cached def.
+        val file = myFixture.configureByText("test.cr", "record Config, host : String\n")
+        assertNotNull(
+            io.github.unurgunite.crystal.type.CrystalRecordLookup
+                .findRecordDefinition("Config", file),
+        )
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+            myFixture.getDocument(file).setText("class Config\nend\n")
+        }
+        com.intellij.psi.PsiDocumentManager
+            .getInstance(project)
+            .commitAllDocuments()
+        assertNull(
+            io.github.unurgunite.crystal.type.CrystalRecordLookup
+                .findRecordDefinition("Config", myFixture.file),
+        )
+    }
 }

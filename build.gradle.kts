@@ -120,6 +120,13 @@ tasks {
     // is read into a plain val so the closure captures no Project reference.
     val goldenOnly = providers.gradleProperty("goldenOnly").orNull == "true"
     named<Test>("test") {
+        // Test outcomes depend on ambient state the build cache cannot see:
+        // the StubIndex hash slice (which symbols survive the lookup cap) and
+        // the installed Crystal toolchain (stdlib contents). Replaying a
+        // "green" cached result from a different environment hid real,
+        // deterministic failures (completion priorities, 2026-09). Always
+        // execute; never serve Test results from the build cache.
+        outputs.cacheIf { false }
         doFirst {
             filter {
                 if (goldenOnly) {
@@ -141,6 +148,9 @@ val defaultTest = tasks.named<Test>("test")
 
 fun Test.stdlibTool(name: String) {
     group = "stdlib"
+    // Same no-cache rule as the main suite: results depend on the installed
+    // toolchain (stdlib contents), which the build cache cannot see.
+    outputs.cacheIf { false }
     val dt = defaultTest.get()
     testClassesDirs = dt.testClassesDirs
     classpath = dt.classpath

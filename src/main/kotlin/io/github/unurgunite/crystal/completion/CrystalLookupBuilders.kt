@@ -6,8 +6,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
-import io.github.unurgunite.crystal.psi.CrystalParameter
-import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
 
 /**
@@ -16,22 +14,6 @@ import io.github.unurgunite.crystal.type.CrystalMethodLookup
  */
 object CrystalLookupBuilders {
     /**
-     * Formats the parameter list of a method as a string like "(a, b, c)".
-     *
-     * Canonical implementation lives in [CrystalMethodLookup]; this delegate
-     * stays for binary/source compatibility of existing callers.
-     */
-    fun getParameterSignature(method: CrystalMethodDefinition): String = CrystalMethodLookup.getParameterSignature(method)
-
-    /**
-     * Returns the return type annotation of a method, or null.
-     *
-     * Canonical implementation lives in [CrystalMethodLookup]; this delegate
-     * stays for binary/source compatibility of existing callers.
-     */
-    fun getReturnType(method: CrystalMethodDefinition): String? = CrystalMethodLookup.getReturnType(method)
-
-    /**
      * Builds a LookupElement for a method.
      */
     fun buildMethodLookup(
@@ -39,9 +21,9 @@ object CrystalLookupBuilders {
         priority: Double = 0.0,
     ): LookupElement {
         method.name ?: return LookupElementBuilder.create("")
-        val signature = getParameterSignature(method)
+        val signature = CrystalMethodLookup.getParameterSignature(method)
         val className = CrystalMethodLookup.getEnclosingClassName(method)
-        val returnType = getReturnType(method)
+        val returnType = CrystalMethodLookup.getReturnType(method)
 
         var builder =
             LookupElementBuilder
@@ -92,7 +74,7 @@ object CrystalLookupBuilders {
         currentFile: PsiFile? = null,
     ): LookupElementBuilder {
         val initMethod = CrystalMethodLookup.getInitializeMethod(className, project, currentFile)
-        val signature = if (initMethod != null) getParameterSignature(initMethod) else "()"
+        val signature = if (initMethod != null) CrystalMethodLookup.getParameterSignature(initMethod) else "()"
         val tailText = if (signature == "()") "" else signature
 
         return LookupElementBuilder
@@ -101,18 +83,4 @@ object CrystalLookupBuilders {
             .withTailText(tailText, true)
             .withTypeText(className, true)
     }
-
-    /**
-     * Extracts the parameter name from a [CrystalParameter] node.
-     * Handles both normal parameters (`radius`) and shorthand instance
-     * variable assignment (`@radius`) — the `@` prefix is stripped.
-     *
-     * Canonical implementation lives in `psi.util.extractParameterName`;
-     * this delegate stays for binary/source compatibility of existing callers.
-     *
-     * @return the parameter name, or `null` if the parameter is a splat/block prefix
-     */
-    fun extractParameterName(param: CrystalParameter): String? =
-        io.github.unurgunite.crystal.psi.util
-            .extractParameterName(param)
 }

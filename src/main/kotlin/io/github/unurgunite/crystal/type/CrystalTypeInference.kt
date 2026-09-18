@@ -49,6 +49,13 @@ object CrystalTypeInference {
         depth: Int = 0,
     ): List<String> {
         if (depth > MAX_INFERENCE_DEPTH) return emptyList()
+        // `@`-prefixed queries never match parameters by exact name (the
+        // shorthand strip only fires from the param side), so consult declared
+        // ivar types first; assignments still follow through the index below.
+        if (variableName.trimStart().startsWith("@")) {
+            val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
+            if (declared.isNotEmpty()) return declared
+        }
         val paramType = inferFromParameter(variableName, context)
         if (paramType != null) return paramType
         val assignTypes = inferFromAssignmentList(variableName, context, project, depth)
@@ -91,6 +98,10 @@ object CrystalTypeInference {
      * - x = receiver.method → return type of method on the inferred receiver type
      * - x = method_name → return type (union) of top-level/enclosing method
      * Reassigned variables accumulate all candidate types (unions are preserved).
+     *
+     * Candidates come from [CrystalAssignmentIndex] (one cached walk per file
+     * version), not a fresh whole-file scan — inference recurses, and a fresh
+     * scan per level drowned the IDE on big files (`path.cr`).
      */
     private fun inferFromAssignmentList(
         name: String,
@@ -99,7 +110,7 @@ object CrystalTypeInference {
         depth: Int,
     ): List<String> {
         val containingFile = context.containingFile ?: return emptyList()
-        val assignments = PsiTreeUtil.collectElementsOfType(containingFile, CrystalAssignment::class.java)
+        val assignments = CrystalAssignmentIndex.assignmentsFor(containingFile, name)
         val results = mutableListOf<String>()
         for (assignment in assignments.reversed()) {
             results.addAll(inferFromSingleAssignment(assignment, name, context, project, depth))
@@ -135,6 +146,7 @@ object CrystalTypeInference {
         inferFromScalarOrControlFlow(expr)?.let { return it }
         CrystalLiteralTypeInference.inferFromCollectionShape(expr)?.let { return it }
         inferFromDottedCall(expr, project, depth)?.let { return it }
+        inferFromIvarRef(expr, project, depth)?.let { return it }
         return inferFromBareCall(expr, project)
     }
 
@@ -221,4 +233,24 @@ object CrystalTypeInference {
         if (!methodName[0].isLowerCase()) return emptyList()
         return inferReturnTypeOfMethodList(methodName, null, project)
     }
+}
+
+/**
+ * `@ivar` / `@@cvar` reference: declared types first (shorthand params,
+ * property declarations), then `@ivar = expr` assignments. Ivar-shaped
+ * text returns a list (possibly empty = unknown, no guessing); null when
+ * the text is not an ivar at all, so other shapes still fall through.
+ *
+ * File-level (not a member) to keep the object above under detekt's
+ * TooManyFunctions budget — same pattern as the matchers in
+ * CrystalDotCallReference.kt.
+ */
+private fun inferFromIvarRef(
+    expr: PsiElement,
+    project: Project,
+    depth: Int,
+): List<String>? {
+    val text = expr.text.trim()
+    if (!CrystalInstanceVarTypeInference.isIvarRef(text)) return null
+    return CrystalInstanceVarTypeInference.inferIvarType(text, expr, project, depth)
 }

@@ -7,6 +7,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
+import io.github.unurgunite.crystal.type.CrystalInstanceVarTypeInference
 import io.github.unurgunite.crystal.type.CrystalTypeInference
 
 /**
@@ -54,12 +55,13 @@ internal object CrystalDotCallReceiver {
         return receiverFromElement(prev, element.project)
     }
 
-    /** Receiver from a non-namespace element: CONSTANT, identifier (inferred), `self`, or literal. */
+    /** Receiver from a non-namespace element: CONSTANT, ivar, identifier (inferred), `self`, or literal. */
     private fun receiverFromElement(
         prev: PsiElement,
         project: com.intellij.openapi.project.Project,
     ): ReceiverInfo? {
         constantReceiver(prev)?.let { return it }
+        ivarReceiver(prev, project)?.let { return it }
         if (isIdentifierReceiver(prev)) return inferredIdentifierReceiver(prev, project)
         if (prev.node?.elementType == CrystalTypes.SELF) return selfReceiver(prev)
         return literalReceiver(prev)
@@ -89,6 +91,24 @@ internal object CrystalDotCallReceiver {
         val varName = prev.text
         val inferredTypes = CrystalTypeInference.inferTypeList(varName, prev, project)
         return ReceiverInfo(inferredTypes, isStatic = false, rawName = varName)
+    }
+
+    /**
+     * `@ivar` / `@@cvar` receiver (e.g. `@name.empty?`): typed from the ivar's
+     * declaration (`initialize(@name : String)`, `@name : String`), then from
+     * `@ivar = expr` assignments. Checked before the IDENTIFIER path — an
+     * ivar-access composite may carry an IDENTIFIER leaf inside, which would
+     * otherwise misroute it through plain-local inference.
+     */
+    private fun ivarReceiver(
+        prev: PsiElement,
+        project: com.intellij.openapi.project.Project,
+    ): ReceiverInfo? {
+        if (!CrystalInstanceVarTypeInference.isIvarAccess(prev)) return null
+        val rawName = prev.text.trim()
+        if (!CrystalInstanceVarTypeInference.isIvarRef(rawName)) return null
+        val inferredTypes = CrystalInstanceVarTypeInference.inferIvarType(rawName, prev, project, 0)
+        return ReceiverInfo(inferredTypes, isStatic = false, rawName = rawName)
     }
 
     /**

@@ -2,6 +2,78 @@
 
 All notable changes to the Fast Crystal Plugin for JetBrains IDEs will be documented in this file.
 
+## [1.1.0] — Unreleased
+
+### Added
+
+- **Implement Members (Code → Generate)** — new `generation/` package with
+  `CrystalImplementMethodsHandler` registered via
+  `com.intellij.codeInsight.implementMethod`: discovers unimplemented
+  `abstract def` methods across the ancestor chain (superclass + includes,
+  nearest-concrete-wins, name + arity identity) and generates stubs raising
+  `NotImplementedError` with copied signatures (params, return type, forall).
+  Macro-generated names are skipped. Covered by
+  `CrystalImplementMembersTest` (11 tests).
+- **Inlay Hints (Settings → Editor → Inlay Hints → Crystal)** — new `inlay/`
+  package with `CrystalInlayHintsProvider` on the declarative (stateless)
+  API: inferred local-variable types render as `: Type` after unannotated
+  assignments (`x = 1` → `: Int32`), reusing `CrystalTypeInference`. Skips
+  annotated names, `@ivar`s, `Nil`, and nested RHS assignments. Covered by
+  `CrystalInlayHintsTest` (11 tests, incl. factory wiring).
+
+### Removed
+
+- **Thin `completion/` delegates** — `LookupBuilders.getParameterSignature` /
+  `getReturnType` / `extractParameterName` and
+  `RecordCompletion.findRecordDefinition` / `extractRecordFields` forwarded to
+  `type/` verbatim with zero outside callers; deleted, internal call sites use
+  `CrystalMethodLookup` / `CrystalRecordLookup` / `psi.util` directly.
+
+### Fixed
+
+- **Stub index version 2 → 3 (forces full reindex)** — live indexing could
+  fail with `UpToDateStubIndexMismatch: Stub count (7) doesn't match stubbed
+  node length (12)` (e.g. `io/delimited.cr`) when the index held stubs built
+  by an older parser or from older file bytes. Same-file parsing is
+  deterministic (verified: 30/30 identical 12-node parses), so the fix is a
+  stub-version bump that discards stale stubs and rebuilds them with the
+  current parser. Rule going forward: bump `getStubVersion()` on any
+  grammar/lexer change that alters the stub tree shape.
+- **Resolve-path freezes on big files** — type inference re-walked the whole
+  file for assignments on every (recursive) call, so Ctrl+click on e.g.
+  `name.starts_with?` in `path.cr` drowned the IDE in nested file walks
+  ("Resolving reference" + memory blowup). Assignments are now indexed once
+  per file version (`CrystalAssignmentIndex`, `CachedValuesManager` +
+  `MODIFICATION_COUNT`); the same caching was applied to `record` lookup
+  (runs on every `.new`) and heredoc end-delimiter search (runs on every
+  heredoc start; also fixed: an end delimiter *before* the start no longer
+  falsely satisfies the check).
+- **Stdlib type completion buried past the lookup cap** — unprioritized type
+  lookups drowned among thousands of indexed symbols, so `String`/`Int32`/
+  `Nil`/`self` vanished from empty-prefix completion on machines with an
+  indexed stdlib while CI (small ambient index) stayed green. Type lookups
+  are now explicitly prioritized (stdlib basics 60, project types 55, free
+  text 15 — own scope items still win).
+- **Go to Definition on calls through ivar-aliased locals** — `name = @name`
+  (the `path.cr` shape, `@name` typed by `initialize(@name : String)`) left
+  the local untyped, so `name.starts_with?(...)` never resolved and `@name`
+  itself had no type either. New `CrystalInstanceVarTypeInference` indexes
+  `@`-shorthand parameters and property declarations once per file version
+  (qualified `Type#ivar` keys) with `@ivar = expr` assignments as fallback;
+  both DOT-call receivers and the expression resolver consult it. Covered by
+  inference tests (shorthand param, property, assignment, plain-param guard)
+  and resolve tests landing in `string.cr`.
+
+### Changed
+
+- **CI can no longer stay green on broken tests** — `Test` tasks never serve
+  results from the build cache (`outputs.cacheIf { false }`: outcomes depend
+  on ambient StubIndex slices and the installed toolchain, which the cache
+  cannot see), and a new test-count guard step fails the job when fewer than
+  500 tests actually ran or any failure/error is present. Covered by
+  environment-independent priority regression tests (provider-level priority
+  asserts + a synthetic 700-class flooded-index fixture test).
+
 ## [1.0.1] — 2026-09-17
 
 ### Fixed

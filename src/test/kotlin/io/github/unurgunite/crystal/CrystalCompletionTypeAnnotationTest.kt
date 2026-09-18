@@ -1,7 +1,10 @@
 package io.github.unurgunite.crystal
 
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import io.github.unurgunite.crystal.completion.CrystalTypeCompletionProvider
 
 /**
  * Tests for CrystalCompletionContributor: type annotations, class body, annotations and def overrides.
@@ -395,4 +398,77 @@ class CrystalCompletionTypeAnnotationTest : BasePlatformTestCase() {
         val names = lookups.map { it.lookupString }
         assertTrue("Should contain Int32", names.contains("Int32"))
     }
+
+    // ==================== Priority regression (deterministic, env-independent) ===
+
+    /**
+     * Stdlib basics must carry explicit priority above the unprioritized index
+     * tail — asserted on the provider output directly, so the result cannot
+     * depend on ambient StubIndex state or the 500-item lookup cap.
+     *
+     * Regression: with a flooded index (dev machine with stdlib indexed) the
+     * unprioritized basics drowned past the cap — `String`/`Int32`/`Nil`
+     * vanished from empty-prefix completion — while CI (different hash slice)
+     * stayed green. Priorities make the outcome identical everywhere.
+     */
+    fun testTypeLookupsPrioritizeStdlibBasics() {
+        myFixture.configureByText("main.cr", "def foo(x : Int32)\nend\n")
+        val priorities =
+            CrystalTypeCompletionProvider
+                .getTypeLookups(myFixture.file, project)
+                .associate { it.lookupString to priorityOf(it) }
+        for (basic in listOf("String", "Int32", "Nil", "Bool", "Array", "Hash", "Float64")) {
+            val priority = priorities[basic]
+            assertNotNull("stdlib basic $basic must be offered", priority)
+            assertTrue(
+                "stdlib basic $basic must be prioritized above the index tail, got $priority",
+                priority!! > 0.0,
+            )
+        }
+    }
+
+    /** Project types sort below stdlib basics (stable ordering, no duplicates). */
+    fun testTypeLookupsOrderProjectTypesBelowStdlib() {
+        myFixture.addFileToProject("apfel.cr", "class Apfel\nend\n")
+        myFixture.configureByText("main.cr", "def foo(x : Int32)\nend\n")
+        val lookups = CrystalTypeCompletionProvider.getTypeLookups(myFixture.file, project)
+        val priorities = lookups.associate { it.lookupString to priorityOf(it) }
+        val apfel = priorities["Apfel"]
+        assertNotNull("project type Apfel must be offered", apfel)
+        assertTrue("project type Apfel must be prioritized, got $apfel", apfel!! > 0.0)
+        val string = priorities["String"]
+        assertNotNull("stdlib basic String must be offered", string)
+        assertTrue("stdlib basics must sort above project types ($string vs $apfel)", string!! >= apfel)
+        assertEquals(
+            "duplicate type names must not be offered twice",
+            lookups.size,
+            lookups.map { it.lookupString }.toSet().size,
+        )
+    }
+
+    /**
+     * Black-box twin of the priority tests: floods the project index past the
+     * lookup cap with synthetic classes, then asserts the basics still surface
+     * through real fixture completion. Simulates the flooded dev-machine state
+     * inside CI, where the ambient index is small.
+     */
+    fun testTypeAnnotationSurvivesFloodedIndex() {
+        val flood = (0 until 700).joinToString("\n") { "class Flood$it\nend" }
+        myFixture.addFileToProject("flood.cr", flood)
+        myFixture.configureByText(
+            "main.cr",
+            """
+            def foo(x : <caret>)
+            end
+            """.trimIndent(),
+        )
+        val lookups = myFixture.complete(CompletionType.BASIC)
+        assertNotNull("Should return completions with flooded index", lookups)
+        val names = lookups.map { it.lookupString }
+        assertTrue("Should contain String with flooded index", names.contains("String"))
+        assertTrue("Should contain Int32 with flooded index", names.contains("Int32"))
+        assertTrue("Should contain Nil with flooded index", names.contains("Nil"))
+    }
+
+    private fun priorityOf(element: LookupElement): Double = (element as? PrioritizedLookupElement<*>)?.priority ?: 0.0
 }

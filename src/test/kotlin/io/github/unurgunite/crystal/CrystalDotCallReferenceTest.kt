@@ -415,4 +415,46 @@ class CrystalDotCallReferenceTest : BasePlatformTestCase() {
         val resolved = (stringRef.reference as CrystalReference).resolve()
         assertNotNull("String should resolve to a stdlib class definition", resolved)
     }
+
+    // ==================== ivar receivers (the path.cr starts_with? case) ====================
+
+    fun testIvarReceiverResolvesStdlibMethod() {
+        // `@name` typed by `initialize(@name : String)`: `@name.empty?` must
+        // land on String#empty? in string.cr.
+        val resolved =
+            resolveAtCaret(
+                """
+                class Path
+                  def initialize(@name : String)
+                  end
+                  def show
+                    @name.emp<caret>ty?
+                  end
+                end
+                """.trimIndent(),
+            )
+        assertNotNull("@name.empty? should resolve to String#empty?", resolved)
+        val vfile = resolved!!.containingFile.virtualFile
+        assertEquals("String#empty? should land in string.cr", "string.cr", vfile.name)
+    }
+
+    fun testLocalAliasingShorthandParamResolvesStdlibMethod() {
+        // The exact `path.cr` shape: `name = @name` with `@name` typed by the
+        // `@`-shorthand parameter, then `name.starts_with?(...)` — must land
+        // on String#starts_with? in string.cr.
+        val resolved =
+            resolveAtCaret(
+                """
+                class Path
+                  def expand(@name : String)
+                    name = @name
+                    name.starts_with<caret>?
+                  end
+                end
+                """.trimIndent(),
+            )
+        assertNotNull("name.starts_with? should resolve to String#starts_with?", resolved)
+        val vfile = resolved!!.containingFile.virtualFile
+        assertEquals("String#starts_with? should land in string.cr", "string.cr", vfile.name)
+    }
 }

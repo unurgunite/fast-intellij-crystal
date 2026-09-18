@@ -41,6 +41,29 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
         assertTrue(foldRanges("def foo; end\n").isEmpty())
     }
 
+    fun testSingleLineBeginExpressionDoesNotThrow() {
+        // Regression: the conditional fold-start scan (first NEWLINE / THEN /
+        // SEMICOLON after the opener) overshoots past `end` when no terminator
+        // sits in between. With trailing content after `end` (`# c`), the
+        // found NEWLINE starts strictly after `end`, building an inverted
+        // TextRange that threw IllegalArgumentException from the folding pass.
+        assertTrue(foldRanges("x = begin y end # c\n").isEmpty())
+        assertTrue(foldRanges("x = begin y end   \n").isEmpty())
+    }
+
+    fun testSingleLineWhileDoDoesNotThrow() {
+        // Same overshoot via `while x do y end`: no NEWLINE/THEN/SEMICOLON
+        // between WHILE and END, trailing comment pushes the NEWLINE past `end`.
+        assertTrue(foldRanges("while x do y end # c\n").isEmpty())
+    }
+
+    fun testSingleLineBeginInsideMultilineIfFoldsOuter() {
+        // The inner single-line begin/end is skipped, the outer `if` still folds.
+        val lines = foldLines("if x then y\n  z = begin w end\nend\n")
+        assertEquals(1, lines.size)
+        assertTrue("if fold 0->2 in $lines", (0 to 2) in lines)
+    }
+
     fun testDoBlockFolds() {
         val ranges = foldRanges("items.each do |x|\n  puts x\nend\n")
         assertEquals(1, ranges.size)
