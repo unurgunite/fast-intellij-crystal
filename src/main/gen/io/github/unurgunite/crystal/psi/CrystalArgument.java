@@ -28,7 +28,7 @@ public interface CrystalArgument extends PsiElement {
   @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
 
-  @Nullable
-  CrystalTypeReference getTypeReference();
+  @NotNull
+  List<CrystalTypeReference> getTypeReferenceList();
 
 }

@@ -106,6 +106,12 @@
 ]]></description>
 
     <change-notes><![CDATA[
+<h3>1.2.0</h3>
+<ul>
+  <li><b>Parser fixes for real-world code</b> — named tuples with nullable types as call arguments, `@[...]` annotations before methods, nested `%()` literals inside string interpolation</li>
+  <li><b>`::`-rooted paths resolve from root</b> — leading `::` no longer resolves to a shadowing local type</li>
+</ul>
+
 <h3>1.1.0</h3>
 <ul>
   <li><b>Implement Members</b> — generate stubs for unimplemented abstract methods (Code → Generate)</li>

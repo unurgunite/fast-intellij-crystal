@@ -34,6 +34,25 @@ class CrystalDotCallReceiverTest : BasePlatformTestCase() {
         assertTrue(info!!.isStatic)
         assertEquals(listOf("Inner"), info.classNames)
         assertEquals("Outer::Inner", info.qualifiedName)
+        assertFalse("Relative path must not be global", info.isGlobal)
+    }
+
+    fun testRootedNamespaceReceiverIsGlobal() {
+        val info = receiverAtCaret("::Outer::Inner.r<caret>un")
+        assertNotNull(info)
+        assertTrue(info!!.isStatic)
+        assertEquals(listOf("Inner"), info.classNames)
+        assertEquals("Outer::Inner", info.qualifiedName)
+        assertTrue("Leading :: must mark the receiver global", info.isGlobal)
+    }
+
+    fun testLoneRootedReceiverIsGlobal() {
+        val info = receiverAtCaret("::Apfel.tan<caret>zen")
+        assertNotNull(info)
+        assertTrue(info!!.isStatic)
+        assertEquals(listOf("Apfel"), info.classNames)
+        assertEquals("Apfel", info.qualifiedName)
+        assertTrue("Lone leading :: must mark the receiver global", info.isGlobal)
     }
 
     fun testIdentifierReceiverInfersType() {

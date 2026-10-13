@@ -9142,7 +9142,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | decl_type_value | expression)
+  // (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression)
   static boolean named_argument(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "named_argument")) return false;
     boolean result_, pinned_;
@@ -9173,12 +9173,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // macro_arg_splice | macro_control | decl_type_value | expression
+  // macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression
   private static boolean named_argument_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "named_argument_3")) return false;
     boolean result_;
     result_ = macro_arg_splice(builder_, level_ + 1);
     if (!result_) result_ = macro_control(builder_, level_ + 1);
+    if (!result_) result_ = named_tuple_type_value(builder_, level_ + 1);
     if (!result_) result_ = decl_type_value(builder_, level_ + 1);
     if (!result_) result_ = expression(builder_, level_ + 1);
     return result_;
@@ -9251,6 +9252,47 @@ public class CrystalParser implements PsiParser, LightPsiParser {
       if (!empty_element_parsed_guard_(builder_, "named_bare_value_2_1", pos_)) break;
     }
     return true;
+  }
+
+  /* ********************************************************** */
+  // LBRACE NLS type_reference (NLS COMMA NLS type_reference)* NLS RBRACE
+  static boolean named_tuple_type_value(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_tuple_type_value")) return false;
+    if (!nextTokenIs(builder_, LBRACE)) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = consumeToken(builder_, LBRACE);
+    result_ = result_ && NLS(builder_, level_ + 1);
+    result_ = result_ && type_reference(builder_, level_ + 1);
+    result_ = result_ && named_tuple_type_value_3(builder_, level_ + 1);
+    result_ = result_ && NLS(builder_, level_ + 1);
+    result_ = result_ && consumeToken(builder_, RBRACE);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // (NLS COMMA NLS type_reference)*
+  private static boolean named_tuple_type_value_3(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_tuple_type_value_3")) return false;
+    while (true) {
+      int pos_ = current_position_(builder_);
+      if (!named_tuple_type_value_3_0(builder_, level_ + 1)) break;
+      if (!empty_element_parsed_guard_(builder_, "named_tuple_type_value_3", pos_)) break;
+    }
+    return true;
+  }
+
+  // NLS COMMA NLS type_reference
+  private static boolean named_tuple_type_value_3_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_tuple_type_value_3_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = NLS(builder_, level_ + 1);
+    result_ = result_ && consumeToken(builder_, COMMA);
+    result_ = result_ && NLS(builder_, level_ + 1);
+    result_ = result_ && type_reference(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
   }
 
   /* ********************************************************** */

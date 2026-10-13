@@ -8,6 +8,7 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
 import io.github.unurgunite.crystal.psi.CrystalTypes
@@ -26,6 +27,11 @@ import io.github.unurgunite.crystal.stubs.CrystalClassIndex
  *
  * The fallback to the simple name handles lexically-nested classes (e.g. `class A; class B; end; end`)
  * where `CrystalClassIndex` is keyed by the simple name `"B"`, not the full path.
+ *
+ * A rooted path (leading `::`, e.g. `::DB` inside `module DB`) resolves from the
+ * project root + stdlib only: lexically-enclosing types with the same simple name
+ * must NOT match. When no root candidate exists (e.g. an unindexed shard under
+ * `lib/`, which StubIndex never sees), resolution returns null — no false jump.
  */
 class CrystalNamespaceReference(
     element: PsiElement,
@@ -37,8 +43,11 @@ class CrystalNamespaceReference(
         val project = element.project
         val scope = GlobalSearchScope.allScope(project)
         val fullName = buildFullName()
+        val isGlobal = isRooted()
 
-        // 1. Try full path first (for namespace-defined classes: `class A::B`)
+        // 1. Try full path first (for namespace-defined classes: `class A::B`).
+        //    Rooted paths skip local candidates (see [isLocalCandidate]); a lone
+        //    rooted name (`::Foo`) additionally takes top-level candidates only.
         val byFullName =
             StubIndex.getElements(
                 CrystalClassIndex.KEY,
@@ -47,7 +56,7 @@ class CrystalNamespaceReference(
                 scope,
                 CrystalNamedElement::class.java,
             )
-        if (byFullName.isNotEmpty()) return byFullName.first()
+        firstNonLocal(byFullName, isGlobal, fullName == simpleName)?.let { return it }
 
         // 2. Fall back to filtered simple-name lookup (for lexically-nested classes).
         //    Filter by qualified name to disambiguate: Foo::Sub vs Bar::Sub.
@@ -63,22 +72,28 @@ class CrystalNamespaceReference(
             val filtered =
                 candidates
                     .filter { candidate ->
-                        CrystalPsiUtils.buildQualifiedName(candidate) == fullName
+                        CrystalPsiUtils.buildQualifiedName(candidate) == fullName &&
+                            (!isGlobal || !isLocalCandidate(candidate))
                     }.firstOrNull()
             if (filtered != null) return filtered
         }
 
-        // 3. Simple name only (e.g., `::Foo` — no preceding path)
-        val simple =
-            StubIndex
-                .getElements(
-                    CrystalClassIndex.KEY,
-                    simpleName,
-                    project,
-                    scope,
-                    CrystalNamedElement::class.java,
-                ).firstOrNull()
-        if (simple != null) return simple
+        // 3. Simple name only (e.g., `::Foo` — no preceding path). Rooted paths
+        //    take only top-level, non-local candidates: `::DB` inside `module DB`
+        //    must not land on the enclosing module, and `::String` must not land
+        //    on a nested `M::String`. Unindexed shards (`lib/` is not indexed)
+        //    yield no candidate → null, no false jump.
+        firstNonLocal(
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                simpleName,
+                project,
+                scope,
+                CrystalNamedElement::class.java,
+            ),
+            isGlobal,
+            requireTopLevel = fullName == simpleName,
+        )?.let { return it }
 
         // 4. Stdlib fallback. Constants (e.g. `Crystal::VERSION`) and macros are not in
         //    the StubIndex (their roots live under an internal SyntheticLibrary scope), so
@@ -87,6 +102,42 @@ class CrystalNamespaceReference(
         val stdlibFull = CrystalReference.resolveStdlibSymbol(project, fullName)
         if (stdlibFull != null) return stdlibFull
         return CrystalReference.resolveStdlibSymbol(project, simpleName)
+    }
+
+    /**
+     * First candidate, or — for rooted paths — the first candidate that is not
+     * local to the reference site. For a lone rooted name (`::Foo`,
+     * [requireTopLevel]) only top-level candidates qualify: a nested `M::Foo`
+     * is never the root `Foo`. Null when nothing qualifies (e.g. the target
+     * lives in an unindexed shard).
+     */
+    private fun firstNonLocal(
+        candidates: Collection<CrystalNamedElement>,
+        isGlobal: Boolean,
+        requireTopLevel: Boolean = false,
+    ): CrystalNamedElement? {
+        if (candidates.isEmpty()) return null
+        if (!isGlobal) return candidates.first()
+        return candidates.firstOrNull { !isLocalCandidate(it) && (!requireTopLevel || isTopLevel(it)) }
+    }
+
+    /** True when [candidate] is defined at the project root (no enclosing type). */
+    private fun isTopLevel(candidate: PsiElement): Boolean = CrystalPsiUtils.getEnclosingType(candidate.parent) == null
+
+    /**
+     * True when [candidate] (or one of its enclosing types) lexically encloses
+     * the reference site: e.g. `module DB` enclosing a `::DB` usage, or the
+     * `class Database` nested in it enclosing a `::DB::Database` usage.
+     * Rooted paths must skip such candidates and resolve from the project
+     * root + stdlib instead.
+     */
+    private fun isLocalCandidate(candidate: PsiElement): Boolean {
+        var current: PsiElement? = candidate
+        while (current != null) {
+            if (PsiTreeUtil.isAncestor(current, element, false)) return true
+            current = CrystalPsiUtils.getEnclosingType(current.parent)
+        }
+        return false
     }
 
     /**
@@ -105,6 +156,18 @@ class CrystalNamespaceReference(
         }
 
         return parts.joinToString("::")
+    }
+
+    /**
+     * True when the path is rooted (leading `::`): the chain head is a
+     * [CrystalNamespaceAccess] or nothing precedes (lone `::Foo`). A
+     * [CrystalVariableReference] head (`Foo` in `Foo::Sub`) is relative.
+     * Every `::Seg` is its own `namespace_access` composite (grammar:
+     * `namespace_access ::= DOUBLE_COLON CONSTANT`).
+     */
+    private fun isRooted(): Boolean {
+        val head = chainHead(element.prevSibling)
+        return head !is CrystalVariableReference
     }
 
     /**
@@ -157,3 +220,23 @@ class CrystalNamespaceReference(
         }
     }
 }
+
+/**
+ * Leftmost namespace-chain segment from [start], skipping whitespace.
+ * Null when nothing precedes (lone `::Foo`) or at any non-namespace element.
+ */
+private fun chainHead(start: PsiElement?): PsiElement? {
+    var current = start
+    var head: PsiElement? = null
+    while (current != null && (isSkipped(current) || isChainSegment(current))) {
+        if (isChainSegment(current)) head = current
+        current = current.prevSibling
+    }
+    return head
+}
+
+/** Whitespace between namespace segments — skipped, never a chain head. */
+private fun isSkipped(element: PsiElement): Boolean = element is PsiWhiteSpace || element.node?.elementType == CrystalTypes.NEWLINE
+
+/** One `::Seg` of the chain: a namespace_access or the leading variable reference. */
+private fun isChainSegment(element: PsiElement): Boolean = element is CrystalNamespaceAccess || element is CrystalVariableReference

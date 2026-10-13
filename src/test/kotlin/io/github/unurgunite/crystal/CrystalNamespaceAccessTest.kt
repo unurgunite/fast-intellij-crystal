@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal
 
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -7,8 +8,18 @@ import io.github.unurgunite.crystal.psi.CrystalClassDefinition
 import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalNamespaceAccess
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
+import io.github.unurgunite.crystal.sdk.CrystalStdlibResolver
 
 class CrystalNamespaceAccessTest : BasePlatformTestCase() {
+    override fun setUp() {
+        super.setUp()
+        // Rooted-resolution tests reach the stdlib (e.g. `::String` → string.cr),
+        // which lives outside the test VFS sandbox — allow read access.
+        CrystalStdlibResolver.resolveStdlibPath(project)?.path?.let {
+            VfsRootAccess.allowRootAccess(testRootDisposable, it)
+        }
+    }
+
     private fun resolveAtCaret(code: String): PsiElement? {
         myFixture.configureByText("test.cr", code)
         val leaf = myFixture.file.findElementAt(myFixture.caretOffset) ?: return null
@@ -182,5 +193,75 @@ class CrystalNamespaceAccessTest : BasePlatformTestCase() {
         assertNotNull("A::B::C should resolve to C inside B inside A", resolved)
         assertTrue("Should resolve to CrystalClassDefinition", resolved is CrystalClassDefinition)
         assertEquals("C", (resolved as CrystalClassDefinition).name)
+    }
+
+    // ==================== Rooted (::) vs relative paths ====================
+
+    fun testRootedStringResolvesFromRoot() {
+        // `::String` is rooted: the nested `M::String` must NOT match — resolution
+        // falls through to the stdlib `String` (string.cr).
+        val resolved =
+            resolveAtCaret(
+                """
+                module M
+                  class String
+                  end
+                end
+                ::<caret>String
+                """.trimIndent(),
+            )
+        assertNotNull("::String should resolve from the project root / stdlib", resolved)
+        val vfile = resolved!!.containingFile.virtualFile
+        assertEquals("::String must land in string.cr, not ${vfile.path}", "string.cr", vfile.name)
+    }
+
+    fun testRootedDbInsideLocalModuleDoesNotResolveLocally() {
+        // `module DB` shadows the `db` shard's `DB`; `lib/` is not indexed, so
+        // the rooted `::DB` has no root candidate → null, never the local module.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                module DB
+                  ::<caret>DB
+                end
+                """.trimIndent(),
+            )
+        val leaf = myFixture.file.findElementAt(myFixture.caretOffset)
+        assertNotNull("Leaf should exist", leaf)
+        val namespaceAccess =
+            PsiTreeUtil.getParentOfType(
+                leaf,
+                CrystalNamespaceAccess::class.java,
+                false,
+            )
+        assertNotNull("Caret should sit in a namespace_access", namespaceAccess)
+        val resolved = namespaceAccess!!.reference?.resolve()
+        val localModule = PsiTreeUtil.findChildOfType(file, io.github.unurgunite.crystal.psi.CrystalModuleDefinition::class.java)
+        assertNotNull("Local module DB should exist", localModule)
+        assertTrue(
+            "::DB inside module DB must NOT resolve to the local module (got $resolved)",
+            resolved == null || resolved != localModule,
+        )
+    }
+
+    fun testRelativeDbStillResolvesLocally() {
+        // Without the leading `::`, `DB` inside `module DB` keeps resolving locally.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                module DB
+                  class Database
+                  end
+                end
+                module DB
+                  <caret>Database
+                end
+                """.trimIndent(),
+            )
+        val leaf = myFixture.file.findElementAt(myFixture.caretOffset) ?: return
+        val ref = leaf.reference ?: leaf.parent?.reference
+        assertNotNull("Relative Database should still resolve locally", ref?.resolve())
     }
 }
