@@ -70,9 +70,9 @@ public class CrystalArgumentImpl extends ASTWrapperPsiElement implements Crystal
   }
 
   @Override
-  @Nullable
-  public CrystalTypeReference getTypeReference() {
-    return PsiTreeUtil.getChildOfType(this, CrystalTypeReference.class);
+  @NotNull
+  public List<CrystalTypeReference> getTypeReferenceList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReference.class);
   }
 
 }

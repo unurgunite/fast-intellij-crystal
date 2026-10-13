@@ -1508,7 +1508,24 @@ private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS exp
 // Disjoint first token (`{{`) — plain `name:` keeps its shape exactly
 // (goldens confirm). Joins the name group (not a separate alternative)
 // so the pin=2 error-recovery contract is unchanged.
-private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | decl_type_value | expression) {pin=2}
+// The VALUE prefers an expression-shaped type tuple (`as: {Int64, String?}` —
+// `DB#query_all` call sites): `String?` lexes as CONSTANT QUESTION, and
+// `expression` reads it as `String` + postfix `?` + dangling COMMA with no
+// backtrack. try order: plain expression first (all non-brace values keep
+// their shape, goldens confirm), then the brace-type-tuple, then the legacy
+// decl_type_value path (fail-fast via its own scan guard).
+private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression) {pin=2}
+
+// Brace type tuple as a named-argument value (`as: {Int64, String?}` —
+// `DB#query_all(..., as: {...})` call sites with 4+ members incl. nullable).
+// `type_reference` members keep `?` attached (a bare expression would split
+// `String?` into value + QUESTION and orphan the COMMA). The guard commits
+// ONLY on brace + type-only first members: `{1, 2}` / `{a: 1}` / `{a, b}`
+// fail the type-list lookahead and keep the tuple/hash/array shapes.
+// Members ride LBRACE type_reference (COMMA type_reference)* RBRACE; the
+// trailing generics/star-nullable tails mirror type_single, so
+// `{Array(String)?}` also parses as one value.
+private named_tuple_type_value ::= LBRACE NLS type_reference (NLS COMMA NLS type_reference)* NLS RBRACE
 
 // Declaration-shaped value (`thread_local(x : ::Foo(Bar*))` — object.cr macro
 // takes a TypeDeclaration, not an expression; bare twin `buf : UInt8*` in

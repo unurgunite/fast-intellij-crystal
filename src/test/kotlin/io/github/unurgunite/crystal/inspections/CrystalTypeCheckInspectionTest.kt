@@ -297,4 +297,20 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Named tuple type as call argument ====================
+
+    fun testNamedTupleWithNullableTypesAsArgument() {
+        // `DB#query_all(..., as: {Int64, String?})` — the tuple members are
+        // types (`String?` keeps `?` attached), not value expressions.
+        // checkHighlighting asserts zero unexpected errors.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            rows = DB.db.query_all("SELECT id, name FROM t", as: {Int64, String, String?, String?})
+            puts rows
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
