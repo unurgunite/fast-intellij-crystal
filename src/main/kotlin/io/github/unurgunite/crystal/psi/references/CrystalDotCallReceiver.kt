@@ -13,7 +13,8 @@ import io.github.unurgunite.crystal.type.CrystalTypeInference
 /**
  * Receiver class name (for [CrystalMethodByClassIndex] lookup),
  * whether it is a CONSTANT (static) or IDENTIFIER (instance) reference,
- * and the full qualified name (for namespace disambiguation).
+ * the full qualified name (for namespace disambiguation), and whether the
+ * path is rooted at the project root (leading `::`, e.g. `::DB::Database`).
  *
  * - CONSTANT receiver: the name IS the class name → exact static lookup.
  * - Namespace receiver (e.g. `Foo::Sub`): walks left to build full path.
@@ -27,6 +28,8 @@ internal data class ReceiverInfo(
     val rawName: String,
     // full path for disambiguation, null if not a namespace path
     val qualifiedName: String? = null,
+    // leading `::`: resolve from project root + stdlib, never lexically-enclosing types
+    val isGlobal: Boolean = false,
 )
 
 /**
@@ -150,6 +153,10 @@ internal object CrystalDotCallReceiver {
      *
      * Example: for `Foo::Sub.space`, when called on `::Sub`, returns:
      * ReceiverInfo(className="Sub", qualifiedName="Foo::Sub")
+     *
+     * A rooted path (`::Foo`, or `::Foo::Sub` whose head is itself a
+     * `namespace_access`) sets [ReceiverInfo.isGlobal]: the lookup must resolve
+     * from the project root + stdlib, skipping lexically-enclosing types.
      */
     private fun buildNamespaceReceiver(namespaceAccess: CrystalNamespaceAccess): ReceiverInfo {
         val pathParts = mutableListOf<String>()
@@ -160,43 +167,70 @@ internal object CrystalDotCallReceiver {
             ?.text
             ?.let { pathParts.add(0, it) }
 
-        // Walk left through preceding namespace_access and variable_reference
-        var current = namespaceAccess.prevSibling
-        while (current != null) {
-            val next = namespaceStep(current, pathParts) ?: break
-            current = next
-        }
+        // Walk left through preceding namespace_access and variable_reference.
+        // Every `::Seg` is its own namespace_access composite (grammar:
+        // DOUBLE_COLON CONSTANT): the walk returns the chain head, whose kind
+        // carries rootedness.
+        val head = walkNamespaceChain(namespaceAccess.prevSibling, pathParts)
 
         val simpleName = pathParts.last()
         val qualifiedName = pathParts.joinToString("::")
-        return ReceiverInfo(listOf(simpleName), isStatic = true, rawName = simpleName, qualifiedName = qualifiedName)
+        return ReceiverInfo(
+            listOf(simpleName),
+            isStatic = true,
+            rawName = simpleName,
+            qualifiedName = qualifiedName,
+            isGlobal = head !is CrystalVariableReference,
+        )
     }
 
     /**
-     * One step of the leftward namespace walk: prepends the CONSTANT and returns
-     * the next sibling to visit, or null to stop (variable reference or other).
+     * Walks left from [start] through whitespace into namespace segments,
+     * prepending each CONSTANT to [pathParts]. Returns the chain head: the
+     * leftmost segment element, or null when nothing precedes (lone `::Foo`).
      */
-    private fun namespaceStep(
-        current: PsiElement,
+    private fun walkNamespaceChain(
+        start: PsiElement?,
         pathParts: MutableList<String>,
     ): PsiElement? {
-        when {
-            current is PsiWhiteSpace || current.node?.elementType == CrystalTypes.NEWLINE -> {
-                return current.prevSibling
-            }
+        var current = start
+        var head: PsiElement? = null
+        while (current != null) {
+            when {
+                isWhitespace(current) -> {
+                    current = current.prevSibling
+                }
 
-            current is CrystalNamespaceAccess || current is CrystalVariableReference -> {
-                current.node
-                    .findChildByType(CrystalTypes.CONSTANT)
-                    ?.text
-                    ?.let { pathParts.add(0, it) }
-                if (current is CrystalNamespaceAccess) return current.prevSibling
-                return null
-            }
+                current is CrystalVariableReference -> {
+                    prependConstant(current, pathParts)
+                    return current
+                }
 
-            else -> {
-                return null
+                current is CrystalNamespaceAccess -> {
+                    prependConstant(current, pathParts)
+                    head = current
+                    current = current.prevSibling
+                }
+
+                else -> {
+                    break
+                }
             }
         }
+        return head
     }
+}
+
+/** Whitespace siblings skipped by the namespace walk (no path segment). */
+private fun isWhitespace(element: PsiElement): Boolean = element is PsiWhiteSpace || element.node?.elementType == CrystalTypes.NEWLINE
+
+/** CONSTANT leaf of a namespace segment, prepended to the walked [pathParts]. */
+private fun prependConstant(
+    segment: PsiElement,
+    pathParts: MutableList<String>,
+) {
+    segment.node
+        .findChildByType(CrystalTypes.CONSTANT)
+        ?.text
+        ?.let { pathParts.add(0, it) }
 }

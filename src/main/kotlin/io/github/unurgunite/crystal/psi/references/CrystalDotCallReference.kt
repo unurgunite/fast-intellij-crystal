@@ -7,6 +7,7 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
 import io.github.unurgunite.crystal.psi.CrystalFunDefinition
 import io.github.unurgunite.crystal.psi.CrystalLibDefinition
@@ -87,9 +88,9 @@ class CrystalDotCallReference(
         // both members). Namespace disambiguation via qualifiedName only applies when there is
         // a single member type.
         for (className in classNames) {
-            resolveClassMember(className, qualifiedName, classNames, info.isStatic, project, scope)?.let { return it }
+            resolveClassMember(className, info, project, scope)?.let { return it }
             resolveStdlibMember(className, qualifiedName, classNames, project)?.let { return it }
-            resolveConstructor(className, project)?.let { return it }
+            resolveConstructor(className, info, project)?.let { return it }
         }
 
         return resolveUnknownReceiverFallback(info, project, scope)
@@ -98,12 +99,12 @@ class CrystalDotCallReference(
     /**
      * Exact class-based lookup (CONSTANT / namespace / inferred-type receivers),
      * narrowed by qualified name for single-member namespace receivers.
+     * Rooted receivers (`::DB::Database`) additionally skip methods whose
+     * enclosing type is local to the call site.
      */
     private fun resolveClassMember(
         className: String,
-        qualifiedName: String?,
-        classNames: List<String>,
-        isStatic: Boolean,
+        info: ReceiverInfo,
         project: com.intellij.openapi.project.Project,
         scope: GlobalSearchScope,
     ): PsiElement? {
@@ -118,17 +119,19 @@ class CrystalDotCallReference(
         val matchingByName = methods.filter { it.name == methodName }
 
         if (matchingByName.isEmpty()) {
-            resolveNonMethodMember(className, qualifiedName, classNames, isStatic, project, scope)?.let { return it }
+            resolveNonMethodMember(className, info, project, scope)?.let { return it }
         }
 
         // Filter by qualified class name if available (for namespace disambiguation)
-        if (qualifiedName == null || classNames.size != 1) {
+        val qualifiedName = info.qualifiedName
+        if (qualifiedName == null || info.classNames.size != 1) {
             return matchingByName.firstOrNull()
         }
         return matchingByName
             .filter { method ->
                 val enclosing = CrystalPsiUtils.getEnclosingType(method)
-                enclosing != null && CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName
+                enclosing != null && CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName &&
+                    (!info.isGlobal || !isLocalToCallSite(enclosing, element))
             }.firstOrNull()
     }
 
@@ -142,9 +145,7 @@ class CrystalDotCallReference(
      */
     private fun resolveNonMethodMember(
         className: String,
-        qualifiedName: String?,
-        classNames: List<String>,
-        isStatic: Boolean,
+        info: ReceiverInfo,
         project: Project,
         scope: GlobalSearchScope,
     ): PsiElement? {
@@ -161,7 +162,7 @@ class CrystalDotCallReference(
         // same-file `lib C` + call site is the overwhelmingly common shape
         // (stdlib `lib` targets resolve through the text table instead).
         val libBody = findLibBodyInFile(className)
-        if (libBody != null) {
+        if (libBody != null && (!info.isGlobal || !isLocalToCallSite(libBody, element))) {
             matchFunInLibBody(libBody, methodName)?.let { return it }
         }
         val types =
@@ -173,16 +174,17 @@ class CrystalDotCallReference(
                 CrystalNamedElement::class.java,
             )
         for (type in types) {
+            if (info.isGlobal && isLocalToCallSite(type, element)) continue
             matchMemberInTypeBody(type, methodName)?.let { return it }
             // Enum predicates are instance methods (`color.red?`,
             // `Color::Red.red?`); a bare `Color.red?` is invalid Crystal
             // (`undefined method 'red?' for Color.class`, verified 1.21.0),
             // so skip the constant match for plain static receivers.
-            if (!isStatic || qualifiedName != null) {
+            if (!info.isStatic || info.qualifiedName != null) {
                 matchEnumConstantInTypeBody(type, methodName)?.let { return it }
             }
         }
-        return matchEnumValueReceiver(qualifiedName, classNames, project, scope, methodName)
+        return matchEnumValueReceiver(info, { isLocalToCallSite(it, element) }, project, scope, methodName)
     }
 
     /**
@@ -240,18 +242,34 @@ class CrystalDotCallReference(
     /**
      * `.new` constructor: record → initialize → stdlib symbol.
      * (Matches CrystalGotoDeclarationHandler priority: def self.new > record > initialize.)
+     * Rooted receivers skip local candidates: a same-file `record` or an
+     * `initialize` whose enclosing type encloses the call site must NOT match.
      */
     private fun resolveConstructor(
         className: String,
+        info: ReceiverInfo,
         project: com.intellij.openapi.project.Project,
     ): PsiElement? {
         // For .new: fall through to record → initialize resolution
         if (methodName != "new") return null
         val file = element.containingFile ?: return null
         val recordDef = CrystalRecordLookup.findRecordDefinition(className, file)
-        if (recordDef != null) return recordDef
+        if (recordDef != null && (!info.isGlobal || !isLocalToCallSite(recordDef, element))) return recordDef
+        return constructorInitializeOrStdlib(className, info, project, file)
+    }
+
+    /** `initialize` for [className], then the stdlib fallback (qualified first when rooted). */
+    private fun constructorInitializeOrStdlib(
+        className: String,
+        info: ReceiverInfo,
+        project: com.intellij.openapi.project.Project,
+        file: com.intellij.psi.PsiFile,
+    ): PsiElement? {
         val init = CrystalMethodLookup.getInitializeMethod(className, project, file)
-        if (init != null) return init
+        if (init != null && (!info.isGlobal || constructorMatchesRoot(init, info.qualifiedName, element))) return init
+        if (info.isGlobal && info.qualifiedName != null) {
+            CrystalReference.resolveStdlibSymbol(project, info.qualifiedName)?.let { return it }
+        }
         return CrystalReference.resolveStdlibSymbol(project, className)
     }
 
@@ -305,6 +323,21 @@ class CrystalDotCallReference(
 // (file-level to keep the reference class under detekt's TooManyFunctions
 // budget). All are pure PSI-leaf matchers: no receiver state, method name
 // passed explicitly.
+
+/**
+ * True when [init] belongs to the rooted path: its enclosing type's
+ * qualified name equals [qualifiedName] (or it is top-level for a lone
+ * `::Foo`) and neither it nor its enclosing types enclose [callSite].
+ */
+internal fun constructorMatchesRoot(
+    init: CrystalMethodDefinition,
+    qualifiedName: String?,
+    callSite: PsiElement,
+): Boolean {
+    val enclosing = CrystalPsiUtils.getEnclosingType(init) ?: return qualifiedName == null
+    if (qualifiedName != null && CrystalPsiUtils.buildQualifiedName(enclosing) != qualifiedName) return false
+    return !isLocalToCallSite(enclosing, callSite)
+}
 
 /** `fun` declarations directly inside a LIB_BODY element. Returns the name leaf or null. */
 internal fun matchFunInLibBody(
@@ -415,15 +448,16 @@ internal fun matchEnumConstantInTypeBody(
  * the ENCLOSING enum (`Color`). Strips the trailing member segment and
  * matches the predicate inside that enum. Qualified candidates are filtered
  * by their qualified name so `Foo::Color::Red.red?` prefers `Foo::Color`.
+ * Rooted receivers skip enums local to the call site (via [isLocal]).
  */
 internal fun matchEnumValueReceiver(
-    qualifiedName: String?,
-    classNames: List<String>,
+    info: ReceiverInfo,
+    isLocal: (PsiElement) -> Boolean,
     project: Project,
     scope: GlobalSearchScope,
     methodName: String,
 ): PsiElement? {
-    val enumQualified = enumQualifiedName(qualifiedName, classNames, methodName) ?: return null
+    val enumQualified = enumQualifiedName(info.qualifiedName, info.classNames, methodName) ?: return null
     val enumSimple = enumQualified.substringAfterLast("::")
     val candidates =
         StubIndex.getElements(
@@ -434,6 +468,7 @@ internal fun matchEnumValueReceiver(
             CrystalNamedElement::class.java,
         )
     for (candidate in candidates) {
+        if (info.isGlobal && isLocal(candidate)) continue
         matchQualifiedEnumConstant(candidate, enumQualified, methodName)?.let { return it }
     }
     return null
@@ -465,4 +500,22 @@ private fun matchQualifiedEnumConstant(
         if (candidateQualified != enumQualified) return null
     }
     return matchEnumConstantInTypeBody(candidate, methodName)
+}
+
+/**
+ * True when [candidate] (or one of its enclosing types) lexically encloses
+ * [callSite]. Rooted receivers (`::DB::Database`) must skip such candidates
+ * and resolve from the project root + stdlib instead. File-level to keep the
+ * reference class under detekt's TooManyFunctions budget.
+ */
+internal fun isLocalToCallSite(
+    candidate: PsiElement,
+    callSite: PsiElement,
+): Boolean {
+    var current: PsiElement? = candidate
+    while (current != null) {
+        if (PsiTreeUtil.isAncestor(current, callSite, false)) return true
+        current = CrystalPsiUtils.getEnclosingType(current.parent)
+    }
+    return false
 }
