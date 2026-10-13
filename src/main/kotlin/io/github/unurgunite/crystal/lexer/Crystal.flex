@@ -29,6 +29,7 @@ import com.intellij.psi.TokenType;
     percentTokenType = null;
     percentInterpolation = false;
     percentNoEscape = false;
+    percentStack.clear();
     afterDef = false;
     lastSignificantToken = null;
     stateStack.clear();
@@ -50,6 +51,77 @@ import com.intellij.psi.TokenType;
   private char percentCloseChar = 0;
   private IElementType percentTokenType = null;
   private boolean percentInterpolation = false;
+  // Stack of enclosing percent literals: `%()` can nest inside `#{...}`
+  // inside another `%()` (`%([#{x %([#{y}])}]`). The scalar fields above always
+  // describe the INNERMOST open literal; entering a nested literal pushes the
+  // outer frame, closing pops it back. Without the stack the inner close
+  // corrupts the outer depth/delimiter tracking. Cleared in resetState().
+  private static class PercentFrame {
+    int depth;
+    char openChar;
+    char closeChar;
+    IElementType tokenType;
+    boolean interpolation;
+    boolean noEscape;
+  }
+  private final java.util.ArrayDeque<PercentFrame> percentStack = new java.util.ArrayDeque<>();
+
+  // Opens a nested percent literal from inside INTERPOLATION: saves the outer
+  // frame, installs the inner literal, enters PERCENT_LITERAL. Mirrors the
+  // YYINITIAL `%`-family rules (same token types / interpolation flags).
+  private IElementType enterNestedPercent(char open, IElementType tokenType, boolean interpolation, boolean noEscape) {
+    PercentFrame outer = new PercentFrame();
+    outer.depth = percentDepth;
+    outer.openChar = percentOpenChar;
+    outer.closeChar = percentCloseChar;
+    outer.tokenType = percentTokenType;
+    outer.interpolation = percentInterpolation;
+    outer.noEscape = percentNoEscape;
+    percentStack.push(outer);
+    percentOpenChar = open;
+    percentCloseChar = closingChar(open);
+    percentDepth = 1;
+    percentTokenType = tokenType;
+    percentInterpolation = interpolation;
+    percentNoEscape = noEscape;
+    pushState(PERCENT_LITERAL);
+    if (tokenType == CrystalTypes.SYMBOL_LITERAL) {
+      return track(CrystalTypes.PERCENT_SYMBOL_BEGIN);
+    }
+    return track(CrystalTypes.PERCENT_LITERAL_BEGIN);
+  }
+
+  // Closes the innermost percent literal, restoring the enclosing frame (or
+  // resetting the scalars when the stack is empty — an unstacked top-level or
+  // macro literal). Returns the matching END token type for the closed kind.
+  private IElementType exitPercent() {
+    IElementType endType =
+        (percentTokenType == CrystalTypes.SYMBOL_LITERAL)
+            ? CrystalTypes.PERCENT_SYMBOL_END
+            : CrystalTypes.PERCENT_LITERAL_END;
+    if (!percentStack.isEmpty()) {
+      PercentFrame outer = percentStack.pop();
+      percentDepth = outer.depth;
+      percentOpenChar = outer.openChar;
+      percentCloseChar = outer.closeChar;
+      percentTokenType = outer.tokenType;
+      percentInterpolation = outer.interpolation;
+      percentNoEscape = outer.noEscape;
+    } else {
+      percentDepth = 0;
+      percentOpenChar = 0;
+      percentCloseChar = 0;
+      percentTokenType = null;
+      percentInterpolation = false;
+      percentNoEscape = false;
+    }
+    // popState (not YYINITIAL): percent literals can start inside
+    // MACRO_INTERPOLATION / MACRO_CONTROL / INTERPOLATION via pushState;
+    // pop returns there. From YYINITIAL the stack is empty and popState
+    // falls back to YYINITIAL — same as before.
+    popState();
+    return track(endType);
+  }
   // `%q` is single-quote-like: backslash does NOT escape the delimiter
   // (`%q(\))` = literal `\` then close — verified with real crystal 1.21.0;
   // every other percent kind (`%()`, `%Q`, `%w`, `%i`, `%r`, `%x`) processes
@@ -690,6 +762,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 }
 
 <INTERPOLATION> {
+  "#{"                 { depthStack.push(interpolationDepth); interpolationDepth = 1; pushState(INTERPOLATION); return track(CrystalTypes.STRING_INTERPOLATION_BEGIN); }
   "{"                  { interpolationDepth++; return track(CrystalTypes.LBRACE); }
   "}"                  { interpolationDepth--;
                          if (interpolationDepth == 0) {
@@ -699,6 +772,24 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
                          }
                          return track(CrystalTypes.RBRACE);
                        }
+  // Percent literals nest inside interpolation (`%([#{x %([#{y}])}])`):
+  // mirror the YYINITIAL `%`-family (same kinds/delimiters/flags) with the
+  // outer literal frame stacked via enterNestedPercent. Placed before the
+  // bare-`%` rule (longest-match wins on equal length by rule order).
+  // `%q` is backslash-literal (noEscape=true); the rest interpolate.
+  "%w" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.STRING_LITERAL, false, false); }
+  "%i" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.SYMBOL_LITERAL, false, false); }
+  "%q" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.STRING_LITERAL, false, true); }
+  "%Q" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.STRING_LITERAL, true, false); }
+  "%r" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.REGEX_LITERAL, true, false); }
+  "%x" [\(\[\{<|]     { return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.COMMAND_LITERAL, true, false); }
+  "%" [\(\[\{<|]      {
+                          if (afterDef) { afterDef = false; yypushback(1); return track(CrystalTypes.PERCENT); }
+                          return enterNestedPercent(yycharat(yylength() - 1), CrystalTypes.STRING_LITERAL, true, false);
+                        }
+  // `%var` fresh-var pushback (mirrors YYINITIAL): `%`+ident-start inside
+  // interpolation is a macro variable, not a literal. Before bare `%`.
+  "%" {IDENTIFIER}     { yypushback(yylength() - 1); return track(CrystalTypes.PERCENT); }
   // All normal tokens are valid inside interpolation.
   // `..` / `...` ranges: JFlex longest-match does NOT apply across separate
   // rules the way one expects for `.` vs `..` here — the single-DOT rule would
@@ -707,7 +798,11 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   ".."                 { return track(CrystalTypes.DOTDOT); }
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   {NEWLINE}            { return track(CrystalTypes.NEWLINE); }
-  {LINE_COMMENT}       { return track(CrystalTypes.LINE_COMMENT); }
+  // `#` starts a comment, but `#{` starts a nested interpolation (handled by
+  // the `"#{"` rule above via longest-match). The negative lookahead keeps
+  // `# comment` working while `#{...}` re-lexes as interpolation.
+  "#" [^{\r\n] [^\r\n]* { return track(CrystalTypes.LINE_COMMENT); }
+  "#"                  { return track(CrystalTypes.LINE_COMMENT); }
   // Control-flow / jump / value keywords (`"#{if a\n b\n end}"`,
   // `{{ if ... else ... end }}` — macros.cr `record` `copy_with`):
   // without these `if` lexes as IDENTIFIER and the `end` dangles.
@@ -807,16 +902,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
                            if (c == percentCloseChar) {
                              percentDepth--;
                              if (percentDepth == 0) {
-                               // popState (not YYINITIAL): percent literals can
-                               // now start inside MACRO_INTERPOLATION /
-                               // MACRO_CONTROL via pushState; pop returns there.
-                               // From YYINITIAL the stack is empty and popState
-                               // falls back to YYINITIAL — same as before.
-                               popState();
-                               if (percentTokenType == CrystalTypes.SYMBOL_LITERAL) {
-                                 return track(CrystalTypes.PERCENT_SYMBOL_END);
-                               }
-                               return track(CrystalTypes.PERCENT_LITERAL_END);
+                               return exitPercent();
                              }
                              return track(percentTokenType);
                            } else if (c == percentOpenChar && percentOpenChar != '|') {
