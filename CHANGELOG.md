@@ -2,6 +2,15 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
+## [1.2.0] — Unreleased
+
+### Fixed
+
+- **Named tuple with nullable types as call argument** (`query_all(..., as: {Int64, String?})`): tuple types containing `?`-suffixed members parsed as broken expression fragments (`... expected, got ','`). Covered by regression test.
+- **`@[...]` annotations before `def` inside class bodies** (`@[ARTA::Get("")]`): error reported at `@`. Covered by regression test.
+- **Nested `%()` literals inside string interpolation** (`%([#{... %(...) ...}])`): inner `%(` lexed as `PERCENT LPAREN`, trailing `#{...}` swallowed into `LINE_COMMENT`. `%`-family rules mirrored into `INTERPOLATION`, nested `#{`, percent state stacked. Covered by lexer regression tests.
+- **`::`-rooted namespace paths resolve from root** (`::DB::Database` inside `module DB`): leading `::` no longer resolves to the shadowing local type. Shard sources (`lib/`) are not indexed yet — such targets resolve to null, no false jump. Shard indexing is planned for v1.3.0.
+
 ## [1.1.0] — Unreleased
 
 ### Added
