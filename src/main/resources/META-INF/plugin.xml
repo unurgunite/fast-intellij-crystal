@@ -106,6 +106,12 @@
 ]]></description>
 
     <change-notes><![CDATA[
+<h3>1.2.1</h3>
+<ul>
+  <li><b>RubyMine compatibility</b> — declared test-runner platform dependency (Marketplace verification clean on RubyMine)</li>
+  <li><b>Platform API hygiene</b> — replaced scheduled-for-removal and deprecated API usages</li>
+</ul>
+
 <h3>1.2.0</h3>
 <ul>
   <li><b>Parser fixes for real-world code</b> — named tuples with nullable types as call arguments, `@[...]` annotations before methods, nested `%()` literals inside string interpolation</li>
@@ -239,6 +245,13 @@
 
     <dependencies>
         <module name="intellij.platform.dap"/>
+        <!-- SM test-runner hierarchy (OutputToGeneralTestEventsConverter,
+             SMTRunnerConsoleProperties, SMTestLocator, sm.runner.events.*):
+             resolved transitively on IDEA but NOT on RubyMine — without this
+             the plugin is binary-incompatible with RM (Marketplace
+             verification: 14 Class-not-found problems on RM-262). The module
+             ships in the required `intellij.testRunner.plugin` bundle. -->
+        <module name="intellij.platform.smRunner"/>
     </dependencies>
 
     <extensions defaultExtensionNs="com.intellij">

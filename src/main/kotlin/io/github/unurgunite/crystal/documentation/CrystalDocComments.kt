@@ -105,8 +105,25 @@ internal object CrystalDocComments {
         context: PsiElement,
     ): String {
         val flavour = GFMFlavourDescriptor()
-        val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(markdown)
-        var html = HtmlGenerator(markdown, parsedTree, flavour).generateHtml()
+
+        // NOTE: MarkdownParser(FlavourDescriptor) is deprecated — the
+        // CancellationToken overload is the supported entry-point
+        // (Marketplace verification). Doc popups are synchronous with no
+        // cancellation source: NonCancellable. The whole markdown API is
+        // @ExperimentalApi(RequiresOptIn ERROR): the opt-in below is explicit
+        // and auditable (the compiler enforces it at the call sites).
+        @OptIn(org.intellij.markdown.ExperimentalApi::class)
+        fun parse(): org.intellij.markdown.ast.ASTNode =
+            MarkdownParser(
+                flavour,
+                false,
+                org.intellij.markdown.parser.CancellationToken.NonCancellable,
+            ).buildMarkdownTreeFromString(markdown)
+
+        @OptIn(org.intellij.markdown.ExperimentalApi::class)
+        fun generate(tree: org.intellij.markdown.ast.ASTNode): String = HtmlGenerator(markdown, tree, flavour).generateHtml()
+
+        var html = generate(parse())
 
         // Strip the wrapping <body> tags that HtmlGenerator adds
         html = html.removePrefix("<body>").removeSuffix("</body>")
