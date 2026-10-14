@@ -70,4 +70,16 @@ class CrystalRunLineMarkerProviderTest : BasePlatformTestCase() {
             assertNull(provider.getInfo(composite))
         }
     }
+
+    fun testMarkerInfoUsesSupportedCtor() {
+        // The (Icon, Function, AnAction...) overload is scheduled for removal
+        // (Marketplace verification): Info must be built via (Icon, actions,
+        // tooltip) and still carry the icon, actions, and tooltip text.
+        val file = myFixture.configureByText("sample_spec.cr", "describe \"math\" do\nend\n")
+        val element = file.findElementAt(file.text.indexOf("describe"))!!
+        val info = provider.getInfo(element)
+        assertNotNull("describe must get a marker", info)
+        assertNotNull(info!!.icon)
+        assertTrue(info.actions.isNotEmpty())
+    }
 }

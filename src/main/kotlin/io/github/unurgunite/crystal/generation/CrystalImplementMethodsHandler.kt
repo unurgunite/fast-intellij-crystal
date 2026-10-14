@@ -1,6 +1,5 @@
 package io.github.unurgunite.crystal.generation
 
-import com.intellij.codeInsight.CodeInsightUtilBase
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.lang.LanguageCodeInsightActionHandler
 import com.intellij.openapi.command.WriteCommandAction
@@ -59,7 +58,8 @@ class CrystalImplementMethodsHandler : LanguageCodeInsightActionHandler {
         editor: Editor,
         file: PsiFile,
     ): PsiElement? {
-        if (!CodeInsightUtilBase.prepareEditorForWrite(editor)) return null
+        // NOTE: no prepareEditorForWrite (deprecated, scheduled for removal):
+        // requestWriting alone gates the write (Marketplace verification).
         if (!FileDocumentManager.getInstance().requestWriting(editor.document, project)) return null
         val element = file.findElementAt(editor.caretModel.offset) ?: return null
         return CrystalPsiUtils.getEnclosingType(element)
