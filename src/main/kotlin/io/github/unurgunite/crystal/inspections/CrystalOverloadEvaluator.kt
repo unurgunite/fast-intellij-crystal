@@ -200,18 +200,21 @@ internal object CrystalOverloadEvaluator {
 
     /** True when any splat/double-splat argument cannot be resolved to a literal. */
     fun hasUnresolvedSplat(arguments: List<ArgumentInfo>): Boolean {
-        val hasUnresolvedSplat = arguments.any { it.isSplat && it.resolvedSplatCount == null }
-        val hasUnresolvedDoubleSplat = arguments.any { it.isDoubleSplat && it.resolvedDoubleSplatKeys == null }
+        val hasUnresolvedSplat = arguments.any { !it.isBlock && it.isSplat && it.resolvedSplatCount == null }
+        val hasUnresolvedDoubleSplat = arguments.any { !it.isBlock && it.isDoubleSplat && it.resolvedDoubleSplatKeys == null }
         return hasUnresolvedSplat || hasUnresolvedDoubleSplat
     }
 
-    /** Positional argument count with resolved splats expanded (block-passes excluded). */
+    /** Positional argument count with resolved splats expanded (block-passes and blocks excluded). */
     fun effectivePositionalCount(arguments: List<ArgumentInfo>): Int =
         arguments.sumOf { arg ->
             when {
                 arg.isBlockPass -> 0
 
                 // block-pass (&block) is not a positional argument
+                arg.isBlock -> 0
+
+                // `{}`/`do` block body is never a positional argument in Crystal
                 arg.isSplat -> arg.resolvedSplatCount ?: 1
 
                 arg.isDoubleSplat -> 0

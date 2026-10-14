@@ -284,4 +284,34 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Block bodies are never arguments ====================
+
+    fun testBlockBodyIsNotAnArgument() {
+        // `at_exit { d.close }`: the `{}` block is not a positional argument —
+        // `at_exit` takes zero args plus a block (db.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def at_exit(&block : ->)
+              block.call
+            end
+            at_exit { puts 1 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testArgPlusBlockCountsArgOnly() {
+        // `foo(1) { bar }`: one positional plus a block — no excess reported.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(x : Int32)
+            end
+            foo(1) { puts 2 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

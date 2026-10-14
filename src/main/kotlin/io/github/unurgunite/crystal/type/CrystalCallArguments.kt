@@ -30,6 +30,8 @@ internal object CrystalCallArguments {
         val isSplat: Boolean = false,
         val isDoubleSplat: Boolean = false,
         val isBlockPass: Boolean = false,
+        /** `{}`/`do` block body: never a positional argument in Crystal */
+        val isBlock: Boolean = false,
         /** For splat args resolved to tuple literals: the element count */
         val resolvedSplatCount: Int? = null,
         /** For double-splat args resolved to named tuple literals: the key names */
@@ -61,16 +63,19 @@ internal object CrystalCallArguments {
                             result.add(extractShapedArgInfo(arg))
                         }
                     }
+                    appendBlockArg(callExpr.block, result)
                     return result
                 }
             }
 
             is CrystalBareCommandExpression -> {
                 extractFromBareArgList(callExpr.bareArgumentList, result)
+                appendBlockArg(callExpr.block, result)
             }
 
             is CrystalBareCommandSpaceFirst -> {
                 extractFromBareArgList(callExpr.bareArgumentList, result)
+                appendBlockArg(callExpr.block, result)
             }
 
             is CrystalBareMethodCallExpression -> {
@@ -83,6 +88,19 @@ internal object CrystalCallArguments {
             }
         }
         return result
+    }
+
+    /**
+     * Block body as a zero-count argument marker: `{}`/`do` blocks are never
+     * positional arguments in Crystal (`at_exit { d.close }` passes zero
+     * args, not one). The marker keeps block presence visible to callers
+     * while contributing nothing to arity math.
+     */
+    private fun appendBlockArg(
+        block: PsiElement?,
+        result: MutableList<ArgumentInfo>,
+    ) {
+        if (block != null) result.add(ArgumentInfo(element = block, isBlock = true))
     }
 
     /**
@@ -126,6 +144,17 @@ internal object CrystalCallArguments {
     }
 
     private fun extractShapedArgInfo(arg: PsiElement): ArgumentInfo {
+        // `{}` block parsed as a bare tuple-shaped argument (`at_exit { d.close }`):
+        // GrammarKit reads `{ d.close }` as TUPLE_LITERAL (no BLOCK node — the
+        // bare tower has no block alternative in this position). A brace group
+        // whose content is a bare command (callee + args, not a value) is a
+        // block body, never a positional argument in Crystal — mark it so arity
+        // math skips it (same marker as structured-call block bodies).
+        // File-level (not a member) to keep this object under detekt's
+        // TooManyFunctions budget.
+        if (isBareBlockTuple(arg)) {
+            return ArgumentInfo(element = arg, isBlock = true)
+        }
         val children = arg.node.getChildren(null)
         var isSplat = false
         var isDoubleSplat = false
@@ -144,14 +173,14 @@ internal object CrystalCallArguments {
         val valueExpression = (arg as? CrystalArgument)?.expression ?: arg
 
         return ArgumentInfo(
-            arg,
-            namedLabel,
-            isSplat,
-            isDoubleSplat,
-            isBlockPass,
-            resolvedSplatCount,
-            resolvedDoubleSplatKeys,
-            valueExpression,
+            element = arg,
+            name = namedLabel,
+            isSplat = isSplat,
+            isDoubleSplat = isDoubleSplat,
+            isBlockPass = isBlockPass,
+            resolvedSplatCount = resolvedSplatCount,
+            resolvedDoubleSplatKeys = resolvedDoubleSplatKeys,
+            expression = valueExpression,
         )
     }
 
@@ -246,4 +275,21 @@ internal object CrystalCallArguments {
         }
         return element
     }
+}
+
+/**
+ * True when [arg] is a brace group holding a bare command (`{ d.close }`)
+ * rather than a value tuple (`{a, b}` / `{a: 1}`). GrammarKit parses both
+ * as TUPLE_LITERAL; the command shape (single expression child that is a
+ * bare command) means block body, never a positional argument.
+ *
+ * File-level (not a member) to keep the object above under detekt's
+ * TooManyFunctions budget.
+ */
+private fun isBareBlockTuple(arg: PsiElement): Boolean {
+    val tuple = arg.firstChild as? io.github.unurgunite.crystal.psi.CrystalTupleLiteral ?: return false
+    val exprs = tuple.expressionList.expressionList
+    if (exprs.size != 1) return false
+    val inner = exprs[0].firstChild ?: return false
+    return inner is CrystalBareCommandExpression || inner is CrystalBareCommandSpaceFirst
 }
