@@ -55,8 +55,31 @@ object CrystalMethodLookup {
 
     /**
      * Returns the enclosing type name of a method, or null if top-level.
+     *
+     * NOTE: never touches the AST. This runs on StubIndex hits whose stubs may
+     * disagree with a freshly parsed tree (UpToDateStubIndexMismatch): any
+     * getParentOfType/getNode call here forces stub↔AST reconciliation and
+     * throws AssertionError out of inspections. Stub-only walk instead.
      */
     fun getEnclosingClassName(method: CrystalMethodDefinition): String? {
+        val stub = (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub
+        if (stub != null) return enclosingNameFromStub(stub)
+        return enclosingNameFromPsi(method)
+    }
+
+    /** Stub-tree walk: enclosing named stub (class/module/struct/enum). */
+    private fun enclosingNameFromStub(stub: com.intellij.psi.stubs.StubElement<*>): String? {
+        var parent = stub.parentStub
+        while (parent != null) {
+            val named = parent as? io.github.unurgunite.crystal.stubs.CrystalNamedStub
+            if (named?.name != null) return named.name
+            parent = parent.parentStub
+        }
+        return null
+    }
+
+    /** PSI fallback for non-stub elements (tests, in-memory files). */
+    private fun enclosingNameFromPsi(method: CrystalMethodDefinition): String? {
         val classDef = PsiTreeUtil.getParentOfType(method, CrystalClassDefinition::class.java)
         if (classDef != null) return classDef.name
         val moduleDef = PsiTreeUtil.getParentOfType(method, CrystalModuleDefinition::class.java)
