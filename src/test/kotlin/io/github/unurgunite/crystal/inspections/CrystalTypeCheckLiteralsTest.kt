@@ -484,6 +484,31 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testQualifiedReceiverPrefersQualifiedOverload() {
+        // `HTTP::Params.parse(query)` against `HTTP::Params`: the qualified
+        // receiver must take `HTTP::Params.parse`, not a same-named
+        // `CSV.parse : Array(Array(String))` (db connection_options shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class CSV
+              def self.parse(s : String) : Array(Array(String))
+              end
+            end
+            module HTTP
+              struct Params
+                def self.parse(s : String) : HTTP::Params
+                end
+              end
+            end
+            def options(p : HTTP::Params)
+            end
+            options(HTTP::Params.parse("a=1"))
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testIndexHolderAfterDotCallIsNotAnArgument() {
         // `client.login["ok"].should be_true`: the `["ok"]` holder is index
         // access on the call result, never an argument of `login`
