@@ -433,4 +433,37 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testBareSuperclassResolvesInNamespaceFirst() {
+        // `class QueuedJob < Job` inside `module Mosquito` means
+        // `Mosquito::Job` — a same-named stdlib `Job` (Benchmark::IPS::Job
+        // with its own `initialize`) must not poison the hierarchy walk
+        // and shadow `param` constructors (mosquito `.new` red).
+        myFixture.addFileToProject(
+            "framework.cr",
+            """
+            module Mosquito
+              abstract class Job
+              end
+              abstract class QueuedJob < Job
+                def initialize; end
+              end
+            end
+            class Job
+              def initialize(calculation : Int32)
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "app.cr",
+            """
+            class CamTestJob < Mosquito::QueuedJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(attempt_id: 5).enqueue
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

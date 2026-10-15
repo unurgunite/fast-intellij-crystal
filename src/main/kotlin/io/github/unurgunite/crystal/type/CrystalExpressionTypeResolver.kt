@@ -240,7 +240,10 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
             methodName = next?.text
             var prev = child.prevSibling
             while (prev is PsiWhiteSpace) prev = prev.prevSibling
-            receiver = prev
+            // DOT-first composite (`.parse(s)` in `URI.parse(s)`): the
+            // receiver lives outside, as the composite's preceding sibling
+            // in the flattened postfix chain — not inside as a child.
+            receiver = prev ?: CrystalPsiUtils.receiverBeforeDot(next ?: child, child)
         }
         child = child.nextSibling
     }

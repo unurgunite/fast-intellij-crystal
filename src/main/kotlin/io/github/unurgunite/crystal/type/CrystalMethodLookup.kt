@@ -59,47 +59,16 @@ object CrystalMethodLookup {
         project: Project,
         currentFile: PsiFile? = null,
     ): List<CrystalMethodDefinition> {
-        val scope = GlobalSearchScope.allScope(project)
-        val direct =
-            StubIndex
-                .getElements(
-                    CrystalMethodByClassIndex.KEY,
-                    typeName,
-                    project,
-                    scope,
-                    CrystalMethodDefinition::class.java,
-                ).filter { it.name == "initialize" }
-        if (direct.size > 1) return direct
-        // Zero or one direct hit: fall back to hierarchy (inherited overloads).
-        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return direct
-        val inherited = CrystalTypeHierarchy.getMethodsFromType(result).filter { it.name == "initialize" }
-        return (direct + inherited).distinctBy { getParameterSignature(it) }
-    }
-
-    /**
-     * True when [method] belongs to [typeName]'s own hierarchy (the type
-     * itself or one of its ancestors). File-level shape keeps
-     * getInitializeMethod under complexity budget. Compared by signature
-     * (index hits may be distinct PSI instances of one definition).
-     */
-    private fun isInHierarchyOf(
-        method: CrystalMethodDefinition,
-        typeName: String,
-        project: Project,
-        currentFile: PsiFile?,
-    ): Boolean {
-        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return true
-        val hierarchyInits = CrystalTypeHierarchy.getMethodsFromType(result).filter { it.name == "initialize" }
-        if (hierarchyInits.isEmpty()) return true
-        val signature = getParameterSignature(method)
-        return hierarchyInits.any { getParameterSignature(it) == signature }
-    }
-
-    /** `initialize` defined directly on [typeName], without hierarchy traversal. */
-    private fun directInitialize(
-        typeName: String,
-        project: Project,
-    ): CrystalMethodDefinition? {
+        // Resolved chain first (namespace-aware): short-name index hits mix
+        // same-named classes (`Job` = Mosquito::Job + Benchmark::IPS::Job),
+        // so candidates are filtered by qualified enclosing per chain link.
+        val chain = CrystalTypeHierarchy.resolveChain(typeName, project, currentFile)
+        if (chain.isNotEmpty()) {
+            val scoped = scopedInitializers(chain, project)
+            if (scoped.isNotEmpty()) return scoped
+        }
+        // Unresolved type: legacy direct lookup (may mix same-named classes,
+        // but guessing beats silence when the type itself is unknown).
         val scope = GlobalSearchScope.allScope(project)
         return StubIndex
             .getElements(
@@ -108,7 +77,78 @@ object CrystalMethodLookup {
                 project,
                 scope,
                 CrystalMethodDefinition::class.java,
-            ).firstOrNull { it.name == "initialize" }
+            ).filter { it.name == "initialize" }
+    }
+
+    /**
+     * `initialize` overloads owned by the resolved chain links (qualified
+     * enclosing match per link, top-level ownerless methods kept). File-level
+     * shape keeps getInitializeMethods under complexity budget.
+     */
+    private fun scopedInitializers(
+        chain: List<CrystalTypeHierarchy.TypeLookupResult>,
+        project: Project,
+    ): List<CrystalMethodDefinition> {
+        val scope = GlobalSearchScope.allScope(project)
+        val out = mutableListOf<CrystalMethodDefinition>()
+        for (link in chain) {
+            val short = link.element.name ?: continue
+            val qualified = qualifiedNameOf(link.element)
+            val hits =
+                StubIndex
+                    .getElements(
+                        CrystalMethodByClassIndex.KEY,
+                        short,
+                        project,
+                        scope,
+                        CrystalMethodDefinition::class.java,
+                    ).filter { it.name == "initialize" }
+            for (method in hits) {
+                // Ownerless (top-level) methods only match top-level links:
+                // a top-level `Job#initialize` must not attach to the
+                // `Mosquito::Job` link of another class's chain.
+                val owner = methodOwnerQualified(method)
+                if (owner == null && qualified != null && qualified.contains("::")) continue
+                if (owner == null || owner == qualified) {
+                    out.add(method)
+                }
+            }
+        }
+        return out.distinctBy { getParameterSignature(it) }
+    }
+
+    /**
+     * Qualified name of a type element (`Mosquito::Job`), top-level short
+     * name when unnested. File-level: used by the scoped lookup above.
+     */
+    private fun qualifiedNameOf(element: io.github.unurgunite.crystal.psi.CrystalNamedElement): String? =
+        io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+            .buildQualifiedName(element)
+            ?: element.name
+
+    /**
+     * Qualified enclosing type of a method from its stub tree (never touches
+     * the AST — stub/AST mismatch safe). Null for top-level methods.
+     * Walks from the stub's PARENT (the method stub itself is named and
+     * would pollute the path with `initialize`). Stub-less elements
+     * (in-memory test PSI) fall back to the PSI parent chain.
+     */
+    private fun methodOwnerQualified(method: CrystalMethodDefinition): String? {
+        val stub = (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub
+        if (stub != null) {
+            val parent = stub.parentStub ?: return null
+            return io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                .buildQualifiedNameFromStub(parent)
+        }
+        var current: com.intellij.psi.PsiElement? = method.parent
+        while (current != null) {
+            val qualified =
+                io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                    .buildQualifiedName(current)
+            if (qualified != null) return qualified
+            current = current.parent
+        }
+        return null
     }
 
     /**
