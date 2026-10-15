@@ -95,11 +95,11 @@ object CrystalCallReturnTypeResolver {
         methodName: String,
         project: Project,
     ): String? {
-        // `to_s` always yields String in Crystal (every overload, including
-        // `Object#to_s`, `Int#to_s`, `Nil#to_s`). Short-circuit: the index
+        // Fixed-yield conversions, same family as `to_s → String`: the index
         // walk below would otherwise return the receiver's own type from the
-        // first unannotated `to_s` overload it meets.
-        if (methodName == "to_s") return "String"
+        // first unannotated overload it meets (`ENV.fetch(...).to_i` typed
+        // as String instead of Int32).
+        FIXED_RETURN_TYPES[methodName]?.let { return it }
         val scope = GlobalSearchScope.allScope(project)
         val methods =
             StubIndex.getElements(
@@ -116,6 +116,30 @@ object CrystalCallReturnTypeResolver {
     }
 
     /**
+     * Conversion methods with a fixed yield regardless of receiver
+     * (`Object#to_s`, `String#to_i`, ...). Table-driven: one lookup covers
+     * the family without per-name branches.
+     */
+    private val FIXED_RETURN_TYPES =
+        mapOf(
+            "to_s" to "String",
+            "to_i" to "Int32",
+            "to_i8" to "Int8",
+            "to_i16" to "Int16",
+            "to_i32" to "Int32",
+            "to_i64" to "Int64",
+            "to_i128" to "Int128",
+            "to_u8" to "UInt8",
+            "to_u16" to "UInt16",
+            "to_u32" to "UInt32",
+            "to_u64" to "UInt64",
+            "to_u128" to "UInt128",
+            "to_f" to "Float64",
+            "to_f32" to "Float32",
+            "to_f64" to "Float64",
+        )
+
+    /**
      * Return type of [methodName] defined inside [className] (via the
      * class→methods index). Null when the class defines no such method —
      * the caller falls back to the project-wide first hit. Scopes
@@ -127,7 +151,7 @@ object CrystalCallReturnTypeResolver {
         className: String,
         project: Project,
     ): String? {
-        if (methodName == "to_s") return "String"
+        FIXED_RETURN_TYPES[methodName]?.let { return it }
         val scope = GlobalSearchScope.allScope(project)
         val methods =
             StubIndex.getElements(

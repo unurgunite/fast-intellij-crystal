@@ -77,14 +77,8 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         callExpr: PsiElement,
         holder: ProblemsHolder,
     ) {
-        // Skip if the method name resolves to a local variable or parameter.
-        // This prevents false positives when a bare call like "count + 87" is parsed
-        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
-        // operators followed by literals. The parameter shadows any same-named method.
-        val resolvedRef = callExpr.reference?.resolve()
-        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return
-
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
+        if (isSkippedBareCall(callExpr, methodName)) return
         val arguments = CrystalCallArguments.extractArguments(callExpr)
         val methodNameElement = findMethodNameElement(callExpr) ?: return
 
@@ -99,11 +93,38 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         checkArgumentCount(methods, arguments, methodNameElement, holder)
     }
 
+    /**
+     * True when a bare call needs no checks: the name resolves to a local
+     * variable/parameter (shadows any method — binary-op ambiguity like
+     * `count + 87` parsed as a call), or it is a spec matcher (accepts
+     * anything). File-level shape keeps checkCall under ReturnCount.
+     */
+    private fun isSkippedBareCall(
+        callExpr: PsiElement,
+        methodName: String,
+    ): Boolean {
+        // Skip if the method name resolves to a local variable or parameter.
+        // This prevents false positives when a bare call like "count + 87" is parsed
+        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
+        // operators followed by literals. The parameter shadows any same-named method.
+        val resolvedRef = callExpr.reference?.resolve()
+        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+        // Spec matchers accept anything — never arity/type-check them.
+        return io.github.unurgunite.crystal.type.CrystalLocalScope
+            .isSpecMatcherCall(methodName)
+    }
+
     private fun checkDotCall(
         argsElement: PsiElement,
         info: DotCallInfo,
         holder: ProblemsHolder,
     ) {
+        // Spec matchers accept anything — never arity/type-check them.
+        if (io.github.unurgunite.crystal.type.CrystalLocalScope
+                .isSpecMatcherCall(info.methodName)
+        ) {
+            return
+        }
         // Skip DOT-calls on local variables/parameters — we can't reliably determine
         // the receiver's type, so we only check calls on Constants (class methods).
         val firstChar = info.receiverName.firstOrNull() ?: return

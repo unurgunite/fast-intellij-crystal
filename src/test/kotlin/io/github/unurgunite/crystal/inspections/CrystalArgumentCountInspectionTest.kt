@@ -318,6 +318,21 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testOperatorTailInAssignmentIsNotAnArgument() {
+        // `@@last_call = Time.utc - 1.second`: the `- 1.second` holder is the
+        // operator's RHS, never an argument of `utc` (mobileproxy/emulator).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            @@last_call = Time.utc - 1.second
+            deadline = Time.utc + 5.seconds
+            puts @@last_call
+            puts deadline
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testArgPlusBlockCountsArgOnly() {
         // `foo(1) { bar }`: one positional plus a block — no excess reported.
         myFixture.configureByText(

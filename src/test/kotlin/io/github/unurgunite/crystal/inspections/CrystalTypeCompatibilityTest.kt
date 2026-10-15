@@ -87,6 +87,15 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Array(Int8)", "Array(Int32)"))
     }
 
+    fun testUnboundTypeVariablesFitAnything() {
+        // `Hash#merge` infers `Hash(K, V)`: placeholders fit concrete args.
+        assertTrue(compat("Hash(K, V)", "Hash(String, String)"))
+        assertTrue(compat("Hash(String, String)", "Hash(K, V)"))
+        assertTrue(compat("Array(T)", "Array(Int32)"))
+        // Concrete mismatches still mismatch
+        assertFalse(compat("Hash(String, Bool)", "Hash(String, String)"))
+    }
+
     fun testUnknownTypesEscape() {
         // Unknown param or arg types must not produce false positives
         assertTrue(compat("MyClass", "Int32"))
@@ -108,5 +117,14 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Hash(String, String)", "String"))
         assertFalse(compat("Array(Int32)", "String"))
         assertFalse(compat("Int32", "String"))
+    }
+
+    fun testUnionArgumentFitsWhenAnyMemberFits() {
+        // Overload-union arguments (`String | Hash(String, String)`) fit a
+        // concrete param when any member fits — the call may take any
+        // branch at runtime.
+        assertTrue(compat("String | Hash(String, String)", "Hash(String, String)"))
+        assertTrue(compat("Nil | String", "String"))
+        assertFalse(compat("Int32 | Bool", "String"))
     }
 }

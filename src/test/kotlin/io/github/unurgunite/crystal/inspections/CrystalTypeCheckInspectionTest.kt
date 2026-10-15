@@ -391,4 +391,18 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testShouldMatchersAreSkipped() {
+        // Spec DSL (`value.should be_true`, `x.should eq 1`) accepts
+        // anything — arity/type checks against random same-named overloads
+        // are pure noise (clients_spec.cr shapes).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            client.login["ok"].should be_true
+            client.codes_latest["codes"].as_a.size.should eq 1
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

@@ -338,4 +338,51 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testToIFamilyYieldsNumeric() {
+        // `ENV.fetch(...).to_i` is Int32, not the receiver String
+        // (mock_drive.cr: `run(root, port, ...)` against `port : Int32`).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(i : Int32)
+            end
+            foo("4567".to_i)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testUnionArgumentFitsWhenAnyMemberFits() {
+        // `sessions_start(query)` where query infers as
+        // `String | Hash(String, String)` against `Hash(String, String)`:
+        // fits when any union member fits.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def start(query : Hash(String, String))
+            end
+            q = {"a" => "b"}
+            start(q)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testIndexAccessYieldsValueType() {
+        // `normalize_phone(d["phone"]?)` against `raw : String?`:
+        // `d["phone"]?` is `String | Nil` (Hash value + Nil), not the
+        // receiver Hash itself (person_validator.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def normalize_phone(raw : String?) : String
+              raw.to_s
+            end
+            d = {"phone" => "123"}
+            normalize_phone(d["phone"]?)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

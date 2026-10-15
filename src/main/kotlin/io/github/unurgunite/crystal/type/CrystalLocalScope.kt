@@ -13,6 +13,17 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  */
 internal object CrystalLocalScope {
     /**
+     * Spec-DSL matchers (`value.should be_true`, `x.should eq 1`): Crystal's
+     * `Spec` framework accepts any value with any matcher, so arity and
+     * type checks against random same-named overloads are pure noise.
+     * Both inspections skip these calls entirely.
+     */
+    private val SPEC_MATCHER_CALLS = setOf("should", "should_not")
+
+    /** True when [methodName] is a spec expectation entry point. */
+    fun isSpecMatcherCall(methodName: String): Boolean = methodName in SPEC_MATCHER_CALLS
+
+    /**
      * Checks if the given name is a local variable or method parameter in the enclosing scope.
      */
     fun isLocalVariableOrParameter(

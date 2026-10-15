@@ -101,6 +101,14 @@ object CrystalTypeCompatibility {
                 true
             }
 
+            // Union argument (`String | Hash(String, String)` from overload
+            // union): fits when ANY member fits — the call may take any
+            // branch at runtime. Checked before generic/nilable branches so
+            // a fitting member wins over a mismatching first member.
+            argType.contains("|") -> {
+                argType.split("|").any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
+            }
+
             // Nilable "Type?" is sugar for "Type | Nil"
             normalizedParam.endsWith("?") -> {
                 isCompatibleNilable(argType, normalizedParam, isUnsuffixedNumericLiteral)
@@ -155,6 +163,9 @@ object CrystalTypeCompatibility {
     /**
      * Generic check: `Array(Int32)` vs `Array(Int32)`, `Hash(String, Int32)` etc.
      * Same base with pairwise-compatible args fits; mismatched shapes never fit.
+     * Unbound type variables (`K`, `V`, `T` from `Hash(K, V)`, `Array(T)`)
+     * fit anything — they are placeholders the definition never constrains,
+     * not concrete types to mismatch against.
      */
     private fun isCompatibleGeneric(
         argType: String,
@@ -168,7 +179,21 @@ object CrystalTypeCompatibility {
         val paramInner = extractGenericTypeArgs(normalizedParam)
         val argInner = extractGenericTypeArgs(argType)
         if (paramInner.size != argInner.size) return false
-        return paramInner.zip(argInner).all { (p, a) -> isCompatible(a, p, isUnsuffixedNumericLiteral) }
+        return paramInner.zip(argInner).all { (p, a) ->
+            isUnboundTypeVariable(p) || isUnboundTypeVariable(a) || isCompatible(a, p, isUnsuffixedNumericLiteral)
+        }
+    }
+
+    /**
+     * True for unbound generic placeholders: single uppercase name (`K`,
+     * `V`, `T`) or `Type`-suffixed variables. Concrete types (`String`,
+     * `Int32`, `Hash(...)`) never qualify — only bare variables do.
+     */
+    private fun isUnboundTypeVariable(name: String): Boolean {
+        val trimmed = name.trim()
+        if (trimmed.length == 1 && trimmed[0].isUpperCase()) return true
+        if (trimmed.length == 2 && trimmed[0].isUpperCase() && trimmed[1].isDigit()) return true
+        return false
     }
 
     /**
