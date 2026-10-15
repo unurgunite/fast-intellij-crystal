@@ -376,4 +376,23 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testEmptyInheritedInitializeYieldsToParam() {
+        // Mosquito's QueuedJob ships `def initialize; end` (zero-params
+        // fallback); the macro-generated `initialize(@attempt_id, ...)` is
+        // invisible in source. Arity must go to `param`, not the fallback.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class QueuedJob
+              def initialize; end
+            end
+            class CamTestJob < QueuedJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(attempt_id: 5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

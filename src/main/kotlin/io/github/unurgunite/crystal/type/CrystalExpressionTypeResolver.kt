@@ -249,14 +249,42 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
 
 /** DOT-call fragment type (file-level: detekt budget). `to_json` is String for every receiver. */
 private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    val (methodName, _) = dotCallPartsOf(expr)
+    val (methodName, receiver) = dotCallPartsOf(expr)
     if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
     if (methodName != null) {
+        // Receiver-class-scoped first (`data.to_hash` where data: PersonData
+        // must take PersonData#to_hash, not stdlib's generic `Hash#to_hash`):
+        // the project-wide first-hit fallback ignores the receiver and loses
+        // to same-named stdlib methods.
+        receiverClassNameOf(receiver)?.let { receiverClass ->
+            CrystalCallReturnTypeResolver.lookupReturnTypeInClass(methodName, receiverClass, expr.project)?.let {
+                return CrystalExpressionTypeResolver.ResolvedType(it)
+            }
+        }
         CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
             return CrystalExpressionTypeResolver.ResolvedType(it)
         }
     }
     return null
+}
+
+/**
+ * Class name behind a DOT-call receiver: a CONSTANT (`PersonData.new`) or
+ * the resolved type of a variable reference (`data` → PersonData via
+ * inference). Null when the receiver shape is unknown (fallback applies).
+ */
+private fun receiverClassNameOf(receiver: PsiElement?): String? {
+    if (receiver == null) return null
+    if (receiver.node?.elementType == io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT) return receiver.text
+    val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
+    // Strip union/nilable wrappers to the first concrete member for scoping.
+    return typeName
+        .split("|")
+        .first()
+        .trim()
+        .removeSuffix("?")
+        .substringAfterLast("::")
+        .takeIf { it.isNotEmpty() }
 }
 
 /** Value inside an ARGUMENT shell, re-resolved (file-level: detekt budget). */

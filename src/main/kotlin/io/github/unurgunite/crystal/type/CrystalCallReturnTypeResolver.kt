@@ -110,20 +110,52 @@ object CrystalCallReturnTypeResolver {
                 CrystalMethodDefinition::class.java,
             )
         for (method in methods) {
-            val returnType = method.typeReference?.text
-            if (returnType != null) {
-                // Full annotation text, generics included (`Hash(String, String)`):
-                // typeReference holds only the return annotation (never parameter
-                // lists), so parens are generic args, not noise. Stripping them
-                // collapsed `Hash(String, String)` to bare `Hash` and broke
-                // generic-argument compatibility downstream. Union members keep
-                // the first branch (Crystal resolves left-to-right).
-                return returnType
-                    .split("|")
-                    .first()
-                    .trim()
-            }
+            firstAnnotatedReturnType(method)?.let { return it }
         }
         return null
+    }
+
+    /**
+     * Return type of [methodName] defined inside [className] (via the
+     * class→methods index). Null when the class defines no such method —
+     * the caller falls back to the project-wide first hit. Scopes
+     * receiver-typed DOT-calls (`data.to_hash` with data: PersonData) to
+     * the receiver's own method instead of a same-named stdlib generic.
+     */
+    fun lookupReturnTypeInClass(
+        methodName: String,
+        className: String,
+        project: Project,
+    ): String? {
+        if (methodName == "to_s") return "String"
+        val scope = GlobalSearchScope.allScope(project)
+        val methods =
+            StubIndex.getElements(
+                io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex.KEY,
+                className,
+                project,
+                scope,
+                CrystalMethodDefinition::class.java,
+            )
+        for (method in methods) {
+            if (method.name != methodName) continue
+            firstAnnotatedReturnType(method)?.let { return it }
+        }
+        return null
+    }
+
+    /** First union branch of a method's return annotation, generics kept. */
+    private fun firstAnnotatedReturnType(method: CrystalMethodDefinition): String? {
+        val returnType = method.typeReference?.text ?: return null
+        // Full annotation text, generics included (`Hash(String, String)`):
+        // typeReference holds only the return annotation (never parameter
+        // lists), so parens are generic args, not noise. Stripping them
+        // collapsed `Hash(String, String)` to bare `Hash` and broke
+        // generic-argument compatibility downstream. Union members keep
+        // the first branch (Crystal resolves left-to-right).
+        return returnType
+            .split("|")
+            .first()
+            .trim()
     }
 }

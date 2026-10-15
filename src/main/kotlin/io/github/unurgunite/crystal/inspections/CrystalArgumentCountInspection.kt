@@ -326,10 +326,19 @@ private object CrystalNewConstructorCheck {
         return true
     }
 
-    /** Literal `def initialize` path. */
+    /**
+     * Literal `def initialize` path — unless it is an empty fallback
+     * (`def initialize; end`) inherited from a macro base (Mosquito's
+     * `QueuedJob` ships one for the zero-params case) while the class
+     * itself declares macro `param`s. The macro-generated constructor
+     * (`initialize(@attempt_id, ...)`) is invisible in source, so arity
+     * against the empty fallback reports every named arg as unknown —
+     * yield to the `param` path instead (overload semantics: the empty
+     * fallback stays valid for zero-arg calls, `param` covers the rest).
+     */
     fun checkInitialize(
         className: String,
-        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        arguments: List<ArgumentInfo>,
         methodNameElement: PsiElement,
         contextElement: PsiElement,
         holder: ProblemsHolder,
@@ -343,8 +352,23 @@ private object CrystalNewConstructorCheck {
         val initMethod =
             CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
                 ?: return false
+        if (isEmptyFallback(initMethod) && hasParamDeclarations(className, contextElement)) return false
         checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
         return true
+    }
+
+    /** True when [method] takes no parameters at all (empty fallback shape). */
+    private fun isEmptyFallback(method: CrystalMethodDefinition): Boolean = method.parameterList?.parameterList.isNullOrEmpty()
+
+    /** True when [className] declares macro `param`s (project-wide lookup). */
+    private fun hasParamDeclarations(
+        className: String,
+        contextElement: PsiElement,
+    ): Boolean {
+        val file = contextElement.containingFile ?: return false
+        return io.github.unurgunite.crystal.type.CrystalParamLookup
+            .paramsForProject(className, contextElement.project, file)
+            .isNotEmpty()
     }
 
     /**

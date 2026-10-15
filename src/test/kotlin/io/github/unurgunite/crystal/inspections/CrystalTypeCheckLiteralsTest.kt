@@ -323,4 +323,19 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testOrDefaultYieldsOperandNotBool() {
+        // `mode? || "test"` is String, not Bool: `||` yields an operand.
+        // (pipeline.cr: `EmulatorJob.new(..., mode: run_mode)` mismatch.)
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(s : String)
+            end
+            x = nil
+            foo(x || "test")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

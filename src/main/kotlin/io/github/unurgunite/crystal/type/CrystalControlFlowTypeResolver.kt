@@ -135,7 +135,11 @@ object CrystalControlFlowTypeResolver {
             }
 
             CrystalTypes.AND_AND, CrystalTypes.OR_OR -> {
-                ResolvedType("Bool")
+                // `&&`/`||` yield an operand, never Bool (`mode? || "test"`
+                // is String, not Bool): union both sides. Over-wide, never
+                // narrow — a union suppresses false mismatches, a wrong
+                // Bool creates them.
+                resolveLogicalType(nonWhitespace[0].psi, nonWhitespace[2].psi)
             }
 
             CrystalTypes.PLUS, CrystalTypes.MINUS,
@@ -161,5 +165,17 @@ object CrystalControlFlowTypeResolver {
         val rightType = resolveType(right)
         if (leftType != null && leftType.typeName == rightType?.typeName) return leftType
         return null
+    }
+
+    /** `&&`/`||` operand union (file-level companion: detekt budget). */
+    private fun resolveLogicalType(
+        left: PsiElement,
+        right: PsiElement,
+    ): ResolvedType? {
+        val leftType = resolveType(left)?.typeName
+        val rightType = resolveType(right)?.typeName
+        if (leftType == null && rightType == null) return null
+        val parts = listOfNotNull(leftType, rightType).distinct()
+        return ResolvedType(parts.joinToString(" | "))
     }
 }

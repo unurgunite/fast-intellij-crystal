@@ -365,4 +365,30 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testReceiverClassMethodBeatsStdlibSameName() {
+        // A same-named stdlib generic (`Hash#to_hash`-like) must not shadow
+        // the receiver class's own method: `data.to_hash` with data: Holder
+        // takes Holder#to_hash even when a generic `to_hash` exists elsewhere.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            struct Holder
+              def to_hash : Hash(String, String)
+                {"a" => "b"}
+              end
+            end
+            struct Other
+              def to_hash : Hash(String, Int32)
+                {"a" => 1}
+              end
+            end
+            def validate(d : Hash(String, String))
+            end
+            data = Holder.new
+            validate(data.to_hash)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
