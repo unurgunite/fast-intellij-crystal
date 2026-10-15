@@ -395,4 +395,42 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testNewMatchesAcrossOverloads() {
+        // `Array(String).new(initial_capacity: ...)` must match the
+        // `initialize(initial_capacity)` overload, not the empty one
+        // (redis commands shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Array(T)
+              def initialize
+              end
+              def initialize(initial_capacity : Int)
+              end
+            end
+            Array(String).new(initial_capacity: 5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testForeignSameNamedInitializeIgnored() {
+        // Same-short-name collision (`Error` in two namespaces): a foreign
+        // `initialize(ssl, return_code)` must not shadow the hierarchy's
+        // own `(message = nil)` overload (redis errors shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class SslError
+              def initialize(ssl : String, return_code : Int32)
+              end
+            end
+            class Error < Exception
+            end
+            Error.new("boom")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

@@ -22,19 +22,77 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
  */
 object CrystalMethodLookup {
     /**
-     * Finds the `initialize` method of a class/struct (the Crystal constructor).
+     * First `initialize` overload of a class/struct (compat shim — new code
+     * prefers [getInitializeMethods]). Guarded by hierarchy membership: the
+     * class index keys by SHORT name, so `Error` collides `Redis::Error`
+     * with `OpenSSL::Error` — a foreign `initialize(ssl, return_code)`
+     * must not shadow the real constructor.
      */
     fun getInitializeMethod(
         typeName: String,
         project: Project,
         currentFile: PsiFile? = null,
     ): CrystalMethodDefinition? {
-        // Fast path: direct lookup by class name — avoids full hierarchy traversal
-        directInitialize(typeName, project)?.let { return it }
+        val all = getInitializeMethods(typeName, project, currentFile)
+        if (all.size <= 1) return all.firstOrNull()
+        // Several same-named classes (`Error` in redis/openssl): keep only
+        // overloads from the resolved type's own hierarchy.
+        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return all.firstOrNull()
+        val hierarchySignatures =
+            CrystalTypeHierarchy
+                .getMethodsFromType(result)
+                .filter { it.name == "initialize" }
+                .map { getParameterSignature(it) }
+                .toSet()
+        return all.firstOrNull { getParameterSignature(it) in hierarchySignatures } ?: all.firstOrNull()
+    }
 
-        // Slow path: resolve type hierarchy (for inherited initialize from parent classes)
-        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return null
-        return CrystalTypeHierarchy.getMethodsFromType(result).firstOrNull { it.name == "initialize" }
+    /**
+     * All `initialize` overloads of a class/struct visible from the project:
+     * direct definitions plus inherited ones. Plural: matching `.new` against
+     * only the FIRST overload mistyped `Array(String).new(initial_capacity:)`
+     * against empty `Array#initialize` while `initialize(initial_capacity)`
+     * sits right below it. Callers best-match across the list.
+     */
+    fun getInitializeMethods(
+        typeName: String,
+        project: Project,
+        currentFile: PsiFile? = null,
+    ): List<CrystalMethodDefinition> {
+        val scope = GlobalSearchScope.allScope(project)
+        val direct =
+            StubIndex
+                .getElements(
+                    CrystalMethodByClassIndex.KEY,
+                    typeName,
+                    project,
+                    scope,
+                    CrystalMethodDefinition::class.java,
+                ).filter { it.name == "initialize" }
+        if (direct.size > 1) return direct
+        // Zero or one direct hit: fall back to hierarchy (inherited overloads).
+        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return direct
+        val inherited = CrystalTypeHierarchy.getMethodsFromType(result).filter { it.name == "initialize" }
+        return (direct + inherited).distinctBy { getParameterSignature(it) }
+    }
+
+    /**
+     * True when [method] belongs to [typeName]'s own hierarchy (the type
+     * itself or one of its ancestors). File-level shape keeps
+     * getInitializeMethod under complexity budget. Compared by signature
+     * (index hits may be distinct PSI instances of one definition).
+     */
+    private fun isInHierarchyOf(
+        method: CrystalMethodDefinition,
+        typeName: String,
+        project: Project,
+        currentFile: PsiFile?,
+    ): Boolean {
+        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return true
+        val hierarchyInits = CrystalTypeHierarchy.getMethodsFromType(result).filter { it.name == "initialize" }
+        if (hierarchyInits.isEmpty()) return true
+        val signature = getParameterSignature(method)
+        return hierarchyInits.any { getParameterSignature(it) == signature }
     }
 
     /** `initialize` defined directly on [typeName], without hierarchy traversal. */

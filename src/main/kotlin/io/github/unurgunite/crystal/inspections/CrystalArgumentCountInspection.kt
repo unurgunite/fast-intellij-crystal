@@ -372,11 +372,13 @@ private object CrystalNewConstructorCheck {
             ProblemsHolder,
         ) -> Unit,
     ): Boolean {
-        val initMethod =
-            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
-                ?: return false
-        if (isEmptyFallback(initMethod) && hasParamDeclarations(className, contextElement)) return false
-        checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
+        val initMethods =
+            CrystalMethodLookup.getInitializeMethods(className, contextElement.project, contextElement.containingFile)
+        if (initMethods.isEmpty()) return false
+        if (initMethods.size == 1 && isEmptyFallback(initMethods.first()) && hasParamDeclarations(className, contextElement)) {
+            return false
+        }
+        checkArgumentCount(initMethods, arguments, methodNameElement, holder)
         return true
     }
 
