@@ -313,4 +313,34 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testNamedTypeBraceValueAsArgument() {
+        // `headers: HTTP::Headers{...}` — a type path + hash literal as a
+        // named value (HTTP::Client call sites). checkHighlighting asserts
+        // zero unexpected errors.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            response = HTTP::Client.post("url", headers: HTTP::Headers{"a" => "b"}, body: body)
+            puts response
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testToJsonHashFitsStringParam() {
+        // `rc_post(path, hash.to_json)` against `body : String` — the
+        // `.to_json` boundary: serialized at the call site, no mismatch.
+        // A bare hash against String stays a mismatch (checked by the
+        // literal tests in CrystalTypeCheckLiteralsTest).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def rc_post(path : String, body : String)
+            end
+            rc_post("/sync/copy", {"jobid" => 1}.to_json)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

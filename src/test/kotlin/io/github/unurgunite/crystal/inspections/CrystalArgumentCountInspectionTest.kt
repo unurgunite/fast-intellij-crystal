@@ -284,4 +284,48 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Block bodies are never arguments ====================
+
+    fun testBlockBodyIsNotAnArgument() {
+        // `at_exit { d.close }`: the `{}` block is not a positional argument —
+        // `at_exit` takes zero args plus a block (db.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def at_exit(&block : ->)
+              block.call
+            end
+            at_exit { puts 1 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testArgPlusBlockCountsArgOnly() {
+        // `foo(1) { bar }`: one positional plus a block — no excess reported.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(x : Int32)
+            end
+            foo(1) { puts 2 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testBinaryOperatorTailIsNotACall() {
+        // `Time.utc - 1.second` parses as DOT_CALL `Time.utc` + detached
+        // `- 1.second`: `-` is a binary operator, not a method name — no
+        // "Too many arguments" against a 0-param phantom.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            @@last_call = Time.utc - 1.second
+            deadline = Time.utc + timeout_s.seconds
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

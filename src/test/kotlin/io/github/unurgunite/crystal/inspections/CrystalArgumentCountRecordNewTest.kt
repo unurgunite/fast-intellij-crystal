@@ -309,4 +309,52 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
                 .findRecordDefinition("Config", myFixture.file),
         )
     }
+
+    // ==================== Macro `param` constructors (Mosquito-style) ====================
+
+    fun testParamConstructorAcceptsNamedArgs() {
+        // `param attempt_id : Int64` generates `initialize` at compile time —
+        // `Job.new(attempt_id: ...)` must not report "Unknown named argument".
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class CamTestJob < MosquitoJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(attempt_id: 5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testParamConstructorUnknownArgStillReported() {
+        // A genuinely unknown name against `param` declarations still reports.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class CamTestJob < MosquitoJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(<error descr="Unknown named argument 'bogus'">bogus: 5</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testLiteralInitializeBeatsParamDeclarations() {
+        // A literal `def initialize` wins over `param` entries: wrong arity
+        // against initialize still reports (param fallback must not shadow it).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Job
+              param attempt_id : Int64
+              def initialize(x : Int32)
+              end
+            end
+            Job.new(1, <error descr="Too many arguments: expected at most 1, got 2">2</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

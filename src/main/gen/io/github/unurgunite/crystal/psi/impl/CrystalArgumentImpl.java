@@ -35,6 +35,12 @@ public class CrystalArgumentImpl extends ASTWrapperPsiElement implements Crystal
 
   @Override
   @Nullable
+  public CrystalArrayLiteral getArrayLiteral() {
+    return PsiTreeUtil.getChildOfType(this, CrystalArrayLiteral.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalClassVarAccess getClassVarAccess() {
     return PsiTreeUtil.getChildOfType(this, CrystalClassVarAccess.class);
   }
@@ -53,6 +59,12 @@ public class CrystalArgumentImpl extends ASTWrapperPsiElement implements Crystal
 
   @Override
   @Nullable
+  public CrystalHashLiteral getHashLiteral() {
+    return PsiTreeUtil.getChildOfType(this, CrystalHashLiteral.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalInstanceVarAccess getInstanceVarAccess() {
     return PsiTreeUtil.getChildOfType(this, CrystalInstanceVarAccess.class);
   }
@@ -67,6 +79,12 @@ public class CrystalArgumentImpl extends ASTWrapperPsiElement implements Crystal
   @Nullable
   public CrystalMacroInterpolation getMacroInterpolation() {
     return PsiTreeUtil.getChildOfType(this, CrystalMacroInterpolation.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalTupleLiteral getTupleLiteral() {
+    return PsiTreeUtil.getChildOfType(this, CrystalTupleLiteral.class);
   }
 
   @Override

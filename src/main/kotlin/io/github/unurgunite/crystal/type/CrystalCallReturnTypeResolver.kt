@@ -22,6 +22,12 @@ object CrystalCallReturnTypeResolver {
         val newMatch = newPattern.find(text)
         if (newMatch != null) return ResolvedType(newMatch.groupValues[1])
 
+        // Pattern: <expr>.to_json → "String (to_json of <receiver type>)".
+        // The marker lets compatibility accept collections serialized at the
+        // call site (`rc_post(path, hash.to_json)` vs `body : String`) while
+        // bare collections still mismatch (`foo([1, 2])` vs `s : String`).
+        resolveToJsonReturnType(expr)?.let { return it }
+
         // Pattern: Klasse.method(...) → look up return type
         resolveClassMethodReturnType(text, expr.project)?.let { return it }
 
@@ -32,6 +38,35 @@ object CrystalCallReturnTypeResolver {
             if (returnType != null) return ResolvedType(returnType)
         }
 
+        return null
+    }
+
+    /**
+     * `<receiver>.to_json` (parens or bare): String with the receiver type
+     * threaded through for the `.to_json` compatibility boundary. Receiver
+     * resolved from the call's own PSI (the DOT_CALL_ACCESS receiver child),
+     * never from re-parsed text; unknown receiver falls back to plain String
+     * (still correct — `to_json` yields String for every receiver).
+     */
+    private fun resolveToJsonReturnType(expr: PsiElement): ResolvedType? {
+        val methodName = extractMethodName(expr) ?: return null
+        if (methodName != "to_json") return null
+        val receiver = dotCallReceiver(expr) ?: return ResolvedType("String")
+        val receiverType = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return ResolvedType("String")
+        return ResolvedType("String (to_json of $receiverType)")
+    }
+
+    /** Receiver child of a DOT-call expression (`recv` in `recv.method(args)`), if any. */
+    private fun dotCallReceiver(expr: PsiElement): PsiElement? {
+        var child = expr.firstChild
+        while (child != null) {
+            if (child.node?.elementType == CrystalTypes.DOT) {
+                var prev = child.prevSibling
+                while (prev is com.intellij.psi.PsiWhiteSpace) prev = prev.prevSibling
+                return prev
+            }
+            child = child.nextSibling
+        }
         return null
     }
 
@@ -60,6 +95,11 @@ object CrystalCallReturnTypeResolver {
         methodName: String,
         project: Project,
     ): String? {
+        // `to_s` always yields String in Crystal (every overload, including
+        // `Object#to_s`, `Int#to_s`, `Nil#to_s`). Short-circuit: the index
+        // walk below would otherwise return the receiver's own type from the
+        // first unannotated `to_s` overload it meets.
+        if (methodName == "to_s") return "String"
         val scope = GlobalSearchScope.allScope(project)
         val methods =
             StubIndex.getElements(

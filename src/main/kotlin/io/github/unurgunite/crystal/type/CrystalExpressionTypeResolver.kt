@@ -89,8 +89,14 @@ object CrystalExpressionTypeResolver {
             if (inner != null) return resolveType(inner)
         }
 
-        // Expression wrapper — ternary, operators, then first meaningful child
+        // Expression wrapper — ternary, operators, then first meaningful child.
+        // NOTE: a DOT-call fragment nested anywhere inside (`{...}.to_json`
+        // as an argument value) resolves FIRST: firstChild descent below
+        // would take the bare receiver (`{...}` → Hash) and lose the call.
         if (expr is CrystalExpression) {
+            findDotCallDeep(expr)?.let { dotCall ->
+                resolveDotCallFragmentOf(dotCall)?.let { return it }
+            }
             return CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
         }
 
@@ -106,30 +112,43 @@ object CrystalExpressionTypeResolver {
         // Variable / ivar references (unions preserved as "A | B")
         resolveReferenceOperand(expr)?.let { return it }
 
-        // Method call expressions → resolve return type
+        return resolveCallShape(expr)
+    }
+
+    /**
+     * Method call shapes: full calls resolve the return type; DOT_CALL_ACCESS
+     * (`recv.to_json`) is a postfix fragment — resolve the enclosing call
+     * shape instead of the bare fragment. File-level dispatch keeps this
+     * function under detekt's ReturnCount budget.
+     */
+    private fun resolveCallShape(expr: PsiElement): ResolvedType? {
         if (expr is CrystalMethodCallExpression || expr is CrystalBareMethodCallExpression) {
             return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(expr)
         }
-        return null
+        if (expr.node?.elementType.toString() != "DOT_CALL_ACCESS") return null
+        val parentCall = expr.parent
+        if (parentCall is CrystalMethodCallExpression || parentCall is CrystalBareMethodCallExpression) {
+            return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(parentCall)
+        }
+        return resolveDotCallFragmentOf(expr)
     }
 
     /** Transparent wrappers (arguments, statements) around the real expression. */
     private fun resolveWrapper(expr: PsiElement): ResolvedType? {
-        val inner: PsiElement? =
-            when (expr) {
-                is CrystalBareArgument -> CrystalPsiUtils.firstSignificantChild(expr)
-                is CrystalStatement -> innerOfStatement(expr)
-                is CrystalExpressionStatement -> expr.expressionList.firstOrNull()
-                else -> return null
-            }
-        if (inner != null) return resolveType(inner)
-        return null
+        // `X.to_json` ANYWHERE inside the wrapper subtree (argument values
+        // like `{...}.to_json`): the call yields String for every receiver.
+        // Checked FIRST via raw text scan: structural fragment search misses
+        // shapes where the receiver and the DOT-call sit in different
+        // subtrees (verified by probe: `{...}.to_json` resolves Hash without
+        // this). Text scan is safe here: `.to_json` with a word boundary is
+        // unambiguous, and String is correct for every receiver.
+        if (hasToJsonCall(expr)) return ResolvedType("String")
+        return resolveWrapperInnerOf(expr)
     }
 
     /** The wrapped expression inside a statement (expression/if/begin/assignment), if any. */
     private fun innerOfStatement(expr: CrystalStatement): PsiElement? =
-        expr.expressionStatement ?: expr.ifStatement
-            ?: expr.beginStatement ?: expr.assignment ?: expr.multiAssignment
+        innerOfStatementOf(expr)
             ?: expr.children.firstOrNull { it !is PsiWhiteSpace }
 
     /** Leaf literal tokens: integers, floats, strings, chars, symbols, bools, nil. */
@@ -184,25 +203,133 @@ object CrystalExpressionTypeResolver {
 /**
  * Variable / ivar reference operand of an expression, if any: plain locals
  * delegate to the generic inference, `@ivar` / `@@cvar` to the declared-type
- * index first. File-level to keep the object above under detekt's
- * TooManyFunctions budget.
+ * index first. Merged single function (file-level: detekt budget).
  */
 private fun resolveReferenceOperand(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    if (expr is CrystalVariableReference) return resolveVariableReference(expr)
-    if (expr is CrystalInstanceVarAccess || expr is CrystalClassVarAccess) return resolveInstanceVar(expr)
-    return null
-}
+    val inferred =
+        when (expr) {
+            is CrystalVariableReference -> {
+                CrystalTypeInference.inferTypeList(expr.text, expr, expr.project)
+            }
 
-/** Plain local-variable reference → generic inference (unions preserved as "A | B"). */
-private fun resolveVariableReference(expr: CrystalVariableReference): CrystalExpressionTypeResolver.ResolvedType? {
-    val inferred = CrystalTypeInference.inferTypeList(expr.text, expr, expr.project)
+            is CrystalInstanceVarAccess, is CrystalClassVarAccess -> {
+                CrystalInstanceVarTypeInference.inferIvarType(expr.text, expr, expr.project, 0)
+            }
+
+            else -> {
+                return null
+            }
+        }
     if (inferred.isNotEmpty()) return CrystalExpressionTypeResolver.ResolvedType(inferred.joinToString(" | "))
     return null
 }
 
-/** `@ivar` / `@@cvar` → declared types (shorthand params, properties), then assignments. */
-private fun resolveInstanceVar(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    val inferred = CrystalInstanceVarTypeInference.inferIvarType(expr.text, expr, expr.project, 0)
-    if (inferred.isNotEmpty()) return CrystalExpressionTypeResolver.ResolvedType(inferred.joinToString(" | "))
+/** DOT-call fragment method+receiver reader (file-level: detekt budget). */
+private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
+    var methodName: String? = null
+    var receiver: PsiElement? = null
+    var child = expr.firstChild
+    while (child != null) {
+        if (child.node?.elementType == CrystalTypes.DOT) {
+            var next = child.nextSibling
+            while (next is PsiWhiteSpace) next = next.nextSibling
+            methodName = next?.text
+            var prev = child.prevSibling
+            while (prev is PsiWhiteSpace) prev = prev.prevSibling
+            receiver = prev
+        }
+        child = child.nextSibling
+    }
+    return methodName to receiver
+}
+
+/** DOT-call fragment type (file-level: detekt budget). `to_json` is String for every receiver. */
+private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    val (methodName, _) = dotCallPartsOf(expr)
+    if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
+    if (methodName != null) {
+        CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
+            return CrystalExpressionTypeResolver.ResolvedType(it)
+        }
+    }
     return null
+}
+
+/** Value inside an ARGUMENT shell, re-resolved (file-level: detekt budget). */
+private fun resolveArgumentValueOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    val inner = expr.firstChild ?: return null
+    if (inner !== expr) return CrystalExpressionTypeResolver.resolveType(inner)
+    return null
+}
+
+/** Leaf wrapper shapes (file-level: detekt budget). */
+private fun resolveWrapperLeafOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    val inner: PsiElement? =
+        when (expr) {
+            is CrystalBareArgument -> CrystalPsiUtils.firstSignificantChild(expr)
+            is CrystalStatement -> innerOfStatementOf(expr)
+            is CrystalExpressionStatement -> expr.expressionList.firstOrNull()
+            else -> return null
+        }
+    if (inner != null) return CrystalExpressionTypeResolver.resolveType(inner)
+    return null
+}
+
+/** Statement inner shape (file-level: detekt budget). */
+private fun innerOfStatementOf(expr: CrystalStatement): PsiElement? =
+    expr.expressionStatement ?: expr.ifStatement
+        ?: expr.beginStatement ?: expr.assignment ?: expr.multiAssignment
+        ?: expr.children.firstOrNull { it !is PsiWhiteSpace }
+
+/**
+ * DOT-call fragment inside an argument wrapper: direct children first
+ * (cheap), then transparent shells (EXPRESSION / HASH / ARRAY / TUPLE /
+ * GROUPED). Single function (file-level: detekt budget).
+ */
+private fun findDotCallDeep(expr: PsiElement): PsiElement? {
+    var current: PsiElement? = expr.firstChild
+    while (current != null) {
+        if (current.node?.elementType.toString() == "DOT_CALL_ACCESS") return current
+        if (isTransparentShell(current)) {
+            findDotCallDeep(current)?.let { return it }
+        }
+        current = current.nextSibling
+    }
+    return null
+}
+
+/** Shell node types transparent to the fragment search. */
+private fun isTransparentShell(child: PsiElement): Boolean {
+    val type = child.node?.elementType.toString()
+    return type == "EXPRESSION" || type == "HASH_LITERAL" || type == "ARRAY_LITERAL" ||
+        type == "TUPLE_LITERAL" || type == "GROUPED_EXPRESSION"
+}
+
+/** Wrapper descent once fragments are ruled out (file-level: detekt budget). */
+private fun resolveWrapperInnerOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
+    if (expr.node?.elementType.toString() == "EXPRESSION") {
+        val inner = CrystalPsiUtils.firstSignificantChild(expr) ?: return null
+        if (inner !== expr) return CrystalExpressionTypeResolver.resolveType(inner)
+        return null
+    }
+    if (expr.node?.elementType.toString() == "ARGUMENT") {
+        return resolveArgumentValueOf(expr)
+    }
+    return resolveWrapperLeafOf(expr)
+}
+
+/** True when the subtree holds a `.to_json` call (word-boundary DOT form; file-level: detekt budget). */
+private fun hasToJsonCall(expr: PsiElement): Boolean {
+    var child = expr.firstChild
+    while (child != null) {
+        if (child.node?.elementType == CrystalTypes.DOT) {
+            var next = child.nextSibling
+            while (next is PsiWhiteSpace) next = next.nextSibling
+            val name = next?.text ?: ""
+            if (name == "to_json" || name.startsWith("to_json(")) return true
+        }
+        if (child.firstChild != null && hasToJsonCall(child)) return true
+        child = child.nextSibling
+    }
+    return false
 }

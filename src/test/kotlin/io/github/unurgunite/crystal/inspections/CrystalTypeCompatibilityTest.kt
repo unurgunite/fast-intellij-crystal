@@ -98,4 +98,15 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertEquals("Int32", CrystalTypeCompatibility.describeExpectedType("Int32"))
         assertEquals("Int32 | String", CrystalTypeCompatibility.describeExpectedType("Int32 | String"))
     }
+
+    fun testJsonableCollectionsFitString() {
+        // `.to_json` always yields String: `hash.to_json` resolves as the
+        // `to_json` call (String), not the bare hash. Bare collections
+        // without `.to_json` still mismatch (see the literal tests in
+        // CrystalTypeCheckLiteralsTest).
+        assertTrue(compat("String", "String"))
+        assertFalse(compat("Hash(String, String)", "String"))
+        assertFalse(compat("Array(Int32)", "String"))
+        assertFalse(compat("Int32", "String"))
+    }
 }

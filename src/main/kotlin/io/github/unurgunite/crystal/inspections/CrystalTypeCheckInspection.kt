@@ -86,10 +86,12 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         val methods = CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
         if (methods.isEmpty()) return
 
-        // Check each argument against all overloads
+        // Check each value argument against all overloads (block bodies carry
+        // no value type). NOTE: argIndex counts the block marker too, so
+        // overload arity math must use value-only indexing — see
+        // collectsExpectedType below.
         for ((argIndex, argInfo) in arguments.withIndex()) {
-            val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: continue
-            checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
+            checkValueArgument(argInfo, argIndex, methods, holder)
         }
     }
 
@@ -107,11 +109,22 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         val methods = resolveDotCallMethods(argsElement, info, arguments, holder)
         if (methods.isEmpty()) return
 
-        // Reuse the same type-checking logic
+        // Reuse the same type-checking logic (block bodies carry no value type).
         for ((argIndex, argInfo) in arguments.withIndex()) {
-            val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: continue
-            checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
+            checkValueArgument(argInfo, argIndex, methods, holder)
         }
+    }
+
+    /** One value argument against every overload; block markers skipped silently. */
+    private fun checkValueArgument(
+        argInfo: ArgumentInfo,
+        argIndex: Int,
+        methods: List<CrystalMethodDefinition>,
+        holder: ProblemsHolder,
+    ) {
+        if (argInfo.isBlock) return
+        val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: return
+        checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
     }
 
     /**
