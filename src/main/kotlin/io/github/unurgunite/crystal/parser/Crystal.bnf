@@ -1160,7 +1160,14 @@ dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS 
                   // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
                   // handled by postfix_op/index_assign_suffix — untouched).
-                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] {
+                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+                  // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
+                  // executor.cr): dot-form operator with paren args. Same PSI
+                  // class (alternative, not a separate rule — a separate rule
+                  // would fork every CrystalDotCallAccess check). call_args
+                  // only (no bare-arg tail — `a.+ b` stays binary via the
+                  // expression tower).
+                  | DOT (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE) [call_args] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalDotCallAccessMixin"
 }
 

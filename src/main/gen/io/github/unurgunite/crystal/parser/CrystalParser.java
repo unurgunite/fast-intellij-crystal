@@ -4474,6 +4474,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
   //                   // handled by postfix_op/index_assign_suffix — untouched).
   //                   | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+  //                   // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
+  //                   // executor.cr): dot-form operator with paren args. Same PSI
+  //                   // class (alternative, not a separate rule — a separate rule
+  //                   // would fork every CrystalDotCallAccess check). call_args
+  //                   // only (no bare-arg tail — `a.+ b` stays binary via the
+  //                   // expression tower).
+  //                   | DOT (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE) [call_args]
   public static boolean dot_call_access(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "dot_call_access")) return false;
     if (!nextTokenIs(builder_, DOT)) return false;
@@ -4483,6 +4490,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = dot_call_access_1(builder_, level_ + 1);
     if (!result_) result_ = dot_call_access_2(builder_, level_ + 1);
     if (!result_) result_ = dot_call_access_3(builder_, level_ + 1);
+    if (!result_) result_ = dot_call_access_4(builder_, level_ + 1);
     exit_section_(builder_, marker_, DOT_CALL_ACCESS, result_);
     return result_;
   }
@@ -4732,6 +4740,46 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   private static boolean dot_call_access_3_3_0_1_4(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "dot_call_access_3_3_0_1_4")) return false;
     consumeToken(builder_, QUESTION);
+    return true;
+  }
+
+  // DOT (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE) [call_args]
+  private static boolean dot_call_access_4(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "dot_call_access_4")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = consumeToken(builder_, DOT);
+    result_ = result_ && dot_call_access_4_1(builder_, level_ + 1);
+    result_ = result_ && dot_call_access_4_2(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE
+  private static boolean dot_call_access_4_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "dot_call_access_4_1")) return false;
+    boolean result_;
+    result_ = consumeToken(builder_, PLUS);
+    if (!result_) result_ = consumeToken(builder_, MINUS);
+    if (!result_) result_ = consumeToken(builder_, STAR);
+    if (!result_) result_ = consumeToken(builder_, SLASH);
+    if (!result_) result_ = consumeToken(builder_, DOUBLE_SLASH);
+    if (!result_) result_ = consumeToken(builder_, PERCENT);
+    if (!result_) result_ = consumeToken(builder_, DOUBLE_STAR);
+    if (!result_) result_ = consumeToken(builder_, SPACESHIP);
+    if (!result_) result_ = consumeToken(builder_, EQ);
+    if (!result_) result_ = consumeToken(builder_, NEQ);
+    if (!result_) result_ = consumeToken(builder_, LT);
+    if (!result_) result_ = consumeToken(builder_, LTE);
+    if (!result_) result_ = consumeToken(builder_, GT);
+    if (!result_) result_ = consumeToken(builder_, GTE);
+    return result_;
+  }
+
+  // [call_args]
+  private static boolean dot_call_access_4_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "dot_call_access_4_2")) return false;
+    call_args(builder_, level_ + 1);
     return true;
   }
 

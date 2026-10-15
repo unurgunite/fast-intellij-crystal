@@ -573,7 +573,10 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 
   // Regex literal (only in operator position — not after identifiers, constants, literals, ) or ])
   // PLUS bare postfix-callee regex (`doc.gsub /re/` — see isBareRegexSlash()).
-  "/"                    { if (isRegexAllowed() || isBareRegexSlash()) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
+  // After DOT the `/` is always the division operator (`trunc./(100)` —
+  // mosquito executor.cr), never a regex: isRegexAllowed() returns true
+  // after DOT (not a value token), so DOT needs its own guard first.
+  "/"                    { if (lastSignificantToken != CrystalTypes.DOT && (isRegexAllowed() || isBareRegexSlash())) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
                            return track(CrystalTypes.SLASH); }
 
   // Multi-character operators (longest first)
@@ -877,7 +880,9 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   ">>"                 { return track(CrystalTypes.RSHIFT); }
   "//"                 { return track(CrystalTypes.DOUBLE_SLASH); }
   "*"                  { return track(CrystalTypes.STAR); }
-  "/"                  { if (isRegexAllowed() || isBareRegexSlash()) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
+  // After DOT the `/` is division (`./(100)`), never a regex — same guard
+  // as the YYINITIAL rule above (mosquito executor.cr).
+  "/"                  { if (lastSignificantToken != CrystalTypes.DOT && (isRegexAllowed() || isBareRegexSlash())) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
                          return track(CrystalTypes.SLASH); }
   "%"                  { return track(CrystalTypes.PERCENT); }
   "<"                  { return track(CrystalTypes.LT); }

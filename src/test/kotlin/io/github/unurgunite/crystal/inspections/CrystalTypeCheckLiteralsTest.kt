@@ -496,4 +496,24 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testDotOperatorCallInInterpolation() {
+        // `#{(seconds).*(100).trunc./(100)}s`: dot-form operators with paren
+        // args inside string interpolation (mosquito executor.cr). The `/`
+        // after DOT is division, never a regex start.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def time_with_units(seconds : Float64) : String
+              if seconds > 0.1
+                "#{(seconds).*(100).trunc./(100)}s"
+              else
+                "#{(seconds * 1_000).trunc}ms"
+              end
+            end
+            puts time_with_units(1.5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
