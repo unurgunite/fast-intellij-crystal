@@ -357,4 +357,23 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testParamConstructorAcrossFilesWithChainedCall() {
+        // Real-project shape: the class lives in another file (pipeline.cr)
+        // while the call site chains (`CamTestJob.new(attempt_id: ...).enqueue`
+        // in app.cr). File-local lookup missed the `param` entries entirely.
+        myFixture.addFileToProject(
+            "jobs.cr",
+            """
+            class CamTestJob < MosquitoJob
+              param attempt_id : Int64
+            end
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "app.cr",
+            "CamTestJob.new(attempt_id: 5).enqueue\n",
+        )
+        myFixture.checkHighlighting()
+    }
 }

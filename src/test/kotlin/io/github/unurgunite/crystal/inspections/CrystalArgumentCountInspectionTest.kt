@@ -302,6 +302,22 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testBlockBodyWithDotCallIsNotAnArgument() {
+        // Same shape but the block body is a DOT-call (`d.close`), not a bare
+        // command: the tuple still holds a block body, never a value.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def at_exit(&block : ->)
+              block.call
+            end
+            d = open_db
+            at_exit { d.close }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testArgPlusBlockCountsArgOnly() {
         // `foo(1) { bar }`: one positional plus a block — no excess reported.
         myFixture.configureByText(

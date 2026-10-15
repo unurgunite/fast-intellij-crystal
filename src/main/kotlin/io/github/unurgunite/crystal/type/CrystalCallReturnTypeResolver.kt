@@ -112,11 +112,15 @@ object CrystalCallReturnTypeResolver {
         for (method in methods) {
             val returnType = method.typeReference?.text
             if (returnType != null) {
+                // Full annotation text, generics included (`Hash(String, String)`):
+                // typeReference holds only the return annotation (never parameter
+                // lists), so parens are generic args, not noise. Stripping them
+                // collapsed `Hash(String, String)` to bare `Hash` and broke
+                // generic-argument compatibility downstream. Union members keep
+                // the first branch (Crystal resolves left-to-right).
                 return returnType
                     .split("|")
                     .first()
-                    .trim()
-                    .replace(Regex("""\(.*\)"""), "")
                     .trim()
             }
         }

@@ -362,7 +362,7 @@ private object CrystalNewConstructorCheck {
         val file = contextElement.containingFile ?: return false
         val paramEntries =
             io.github.unurgunite.crystal.type.CrystalParamLookup
-                .paramsFor(className, file)
+                .paramsForProject(className, contextElement.project, file)
         if (paramEntries.isEmpty()) return false
         checkParamArity(paramEntries, arguments, methodNameElement, holder)
         return true

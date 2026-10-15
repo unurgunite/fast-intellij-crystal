@@ -125,7 +125,11 @@ object CrystalExpressionTypeResolver {
         if (expr is CrystalMethodCallExpression || expr is CrystalBareMethodCallExpression) {
             return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(expr)
         }
-        if (expr.node?.elementType.toString() != "DOT_CALL_ACCESS") return null
+        // NOTE: compare by PSI class, never by elementType.toString() — its
+        // rendering is "CrystalElementType.DOT_CALL_ACCESS", so string
+        // equality against "DOT_CALL_ACCESS" is always false (dead branch
+        // that silently dropped every DOT-call fragment resolution).
+        if (expr !is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) return null
         val parentCall = expr.parent
         if (parentCall is CrystalMethodCallExpression || parentCall is CrystalBareMethodCallExpression) {
             return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(parentCall)
@@ -289,7 +293,7 @@ private fun innerOfStatementOf(expr: CrystalStatement): PsiElement? =
 private fun findDotCallDeep(expr: PsiElement): PsiElement? {
     var current: PsiElement? = expr.firstChild
     while (current != null) {
-        if (current.node?.elementType.toString() == "DOT_CALL_ACCESS") return current
+        if (current is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) return current
         if (isTransparentShell(current)) {
             findDotCallDeep(current)?.let { return it }
         }
@@ -299,20 +303,28 @@ private fun findDotCallDeep(expr: PsiElement): PsiElement? {
 }
 
 /** Shell node types transparent to the fragment search. */
-private fun isTransparentShell(child: PsiElement): Boolean {
-    val type = child.node?.elementType.toString()
-    return type == "EXPRESSION" || type == "HASH_LITERAL" || type == "ARRAY_LITERAL" ||
-        type == "TUPLE_LITERAL" || type == "GROUPED_EXPRESSION"
-}
+private fun isTransparentShell(child: PsiElement): Boolean =
+    child is CrystalExpression ||
+        child is io.github.unurgunite.crystal.psi.CrystalHashLiteral ||
+        child is io.github.unurgunite.crystal.psi.CrystalArrayLiteral ||
+        child is io.github.unurgunite.crystal.psi.CrystalTupleLiteral ||
+        child is CrystalGroupedExpression
 
 /** Wrapper descent once fragments are ruled out (file-level: detekt budget). */
 private fun resolveWrapperInnerOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    if (expr.node?.elementType.toString() == "EXPRESSION") {
-        val inner = CrystalPsiUtils.firstSignificantChild(expr) ?: return null
-        if (inner !== expr) return CrystalExpressionTypeResolver.resolveType(inner)
+    if (expr is CrystalExpression) {
+        // DOT-call fragment first (`data.to_hash`): firstChild descent
+        // would take the bare receiver (`data` → PersonData) and lose the
+        // call's own return type. But ONLY the fragment resolves here —
+        // anything else (ternary, operators) falls through to composite's
+        // resolveCompoundExpression; descending here would steal the
+        // condition/left-operand type instead of computing the result.
+        findDotCallDeep(expr)?.let { dotCall ->
+            resolveDotCallFragmentOf(dotCall)?.let { return it }
+        }
         return null
     }
-    if (expr.node?.elementType.toString() == "ARGUMENT") {
+    if (expr is io.github.unurgunite.crystal.psi.CrystalArgument) {
         return resolveArgumentValueOf(expr)
     }
     return resolveWrapperLeafOf(expr)

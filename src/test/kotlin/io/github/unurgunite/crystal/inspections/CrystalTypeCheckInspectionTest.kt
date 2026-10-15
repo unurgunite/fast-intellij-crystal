@@ -343,4 +343,26 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testMethodReturnTypeKeepsGenerics() {
+        // `data.to_hash` where `to_hash : Hash(String, String)` feeds
+        // `validate(d : Hash(String, String))` (pipeline.cr shape): the
+        // DOT-call return type must keep generic args — bare `Hash` also
+        // fits, but the full form must resolve, not collapse or null out.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            struct PersonData
+              def to_hash : Hash(String, String)
+                {"a" => "b"}
+              end
+            end
+            def validate(d : Hash(String, String))
+            end
+            data = PersonData.new
+            validate(data.to_hash)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
