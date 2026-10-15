@@ -497,6 +497,36 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testGlobalGenericNewKeepsArgs() {
+        // `live = ::Set(String).new` then `prune(live)` against
+        // `::Set(String)`: leading `::` tolerated, generic args kept
+        // (redis cluster.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def prune(live : ::Set(String))
+            end
+            live = ::Set(String).new
+            prune(live)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testDefinitionMacrosSkipArity() {
+        // `define sum, count, ...` declares methods, never calls them —
+        // arity against a same-named 2-param method is noise.
+        // (`delegate` with operator symbols is a separate parser gap,
+        // covered by the C1 batch.)
+        myFixture.configureByText(
+            "test.cr",
+            """
+            define sum, count_distinct, min, max, avg
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testDotOperatorCallInInterpolation() {
         // `#{(seconds).*(100).trunc./(100)}s`: dot-form operators with paren
         // args inside string interpolation (mosquito executor.cr). The `/`

@@ -269,13 +269,21 @@ private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeRes
 }
 
 /**
- * Class name behind a DOT-call receiver: a CONSTANT (`PersonData.new`) or
- * the resolved type of a variable reference (`data` → PersonData via
- * inference). Null when the receiver shape is unknown (fallback applies).
+ * Class name behind a DOT-call receiver: a CONSTANT (`PersonData.new`), an
+ * uppercase reference (`URI` parses as VARIABLE_REFERENCE, not a CONSTANT
+ * token — same meaning), or the resolved type of a lowercase variable
+ * reference (`data` → PersonData via inference). Null when the receiver
+ * shape is unknown (fallback applies).
  */
 private fun receiverClassNameOf(receiver: PsiElement?): String? {
     if (receiver == null) return null
     if (receiver.node?.elementType == io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT) return receiver.text
+    // Uppercase single-token reference (`URI` parses as VARIABLE_REFERENCE,
+    // not a CONSTANT token — same meaning for scoping).
+    val refText = receiver.text.trim()
+    if (refText.isNotEmpty() && refText[0].isUpperCase() && refText.none { it.isWhitespace() }) {
+        return refText.substringAfterLast("::")
+    }
     val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
     // Strip union/nilable wrappers to the first concrete member for scoping.
     // Depth-aware split: naive split("|") cut `Hash(K | L, V | W)` into `Hash(K`.

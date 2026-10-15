@@ -96,8 +96,9 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     /**
      * True when a bare call needs no checks: the name resolves to a local
      * variable/parameter (shadows any method — binary-op ambiguity like
-     * `count + 87` parsed as a call), or it is a spec matcher (accepts
-     * anything). File-level shape keeps checkCall under ReturnCount.
+     * `count + 87` parsed as a call), it is a spec matcher (accepts
+     * anything), or a definition macro (`define`, `delegate` — declare
+     * methods, not calls). File-level shape keeps checkCall under ReturnCount.
      */
     private fun isSkippedBareCall(
         callExpr: PsiElement,
@@ -109,9 +110,10 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         // operators followed by literals. The parameter shadows any same-named method.
         val resolvedRef = callExpr.reference?.resolve()
         if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+        val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
         // Spec matchers accept anything — never arity/type-check them.
-        return io.github.unurgunite.crystal.type.CrystalLocalScope
-            .isSpecMatcherCall(methodName)
+        if (scope.isSpecMatcherCall(methodName)) return true
+        return scope.isDefinitionMacroCall(methodName)
     }
 
     private fun checkDotCall(

@@ -93,11 +93,12 @@ object CrystalTypeCompatibility {
         paramType: String,
         isUnsuffixedNumericLiteral: Boolean = false,
     ): Boolean {
+        val normalizedArg = normalizeType(argType)
         val normalizedParam = normalizeType(paramType)
 
         return when {
             // Exact match
-            argType == normalizedParam -> {
+            normalizedArg == normalizedParam -> {
                 true
             }
 
@@ -109,19 +110,19 @@ object CrystalTypeCompatibility {
             // parens (`Hash(K | L, V | W)` → `Hash(K`, `L, V`, `W)`).
             // Single-member result (all `|` nested) is not a union at all —
             // fall through to generic handling instead of self-recursing.
-            isMultiMemberUnion(argType) -> {
-                splitTopLevel(argType).any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
+            isMultiMemberUnion(normalizedArg) -> {
+                splitTopLevel(normalizedArg).any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
             }
 
             // Nilable "Type?" is sugar for "Type | Nil"
             normalizedParam.endsWith("?") -> {
-                isCompatibleNilable(argType, normalizedParam, isUnsuffixedNumericLiteral)
+                isCompatibleNilable(normalizedArg, normalizedParam, isUnsuffixedNumericLiteral)
             }
 
             // Union "Type1 | Type2 | ...": any member may match.
             // Same single-member guard as the argument side.
             isMultiMemberUnion(normalizedParam) -> {
-                splitTopLevel(normalizedParam).any { isCompatible(argType, it.trim(), isUnsuffixedNumericLiteral) }
+                splitTopLevel(normalizedParam).any { isCompatible(normalizedArg, it.trim(), isUnsuffixedNumericLiteral) }
             }
 
             // Unsuffixed numeric literals autocast to ANY numeric type
@@ -130,17 +131,17 @@ object CrystalTypeCompatibility {
             }
 
             // Suffixed numeric autocast (lossless widening)
-            argType in NUMERIC_TYPES && normalizedParam in NUMERIC_TYPES -> {
-                NUMERIC_AUTOCAST[argType]?.contains(normalizedParam) == true
+            normalizedArg in NUMERIC_TYPES && normalizedParam in NUMERIC_TYPES -> {
+                NUMERIC_AUTOCAST[normalizedArg]?.contains(normalizedParam) == true
             }
 
             // Generic shapes: both, or neither, must be generic
-            normalizedParam.contains("(") || argType.contains("(") -> {
-                isCompatibleGeneric(argType, normalizedParam, isUnsuffixedNumericLiteral)
+            normalizedParam.contains("(") || normalizedArg.contains("(") -> {
+                isCompatibleGeneric(normalizedArg, normalizedParam, isUnsuffixedNumericLiteral)
             }
 
             // Unknown side: could be a superclass, alias or generic — never a definite mismatch
-            normalizedParam !in KNOWN_BUILTINS || argType !in KNOWN_BUILTINS -> {
+            normalizedParam !in KNOWN_BUILTINS || normalizedArg !in KNOWN_BUILTINS -> {
                 true
             }
 
@@ -182,20 +183,40 @@ object CrystalTypeCompatibility {
         // Bare generic against parameterized (`Hash` vs `Hash(String, String)`
         // with the same base): unparameterized means "args unknown", never a
         // definite mismatch — same leniency as unknown types elsewhere.
+        // Alias-aware (`Bytes` vs `Slice(UInt8)`). A bare side that is a
+        // KNOWN alias expands first (`Bytes` → `Slice(UInt8)`), so concrete
+        // mismatches (`Slice(String)` vs `Bytes`) still fail; a truly
+        // unknown bare side (`Hash`) stays lenient.
         if (paramHasArgs != argHasArgs) {
-            val paramBase = normalizedParam.substringBefore("(").trim()
-            val argBase = argType.substringBefore("(").trim()
-            return paramBase == argBase && paramBase.firstOrNull()?.isUpperCase() == true
+            return BareGenericCheck.check(argType, normalizedParam, isUnsuffixedNumericLiteral)
         }
         val paramBase = normalizedParam.substringBefore("(").trim()
         val argBase = argType.substringBefore("(").trim()
-        if (paramBase != argBase) return false
+        if (!sameGenericBase(paramBase, argBase)) return false
         val paramInner = extractGenericTypeArgs(normalizedParam)
         val argInner = extractGenericTypeArgs(argType)
         if (paramInner.size != argInner.size) return false
         return paramInner.zip(argInner).all { (p, a) ->
             isUnboundTypeVariable(p) || isUnboundTypeVariable(a) || isCompatible(a, p, isUnsuffixedNumericLiteral)
         }
+    }
+
+    /**
+     * Known generic alias bases (`Bytes` is `Slice(UInt8)` in stdlib):
+     * `Slice(T)` fits `Bytes` when the slice arg fits `UInt8`.
+     * Internal: shared with BareGenericCheck.
+     */
+    internal val GENERIC_ALIAS_BASES = mapOf("Bytes" to "Slice")
+
+    /** True for equal bases modulo known aliases. Internal: shared with BareGenericCheck. */
+    internal fun sameGenericBase(
+        paramBase: String,
+        argBase: String,
+    ): Boolean {
+        if (paramBase == argBase) return true
+        if (GENERIC_ALIAS_BASES[paramBase] == argBase) return true
+        if (GENERIC_ALIAS_BASES[argBase] == paramBase) return true
+        return false
     }
 
     /**
@@ -231,7 +252,8 @@ object CrystalTypeCompatibility {
         )
 
     private fun normalizeType(type: String): String {
-        val trimmed = type.trim()
+        // Leading `::` is semantically void (`::Set(String)` == `Set(String)`).
+        val trimmed = type.trim().removePrefix("::")
         return TYPE_ALIASES[trimmed] ?: trimmed
     }
 
@@ -301,4 +323,37 @@ object CrystalTypeCompatibility {
         }
         return normalized
     }
+}
+
+/**
+ * Bare generic against parameterized (`Hash` vs `Hash(String, String)`).
+ * Separate object: keeps isCompatibleGeneric under ReturnCount budget.
+ * Known aliases expand first (`Bytes` → `Slice(UInt8)`); otherwise
+ * same-base means "args unknown" (lenient), different bases mismatch.
+ */
+internal object BareGenericCheck {
+    fun check(
+        argType: String,
+        normalizedParam: String,
+        isUnsuffixedNumericLiteral: Boolean,
+    ): Boolean {
+        expandKnownAlias(argType)?.let {
+            return CrystalTypeCompatibility.isCompatible(it, normalizedParam, isUnsuffixedNumericLiteral)
+        }
+        expandKnownAlias(normalizedParam)?.let {
+            return CrystalTypeCompatibility.isCompatible(argType, it, isUnsuffixedNumericLiteral)
+        }
+        val paramBase = normalizedParam.substringBefore("(").trim()
+        val argBase = argType.substringBefore("(").trim()
+        if (!CrystalTypeCompatibility.sameGenericBase(paramBase, argBase)) return false
+        return paramBase.firstOrNull()?.isUpperCase() == true
+    }
+
+    private fun expandKnownAlias(typeText: String): String? {
+        val trimmed = typeText.trim()
+        if (trimmed.contains("(")) return null
+        return GENERIC_ALIAS_EXPANSIONS[trimmed]
+    }
+
+    private val GENERIC_ALIAS_EXPANSIONS = mapOf("Bytes" to "Slice(UInt8)")
 }

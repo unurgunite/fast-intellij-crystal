@@ -17,10 +17,15 @@ object CrystalCallReturnTypeResolver {
     fun resolveMethodCallReturnType(expr: PsiElement): ResolvedType? {
         val text = expr.text.trim()
 
-        // Pattern: Klasse.new(...) → type is "Klasse"
-        val newPattern = Regex("""^([A-Z]\w*(?:::\w+)*)\.new(?:\(.*\))?$""", RegexOption.DOT_MATCHES_ALL)
+        // Pattern: Klasse.new(...) → type is "Klasse". Leading `::` tolerated
+        // (`::Set(String).new` — redis cluster.cr); generic args kept
+        // (`Set(String)`, not bare `Set`).
+        val newPattern = Regex("""^(?:::)?([A-Z]\w*(?:::\w+)*)(\([^)]*\))?\.new(?:\(.*\))?$""", RegexOption.DOT_MATCHES_ALL)
         val newMatch = newPattern.find(text)
-        if (newMatch != null) return ResolvedType(newMatch.groupValues[1])
+        if (newMatch != null) {
+            val args = newMatch.groupValues[2]
+            return ResolvedType(newMatch.groupValues[1] + args)
+        }
 
         // Pattern: <expr>.to_json → "String (to_json of <receiver type>)".
         // The marker lets compatibility accept collections serialized at the

@@ -182,9 +182,13 @@ object CrystalTypeInference {
         }
         val text = expr.text.trim()
 
-        // Pattern: Klasse.new (handles multi-line args and bare args without parens)
-        val newMatch = Regex("""^([A-Z]\w*(?:::\w+)*)\.new(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)
-        if (newMatch != null) return listOf(newMatch.groupValues[1])
+        // Pattern: Klasse.new (handles multi-line args and bare args without parens).
+        // Leading `::` tolerated (`::Set(String).new`); generic args kept.
+        val newMatch = Regex("""^(?:::)?([A-Z]\w*(?:::\w+)*)(\([^)]*\))?\.new(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)
+        if (newMatch != null) {
+            val args = newMatch.groupValues[2]
+            return listOf(newMatch.groupValues[1] + args)
+        }
 
         // Pattern: Klasse.method_name(...) (handles multi-line args and bare args)
         val classMethodMatch = Regex("""^([A-Z]\w*(?:::\w+)*)\.(\w+)(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)

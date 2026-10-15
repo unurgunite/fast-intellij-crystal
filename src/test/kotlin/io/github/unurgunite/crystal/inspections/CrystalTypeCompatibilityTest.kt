@@ -116,6 +116,20 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Array", "String"))
     }
 
+    fun testLeadingDoubleColonIsVoid() {
+        // `::Set(String)` == `Set(String)`: leading `::` is semantically void.
+        assertTrue(compat("::Set(String)", "Set(String)"))
+        assertTrue(compat("Set(String)", "::Set(String)"))
+        assertTrue(compat("::Hash(String, String)", "Hash(String, String)"))
+    }
+
+    fun testBytesAliasFitsSlice() {
+        // `Bytes` is `Slice(UInt8)`: slice reads fit Bytes params.
+        assertTrue(compat("Slice(UInt8)", "Bytes"))
+        assertTrue(compat("Bytes", "Slice(UInt8)"))
+        assertFalse(compat("Slice(String)", "Bytes"))
+    }
+
     fun testUnknownTypesEscape() {
         // Unknown param or arg types must not produce false positives
         assertTrue(compat("MyClass", "Int32"))
