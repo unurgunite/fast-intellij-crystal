@@ -403,6 +403,41 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testChainedCallTypesByTail() {
+        // `port = ENV.fetch("P", "4567").to_i`: the chain tail (`.to_i` →
+        // Int32) decides the type, not the head (`.fetch` → String).
+        // Same family as mock_drive.cr's `ENV.fetch(...).to_i`.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def run(port : Int32)
+            end
+            port = ENV.fetch("P", "4567").to_i
+            run(port)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMergeResultFitsConcreteHash() {
+        // `d = valid_data.merge({...})` then `validate(d)` against
+        // `Hash(String, String)`: stdlib merge yields `Hash(K | L, V | W)` —
+        // all-placeholder slots fit concrete params (security_spec.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def validate(d : Hash(String, String))
+            end
+            def valid_data : Hash(String, String)
+              {"a" => "b"}
+            end
+            d = valid_data.merge({"phone" => "1"})
+            validate(d)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testIndexHolderAfterDotCallIsNotAnArgument() {
         // `client.login["ok"].should be_true`: the `["ok"]` holder is index
         // access on the call result, never an argument of `login`

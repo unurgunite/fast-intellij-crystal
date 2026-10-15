@@ -105,8 +105,12 @@ object CrystalTypeCompatibility {
             // union): fits when ANY member fits — the call may take any
             // branch at runtime. Checked before generic/nilable branches so
             // a fitting member wins over a mismatching first member.
-            argType.contains("|") -> {
-                argType.split("|").any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
+            // Depth-aware split: naive split("|") would cut inside generic
+            // parens (`Hash(K | L, V | W)` → `Hash(K`, `L, V`, `W)`).
+            // Single-member result (all `|` nested) is not a union at all —
+            // fall through to generic handling instead of self-recursing.
+            isMultiMemberUnion(argType) -> {
+                splitTopLevel(argType).any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
             }
 
             // Nilable "Type?" is sugar for "Type | Nil"
@@ -114,9 +118,10 @@ object CrystalTypeCompatibility {
                 isCompatibleNilable(argType, normalizedParam, isUnsuffixedNumericLiteral)
             }
 
-            // Union "Type1 | Type2 | ...": any member may match
-            normalizedParam.contains("|") -> {
-                normalizedParam.split("|").any { isCompatible(argType, it.trim(), isUnsuffixedNumericLiteral) }
+            // Union "Type1 | Type2 | ...": any member may match.
+            // Same single-member guard as the argument side.
+            isMultiMemberUnion(normalizedParam) -> {
+                splitTopLevel(normalizedParam).any { isCompatible(argType, it.trim(), isUnsuffixedNumericLiteral) }
             }
 
             // Unsuffixed numeric literals autocast to ANY numeric type
@@ -195,13 +200,20 @@ object CrystalTypeCompatibility {
 
     /**
      * True for unbound generic placeholders: single uppercase name (`K`,
-     * `V`, `T`) or `Type`-suffixed variables. Concrete types (`String`,
-     * `Int32`, `Hash(...)`) never qualify — only bare variables do.
+     * `V`, `T`) or `Type`-suffixed variables. A union whose every member
+     * is a placeholder (`K | L` from stdlib `Hash#merge : Hash(K | L, ...)`)
+     * also qualifies — no concrete type constrains that slot.
+     * Concrete types (`String`, `Int32`, `Hash(...)`) never qualify —
+     * only bare variables do.
      */
     private fun isUnboundTypeVariable(name: String): Boolean {
         val trimmed = name.trim()
         if (trimmed.length == 1 && trimmed[0].isUpperCase()) return true
         if (trimmed.length == 2 && trimmed[0].isUpperCase() && trimmed[1].isDigit()) return true
+        if (trimmed.contains("|")) {
+            val members = splitTopLevel(trimmed)
+            if (members.isNotEmpty() && members.all { isUnboundTypeVariable(it) }) return true
+        }
         return false
     }
 
@@ -257,6 +269,25 @@ object CrystalTypeCompatibility {
         }
         result.add(inner.substring(start).trim())
         return result
+    }
+
+    /**
+     * Top-level `|` split respecting generic parens (`Hash(K | L, V | W)`
+     * stays one member). File-level shape keeps isCompatible under
+     * detekt's ReturnCount budget.
+     */
+    private fun splitTopLevel(typeText: String): List<String> = CrystalMethodReturnTypeInference.splitTypeNames(typeText)
+
+    /**
+     * True for a real (multi-member) top-level union. Guards both union
+     * branches: a `|` nested inside generic parens (`Hash(K | L, V | W)`)
+     * is not a union split — without the guard the branch self-recurses
+     * on the single unsplit member (StackOverflow). File-level: keeps
+     * isCompatible under complexity budget.
+     */
+    private fun isMultiMemberUnion(typeText: String): Boolean {
+        if (!typeText.contains("|")) return false
+        return splitTopLevel(typeText).size > 1
     }
 
     /**

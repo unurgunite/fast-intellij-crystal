@@ -96,6 +96,14 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Hash(String, Bool)", "Hash(String, String)"))
     }
 
+    fun testStdlibMergeUnionPlaceholdersFit() {
+        // stdlib `Hash#merge : Hash(K | L, V | W)`: all-placeholder unions
+        // fit concrete params. Naive split("|") cut this into `Hash(K` —
+        // depth-aware split keeps the member whole first.
+        assertTrue(compat("Hash(K | L, V | W)", "Hash(String, String)"))
+        assertFalse(compat("Hash(K | L, V | W)", "Array(Int32)"))
+    }
+
     fun testBareGenericFitsParameterizedSameBase() {
         // `Hash` (args unknown, e.g. unresolved `merge` inference) vs
         // `Hash(String, String)`: same base, no definite mismatch.

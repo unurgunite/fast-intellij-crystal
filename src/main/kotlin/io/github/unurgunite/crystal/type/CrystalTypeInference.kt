@@ -166,12 +166,20 @@ object CrystalTypeInference {
     /**
      * Dotted calls: `Klasse.new`, `Klasse.method(...)` and `receiver.method`
      * (receiver type inferred recursively). Returns null when no dotted pattern matches.
+     *
+     * Chained calls (`ENV.fetch(...).to_i`) resolve through the tail-aware
+     * expression resolver first: the head-match regexes below would otherwise
+     * type the chain by its first link (`.fetch` → String, losing `.to_i`).
      */
     private fun inferFromDottedCall(
         expr: PsiElement,
         project: Project,
         depth: Int,
     ): List<String>? {
+        if (expr is CrystalExpression) {
+            val resolved = CrystalExpressionTypeResolver.resolveType(expr)
+            if (resolved != null) return splitTypeNames(resolved.typeName)
+        }
         val text = expr.text.trim()
 
         // Pattern: Klasse.new (handles multi-line args and bare args without parens)

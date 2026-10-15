@@ -314,20 +314,23 @@ private fun innerOfStatementOf(expr: CrystalStatement): PsiElement? =
         ?: expr.children.firstOrNull { it !is PsiWhiteSpace }
 
 /**
- * DOT-call fragment inside an argument wrapper: direct children first
- * (cheap), then transparent shells (EXPRESSION / HASH / ARRAY / TUPLE /
- * GROUPED). Single function (file-level: detekt budget).
+ * Last DOT-call fragment of an expression: the chain tail decides the type
+ * (`ENV.fetch(...).to_i` is Int32 by `.to_i`, not String by `.fetch`).
+ * Direct children win over nested shells; among siblings the rightmost
+ * one is the tail. The old first-hit order typed chains by their head.
+ * Single function (file-level: detekt budget).
  */
 private fun findDotCallDeep(expr: PsiElement): PsiElement? {
     var current: PsiElement? = expr.firstChild
+    var found: PsiElement? = null
     while (current != null) {
-        if (current is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) return current
+        if (current is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) found = current
         if (isTransparentShell(current)) {
-            findDotCallDeep(current)?.let { return it }
+            findDotCallDeep(current)?.let { found = it }
         }
         current = current.nextSibling
     }
-    return null
+    return found
 }
 
 /** Shell node types transparent to the fragment search. */
