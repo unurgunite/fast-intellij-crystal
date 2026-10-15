@@ -132,8 +132,12 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     }
 
     /**
-     * Record/`initialize` constructor check. Returns true when handled
-     * (record params or `initialize` found), false to fall through to regular methods.
+     * Record/`initialize`/`param` constructor check. Returns true when handled
+     * (record params, `initialize` or macro `param` declarations found),
+     * false to fall through to regular methods.
+     *
+     * Priority: record > literal initialize > macro `param` (file-level
+     * helpers keep this class under detekt's TooManyFunctions budget).
      */
     private fun checkNewConstructorCall(
         className: String?,
@@ -143,22 +147,20 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         holder: ProblemsHolder,
     ): Boolean {
         if (className == null) return false
-        // Check record definition first — if `record Config, ...` exists in the
-        // current file, its parameters take priority over any `class Config`
-        // defined elsewhere (which might have a different `initialize`).
-        val recordParams = CrystalRecordArgumentCheck.findRecordParameters(className, contextElement)
-        if (recordParams != null) {
-            CrystalRecordArgumentCheck.checkRecordArguments(recordParams, arguments, methodNameElement, holder)
+        if (CrystalNewConstructorCheck.checkRecord(className, arguments, methodNameElement, contextElement, holder)) return true
+        if (
+            CrystalNewConstructorCheck.checkInitialize(
+                className,
+                arguments,
+                methodNameElement,
+                contextElement,
+                holder,
+                ::checkArgumentCount,
+            )
+        ) {
             return true
         }
-        // No record found — try regular class initialize
-        val initMethod =
-            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
-        if (initMethod != null) {
-            checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
-            return true
-        }
-        return false
+        return CrystalNewConstructorCheck.checkParam(className, arguments, methodNameElement, contextElement, holder)
     }
 
     private fun checkArgumentCount(
@@ -241,8 +243,11 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
             )
             return
         }
-        for (i in match.excessStartIndex until arguments.size) {
-            val argExpr = arguments[i].element
+        // Block bodies are zero-count markers, never excess highlights: skip them
+        // when mapping the excess window back onto argument elements.
+        val valueArgs = arguments.filter { !it.isBlock }
+        for (i in match.excessStartIndex until valueArgs.size) {
+            val argExpr = valueArgs[i].element
             val target = CrystalCallArguments.highlightTarget(argExpr)
             holder.registerProblem(
                 target,
@@ -296,5 +301,87 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
             child = child.nextSibling
         }
         return lastNameElement
+    }
+}
+
+/**
+ * Constructor dispatch for `.new`: record > literal `initialize` > macro
+ * `param`. File-level to keep the inspection class under detekt's
+ * TooManyFunctions budget.
+ */
+private object CrystalNewConstructorCheck {
+    /** Record-definition fast path (highest priority). */
+    fun checkRecord(
+        className: String,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        contextElement: PsiElement,
+        holder: ProblemsHolder,
+    ): Boolean {
+        // Check record definition first — if `record Config, ...` exists in the
+        // current file, its parameters take priority over any `class Config`
+        // defined elsewhere (which might have a different `initialize`).
+        val recordParams = CrystalRecordArgumentCheck.findRecordParameters(className, contextElement) ?: return false
+        CrystalRecordArgumentCheck.checkRecordArguments(recordParams, arguments, methodNameElement, holder)
+        return true
+    }
+
+    /** Literal `def initialize` path. */
+    fun checkInitialize(
+        className: String,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        contextElement: PsiElement,
+        holder: ProblemsHolder,
+        checkArgumentCount: (
+            List<CrystalMethodDefinition>,
+            List<CrystalCallArguments.ArgumentInfo>,
+            PsiElement,
+            ProblemsHolder,
+        ) -> Unit,
+    ): Boolean {
+        val initMethod =
+            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
+                ?: return false
+        checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
+        return true
+    }
+
+    /**
+     * Macro `param` declarations (Mosquito-style `param name : Type`) generate
+     * the constructor at compile time. Lowest priority: literal initialize
+     * and record win when present.
+     */
+    fun checkParam(
+        className: String,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        contextElement: PsiElement,
+        holder: ProblemsHolder,
+    ): Boolean {
+        val file = contextElement.containingFile ?: return false
+        val paramEntries =
+            io.github.unurgunite.crystal.type.CrystalParamLookup
+                .paramsFor(className, file)
+        if (paramEntries.isEmpty()) return false
+        checkParamArity(paramEntries, arguments, methodNameElement, holder)
+        return true
+    }
+
+    /**
+     * Arity check against macro `param` declarations: same overload shape as
+     * record params (no splat), unknown named args reported per argument.
+     */
+    private fun checkParamArity(
+        paramEntries: List<io.github.unurgunite.crystal.type.CrystalParamLookup.ParamEntry>,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        holder: ProblemsHolder,
+    ) {
+        val params =
+            paramEntries.map {
+                CrystalOverloadEvaluator.ParamInfo(it.name, it.hasDefault)
+            }
+        CrystalRecordArgumentCheck.checkRecordArguments(params, arguments, methodNameElement, holder)
     }
 }

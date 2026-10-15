@@ -2,7 +2,16 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.2.0] — Unreleased
+## [1.2.1] — Unreleased
+
+### Fixed
+
+- **RubyMine compatibility (Marketplace verification)**: test-runner classes from `intellij.platform.smRunner` are declared as a plugin dependency (were resolved transitively on IDEA but missing on RubyMine — 14 binary-compatibility problems on RM-262).
+- **Scheduled-for-removal and deprecated API usages**: run-marker `Info` constructor, `prepareEditorForWrite`, blocking `runReadAction`, legacy `MarkdownParser` entry-point, debugger session APIs, override-only `navigate` delegation.
+- **Local verification matrix covers RubyMine**: `verifyPlugin` now checks IU Ultimate + RubyMine release builds, so RubyMine-only breakage can no longer stay green locally.
+- **CI keeps verifier reports on every run**: the per-IDE verification reports (same content as the Marketplace verification-results page) are uploaded as an artifact, so a Marketplace failure maps locally without re-running the verifier.
+
+## [1.2.0] — 2026-10-14
 
 ### Fixed
 
@@ -11,7 +20,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 - **Nested `%()` literals inside string interpolation** (`%([#{... %(...) ...}])`): inner `%(` lexed as `PERCENT LPAREN`, trailing `#{...}` swallowed into `LINE_COMMENT`. `%`-family rules mirrored into `INTERPOLATION`, nested `#{`, percent state stacked. Covered by lexer regression tests.
 - **`::`-rooted namespace paths resolve from root** (`::DB::Database` inside `module DB`): leading `::` no longer resolves to the shadowing local type. Shard sources (`lib/`) are not indexed yet — such targets resolve to null, no false jump. Shard indexing is planned for v1.3.0.
 
-## [1.1.0] — Unreleased
+## [1.1.0] — 2026-09-18
 
 ### Added
 

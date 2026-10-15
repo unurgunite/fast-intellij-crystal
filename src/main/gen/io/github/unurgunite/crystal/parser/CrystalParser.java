@@ -9142,7 +9142,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression)
+  // (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_brace_value | named_tuple_type_value | decl_type_value | expression)
   static boolean named_argument(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "named_argument")) return false;
     boolean result_, pinned_;
@@ -9173,12 +9173,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression
+  // macro_arg_splice | macro_control | named_brace_value | named_tuple_type_value | decl_type_value | expression
   private static boolean named_argument_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "named_argument_3")) return false;
     boolean result_;
     result_ = macro_arg_splice(builder_, level_ + 1);
     if (!result_) result_ = macro_control(builder_, level_ + 1);
+    if (!result_) result_ = named_brace_value(builder_, level_ + 1);
     if (!result_) result_ = named_tuple_type_value(builder_, level_ + 1);
     if (!result_) result_ = decl_type_value(builder_, level_ + 1);
     if (!result_) result_ = expression(builder_, level_ + 1);
@@ -9255,6 +9256,44 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // named_type_brace (hash_literal | tuple_literal | array_literal)
+  //                             | hash_literal
+  //                             | tuple_literal
+  //                             | array_literal
+  static boolean named_brace_value(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_brace_value")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = named_brace_value_0(builder_, level_ + 1);
+    if (!result_) result_ = hash_literal(builder_, level_ + 1);
+    if (!result_) result_ = tuple_literal(builder_, level_ + 1);
+    if (!result_) result_ = array_literal(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // named_type_brace (hash_literal | tuple_literal | array_literal)
+  private static boolean named_brace_value_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_brace_value_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = named_type_brace(builder_, level_ + 1);
+    result_ = result_ && named_brace_value_0_1(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // hash_literal | tuple_literal | array_literal
+  private static boolean named_brace_value_0_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_brace_value_0_1")) return false;
+    boolean result_;
+    result_ = hash_literal(builder_, level_ + 1);
+    if (!result_) result_ = tuple_literal(builder_, level_ + 1);
+    if (!result_) result_ = array_literal(builder_, level_ + 1);
+    return result_;
+  }
+
+  /* ********************************************************** */
   // LBRACE NLS type_reference (NLS COMMA NLS type_reference)* NLS RBRACE
   static boolean named_tuple_type_value(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "named_tuple_type_value")) return false;
@@ -9291,6 +9330,48 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = result_ && consumeToken(builder_, COMMA);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && type_reference(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  /* ********************************************************** */
+  // [DOUBLE_COLON] CONSTANT (DOUBLE_COLON CONSTANT)*
+  static boolean named_type_brace(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_type_brace")) return false;
+    if (!nextTokenIs(builder_, "", CONSTANT, DOUBLE_COLON)) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = named_type_brace_0(builder_, level_ + 1);
+    result_ = result_ && consumeToken(builder_, CONSTANT);
+    result_ = result_ && named_type_brace_2(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // [DOUBLE_COLON]
+  private static boolean named_type_brace_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_type_brace_0")) return false;
+    consumeToken(builder_, DOUBLE_COLON);
+    return true;
+  }
+
+  // (DOUBLE_COLON CONSTANT)*
+  private static boolean named_type_brace_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_type_brace_2")) return false;
+    while (true) {
+      int pos_ = current_position_(builder_);
+      if (!named_type_brace_2_0(builder_, level_ + 1)) break;
+      if (!empty_element_parsed_guard_(builder_, "named_type_brace_2", pos_)) break;
+    }
+    return true;
+  }
+
+  // DOUBLE_COLON CONSTANT
+  private static boolean named_type_brace_2_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "named_type_brace_2_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = consumeTokens(builder_, 0, DOUBLE_COLON, CONSTANT);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }

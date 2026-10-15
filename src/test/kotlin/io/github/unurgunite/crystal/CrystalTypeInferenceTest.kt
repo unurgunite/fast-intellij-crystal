@@ -379,6 +379,38 @@ puts a
         assertEquals("String", CrystalTypeInference.inferType("name", file.findElementAt(callOffset)!!, project))
     }
 
+    fun testEnclosingClassNameFromStubDoesNotTouchAst() {
+        // Regression for UpToDateStubIndexMismatch (athena-console hash.cr):
+        // getEnclosingClassName runs on StubIndex hits whose stubs may
+        // disagree with a fresh parse. It must answer from the stub tree
+        // (no getParentOfType/getNode — those force reconciliation and throw
+        // AssertionError out of inspections). PSI fallback covers non-stub
+        // elements (in-memory fixture files have no stubs).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Path
+              def expand(@name : String)
+                name = @name
+                name.starts_with?("~/")
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val defOffset = file.text.indexOf("def expand")
+        val method =
+            com.intellij.psi.util.PsiTreeUtil.getParentOfType(
+                file.findElementAt(defOffset),
+                io.github.unurgunite.crystal.psi.CrystalMethodDefinition::class.java,
+            )!!
+        assertEquals(
+            "Path",
+            io.github.unurgunite.crystal.type.CrystalMethodLookup
+                .getEnclosingClassName(method),
+        )
+    }
+
     fun testAssignmentIndexInvalidatesAfterEdit() {
         // The per-file assignment index is cached: after editing the RHS the
         // new type must be visible, not the stale cached one.
@@ -394,5 +426,25 @@ puts a
         val edited = myFixture.file
         val newOffset = edited.text.indexOf("x", edited.text.indexOf("puts"))
         assertEquals("String", CrystalTypeInference.inferType("x", edited.findElementAt(newOffset)!!, project))
+    }
+
+    fun testToStringAlwaysYieldsString() {
+        // `proxy_id.to_s` where `proxy_id : Int32`: `to_s` always yields
+        // String — inference must not return the receiver's own type.
+        // NOTE: inferType("proxy_id") correctly answers Int32 (the parameter
+        // type); the `to_s` short-circuit lives one level up, in
+        // inferReturnTypeOfMethodList / lookupReturnType.
+        val types =
+            io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference.inferReturnTypeOfMethodList(
+                "to_s",
+                null,
+                project,
+            )
+        assertEquals(listOf("String"), types)
+        assertEquals(
+            "String",
+            io.github.unurgunite.crystal.type.CrystalCallReturnTypeResolver
+                .lookupReturnType("to_s", project),
+        )
     }
 }
