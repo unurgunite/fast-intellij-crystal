@@ -438,6 +438,29 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testStdlibMergeShapeFitsConcreteHash() {
+        // Full stdlib shape: `merge(other : Hash(L, W)) : Hash(K | L, V | W)`
+        // on a generic Hash — the return annotation must survive union
+        // splitting whole (naive split("|") truncated it to `Hash(K`).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Hash(K, V)
+              def merge(other : Hash(L, W)) : Hash(K | L, V | W)
+              end
+            end
+            def validate(d : Hash(String, String))
+            end
+            def valid_data : Hash(String, String)
+              {"a" => "b"}
+            end
+            d = valid_data.merge({"phone" => "1"})
+            validate(d)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testIndexHolderAfterDotCallIsNotAnArgument() {
         // `client.login["ok"].should be_true`: the `["ok"]` holder is index
         // access on the call result, never an argument of `login`

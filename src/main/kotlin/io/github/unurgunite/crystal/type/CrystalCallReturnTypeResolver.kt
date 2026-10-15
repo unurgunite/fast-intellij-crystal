@@ -175,11 +175,11 @@ object CrystalCallReturnTypeResolver {
         // typeReference holds only the return annotation (never parameter
         // lists), so parens are generic args, not noise. Stripping them
         // collapsed `Hash(String, String)` to bare `Hash` and broke
-        // generic-argument compatibility downstream. Union members keep
-        // the first branch (Crystal resolves left-to-right).
-        return returnType
-            .split("|")
-            .first()
-            .trim()
+        // generic-argument compatibility downstream. Union split is
+        // depth-aware: naive split("|") cut `Hash(K | L, V | W)` (stdlib
+        // `Hash#merge`) inside its parens into `Hash(K`, poisoning every
+        // downstream check with a truncated type. Crystal resolves
+        // left-to-right, so the first whole branch wins.
+        return CrystalMethodReturnTypeInference.splitTypeNames(returnType).firstOrNull()?.trim()
     }
 }

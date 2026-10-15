@@ -278,13 +278,14 @@ private fun receiverClassNameOf(receiver: PsiElement?): String? {
     if (receiver.node?.elementType == io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT) return receiver.text
     val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
     // Strip union/nilable wrappers to the first concrete member for scoping.
-    return typeName
-        .split("|")
-        .first()
-        .trim()
-        .removeSuffix("?")
-        .substringAfterLast("::")
-        .takeIf { it.isNotEmpty() }
+    // Depth-aware split: naive split("|") cut `Hash(K | L, V | W)` into `Hash(K`.
+    return io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
+        .splitTypeNames(typeName)
+        .firstOrNull()
+        ?.trim()
+        ?.removeSuffix("?")
+        ?.substringAfterLast("::")
+        ?.takeIf { it.isNotEmpty() }
 }
 
 /** Value inside an ARGUMENT shell, re-resolved (file-level: detekt budget). */
