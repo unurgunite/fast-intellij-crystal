@@ -94,11 +94,19 @@ internal object CrystalDotCallScan {
             while (child is PsiWhiteSpace) child = child.nextSibling
             if (child == null) return false
             if (isOperatorToken(child)) return true
+            if (isIndexBracket(child)) return true
             if (child.firstChild == null) return false
             current = child
         }
         return false
     }
+
+    /**
+     * True for an index-access bracket: a holder starting with `[`
+     * (`client.login["ok"]` parses the `["ok"]` into the call's holder) is
+     * element access on the call result, never a call argument list.
+     */
+    private fun isIndexBracket(child: PsiElement): Boolean = child.node?.elementType == CrystalTypes.LBRACKET
 }
 
 /** Binary-operator token types (never method names). */

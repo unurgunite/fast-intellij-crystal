@@ -172,7 +172,16 @@ object CrystalTypeCompatibility {
         normalizedParam: String,
         isUnsuffixedNumericLiteral: Boolean,
     ): Boolean {
-        if (normalizedParam.contains("(") != argType.contains("(")) return false
+        val paramHasArgs = normalizedParam.contains("(")
+        val argHasArgs = argType.contains("(")
+        // Bare generic against parameterized (`Hash` vs `Hash(String, String)`
+        // with the same base): unparameterized means "args unknown", never a
+        // definite mismatch — same leniency as unknown types elsewhere.
+        if (paramHasArgs != argHasArgs) {
+            val paramBase = normalizedParam.substringBefore("(").trim()
+            val argBase = argType.substringBefore("(").trim()
+            return paramBase == argBase && paramBase.firstOrNull()?.isUpperCase() == true
+        }
         val paramBase = normalizedParam.substringBefore("(").trim()
         val argBase = argType.substringBefore("(").trim()
         if (paramBase != argBase) return false

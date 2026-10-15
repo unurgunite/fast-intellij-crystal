@@ -385,4 +385,34 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testConversionCallThroughVariableKeepsType() {
+        // `port = "4567".to_i` then `run(port)` against `port : Int32`:
+        // textual literal inference must not steal the call's type by its
+        // leading quote (mock_drive.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def run(root : String, port : Int32)
+            end
+            root = "x"
+            port = "4567".to_i
+            run(root, port)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testIndexHolderAfterDotCallIsNotAnArgument() {
+        // `client.login["ok"].should be_true`: the `["ok"]` holder is index
+        // access on the call result, never an argument of `login`
+        // (clients_spec.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            client.login["ok"].should be_true
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
