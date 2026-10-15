@@ -343,4 +343,66 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testMethodReturnTypeKeepsGenerics() {
+        // `data.to_hash` where `to_hash : Hash(String, String)` feeds
+        // `validate(d : Hash(String, String))` (pipeline.cr shape): the
+        // DOT-call return type must keep generic args — bare `Hash` also
+        // fits, but the full form must resolve, not collapse or null out.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            struct PersonData
+              def to_hash : Hash(String, String)
+                {"a" => "b"}
+              end
+            end
+            def validate(d : Hash(String, String))
+            end
+            data = PersonData.new
+            validate(data.to_hash)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testReceiverClassMethodBeatsStdlibSameName() {
+        // A same-named stdlib generic (`Hash#to_hash`-like) must not shadow
+        // the receiver class's own method: `data.to_hash` with data: Holder
+        // takes Holder#to_hash even when a generic `to_hash` exists elsewhere.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            struct Holder
+              def to_hash : Hash(String, String)
+                {"a" => "b"}
+              end
+            end
+            struct Other
+              def to_hash : Hash(String, Int32)
+                {"a" => 1}
+              end
+            end
+            def validate(d : Hash(String, String))
+            end
+            data = Holder.new
+            validate(data.to_hash)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testShouldMatchersAreSkipped() {
+        // Spec DSL (`value.should be_true`, `x.should eq 1`) accepts
+        // anything — arity/type checks against random same-named overloads
+        // are pure noise (clients_spec.cr shapes).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            client.login["ok"].should be_true
+            client.codes_latest["codes"].as_a.size.should eq 1
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

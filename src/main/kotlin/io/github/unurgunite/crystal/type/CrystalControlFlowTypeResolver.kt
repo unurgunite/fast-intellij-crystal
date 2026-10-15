@@ -23,6 +23,12 @@ object CrystalControlFlowTypeResolver {
     fun resolveCompoundExpression(expr: CrystalExpression): ResolvedType? {
         val astChildren = expr.node.getChildren(null)
 
+        // Index access `d["phone"]` / `d["phone"]?`: yields the collection's
+        // value type (plus Nil for `[]?`), never the receiver itself.
+        // Checked before operator/first-child descent, which would take the
+        // bare receiver (`d` → Hash) and lose the access.
+        resolveIndexAccessOf(astChildren)?.let { return it }
+
         // Ternary expression: or_expression QUESTION expression COLON expression
         // Check FIRST — QUESTION always indicates ternary, takes priority over operators
         resolveTernary(astChildren)?.let { return it }
@@ -135,7 +141,11 @@ object CrystalControlFlowTypeResolver {
             }
 
             CrystalTypes.AND_AND, CrystalTypes.OR_OR -> {
-                ResolvedType("Bool")
+                // `&&`/`||` yield an operand, never Bool (`mode? || "test"`
+                // is String, not Bool): union both sides. Over-wide, never
+                // narrow — a union suppresses false mismatches, a wrong
+                // Bool creates them.
+                resolveLogicalType(nonWhitespace[0].psi, nonWhitespace[2].psi)
             }
 
             CrystalTypes.PLUS, CrystalTypes.MINUS,
@@ -162,4 +172,73 @@ object CrystalControlFlowTypeResolver {
         if (leftType != null && leftType.typeName == rightType?.typeName) return leftType
         return null
     }
+
+    /** `&&`/`||` operand union (file-level companion: detekt budget). */
+    private fun resolveLogicalType(
+        left: PsiElement,
+        right: PsiElement,
+    ): ResolvedType? {
+        val leftType = resolveType(left)?.typeName
+        val rightType = resolveType(right)?.typeName
+        if (leftType == null && rightType == null) return null
+        val parts = listOfNotNull(leftType, rightType).distinct()
+        return ResolvedType(parts.joinToString(" | "))
+    }
+}
+
+/**
+ * Index-access element type (`d["phone"]?` → `String | Nil`).
+ * File-level: the resolver object is at detekt's function budget.
+ * Single return: every miss funnels to one null through takeIf chains.
+ */
+private fun resolveIndexAccessOf(astChildren: Array<ASTNode>): ResolvedType? {
+    val bracketIdx = astChildren.indexOfFirst { it.elementType == CrystalTypes.LBRACKET }.takeIf { it > 0 } ?: return null
+    if (astChildren.none { it.elementType == CrystalTypes.RBRACKET }) return null
+    val receiverType = astChildren.getOrNull(bracketIdx - 1)?.psi?.let { resolveType(it)?.typeName }
+    val valueType = receiverType?.let { indexValueTypeOf(it) }
+    if (valueType == null) return null
+    val hasQuestion = astChildren.any { it.elementType == CrystalTypes.QUESTION }
+    return if (hasQuestion) ResolvedType("$valueType | Nil") else ResolvedType(valueType)
+}
+
+/** Value type of a generic collection (`Hash(K, V)` → V, `Array(T)` → T), else null. */
+private fun indexValueTypeOf(receiverType: String): String? {
+    val base = receiverType.substringBefore("(").trim()
+    val args = splitGenericArgsOf(receiverType)
+    return when {
+        base == "Hash" && args.size >= 2 -> args[1]
+        base == "Array" && args.size >= 1 -> args[0]
+        else -> null
+    }
+}
+
+/** Generic arguments of `Base(A, B)` respecting nested parens, empty otherwise. */
+private fun splitGenericArgsOf(typeName: String): List<String> {
+    val openIdx = typeName.indexOf('(')
+    val closeIdx = typeName.lastIndexOf(')')
+    if (openIdx < 0 || closeIdx <= openIdx) return emptyList()
+    val inner = typeName.substring(openIdx + 1, closeIdx)
+    val result = mutableListOf<String>()
+    var depth = 0
+    var start = 0
+    for (i in inner.indices) {
+        when (inner[i]) {
+            '(' -> {
+                depth++
+            }
+
+            ')' -> {
+                depth--
+            }
+
+            ',' -> {
+                if (depth == 0) {
+                    result.add(inner.substring(start, i).trim())
+                    start = i + 1
+                }
+            }
+        }
+    }
+    result.add(inner.substring(start).trim())
+    return result
 }

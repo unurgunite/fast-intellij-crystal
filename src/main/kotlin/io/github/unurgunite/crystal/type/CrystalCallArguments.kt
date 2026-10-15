@@ -9,6 +9,8 @@ import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
+import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
+import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
@@ -232,15 +234,15 @@ private fun namedLabelIfPlain(
 private fun unwrapArgumentValue(arg: PsiElement): PsiElement {
     (arg as? CrystalArgument)?.expression?.let { return it }
     var current: PsiElement = arg
-    while (current.node?.elementType.toString() == "EXPRESSION") {
+    while (current is CrystalExpression) {
         val inner = CrystalPsiUtils.firstSignificantChild(current) ?: break
-        if (inner.node?.elementType.toString() == "DOT_CALL_ACCESS") return inner
+        if (inner is CrystalDotCallAccess) return inner
         current = inner
     }
-    if (current.node?.elementType.toString() == "DOT_CALL_ACCESS") return current
+    if (current is CrystalDotCallAccess) return current
     var sibling = current.nextSibling
     while (sibling != null) {
-        if (sibling.node?.elementType.toString() == "DOT_CALL_ACCESS") return sibling
+        if (sibling is CrystalDotCallAccess) return sibling
         sibling = sibling.nextSibling
     }
     return current
@@ -271,8 +273,32 @@ private fun isBareBlockTuple(arg: PsiElement): Boolean {
     val tuple = arg.firstChild as? io.github.unurgunite.crystal.psi.CrystalTupleLiteral ?: return false
     val exprs = tuple.expressionList.expressionList
     if (exprs.size != 1) return false
-    val inner = exprs[0].firstChild ?: return false
-    return inner is CrystalBareCommandExpression || inner is CrystalBareCommandSpaceFirst
+    return holdsCallShape(exprs[0])
+}
+
+/**
+ * True when [expr] holds a call shape: a bare command, a DOT-call fragment,
+ * or a wrapper around one. `d.close` parses as `EXPRESSION[VARIABLE_REFERENCE
+ * + DOT_CALL_ACCESS]` siblings — the DOT-call is a child, not the first
+ * child — so the check walks one level down. A literal/constant/reference
+ * alone is a real tuple value, not a block body.
+ */
+private fun holdsCallShape(expr: PsiElement): Boolean {
+    if (expr is CrystalBareCommandExpression || expr is CrystalBareCommandSpaceFirst ||
+        expr is io.github.unurgunite.crystal.psi.CrystalDotCallAccess
+    ) {
+        return true
+    }
+    var child = expr.firstChild
+    while (child != null) {
+        if (child is CrystalBareCommandExpression || child is CrystalBareCommandSpaceFirst ||
+            child is CrystalDotCallAccess
+        ) {
+            return true
+        }
+        child = child.nextSibling
+    }
+    return false
 }
 
 /**

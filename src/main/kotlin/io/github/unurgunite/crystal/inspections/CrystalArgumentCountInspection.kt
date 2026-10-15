@@ -77,14 +77,8 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         callExpr: PsiElement,
         holder: ProblemsHolder,
     ) {
-        // Skip if the method name resolves to a local variable or parameter.
-        // This prevents false positives when a bare call like "count + 87" is parsed
-        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
-        // operators followed by literals. The parameter shadows any same-named method.
-        val resolvedRef = callExpr.reference?.resolve()
-        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return
-
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
+        if (isSkippedBareCall(callExpr, methodName)) return
         val arguments = CrystalCallArguments.extractArguments(callExpr)
         val methodNameElement = findMethodNameElement(callExpr) ?: return
 
@@ -99,11 +93,40 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         checkArgumentCount(methods, arguments, methodNameElement, holder)
     }
 
+    /**
+     * True when a bare call needs no checks: the name resolves to a local
+     * variable/parameter (shadows any method — binary-op ambiguity like
+     * `count + 87` parsed as a call), it is a spec matcher (accepts
+     * anything), or a definition macro (`define`, `delegate` — declare
+     * methods, not calls). File-level shape keeps checkCall under ReturnCount.
+     */
+    private fun isSkippedBareCall(
+        callExpr: PsiElement,
+        methodName: String,
+    ): Boolean {
+        // Skip if the method name resolves to a local variable or parameter.
+        // This prevents false positives when a bare call like "count + 87" is parsed
+        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
+        // operators followed by literals. The parameter shadows any same-named method.
+        val resolvedRef = callExpr.reference?.resolve()
+        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+        val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
+        // Spec matchers accept anything — never arity/type-check them.
+        if (scope.isSpecMatcherCall(methodName)) return true
+        return scope.isDefinitionMacroCall(methodName)
+    }
+
     private fun checkDotCall(
         argsElement: PsiElement,
         info: DotCallInfo,
         holder: ProblemsHolder,
     ) {
+        // Spec matchers accept anything — never arity/type-check them.
+        if (io.github.unurgunite.crystal.type.CrystalLocalScope
+                .isSpecMatcherCall(info.methodName)
+        ) {
+            return
+        }
         // Skip DOT-calls on local variables/parameters — we can't reliably determine
         // the receiver's type, so we only check calls on Constants (class methods).
         val firstChar = info.receiverName.firstOrNull() ?: return
@@ -326,10 +349,19 @@ private object CrystalNewConstructorCheck {
         return true
     }
 
-    /** Literal `def initialize` path. */
+    /**
+     * Literal `def initialize` path — unless it is an empty fallback
+     * (`def initialize; end`) inherited from a macro base (Mosquito's
+     * `QueuedJob` ships one for the zero-params case) while the class
+     * itself declares macro `param`s. The macro-generated constructor
+     * (`initialize(@attempt_id, ...)`) is invisible in source, so arity
+     * against the empty fallback reports every named arg as unknown —
+     * yield to the `param` path instead (overload semantics: the empty
+     * fallback stays valid for zero-arg calls, `param` covers the rest).
+     */
     fun checkInitialize(
         className: String,
-        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        arguments: List<ArgumentInfo>,
         methodNameElement: PsiElement,
         contextElement: PsiElement,
         holder: ProblemsHolder,
@@ -340,11 +372,28 @@ private object CrystalNewConstructorCheck {
             ProblemsHolder,
         ) -> Unit,
     ): Boolean {
-        val initMethod =
-            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
-                ?: return false
-        checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
+        val initMethods =
+            CrystalMethodLookup.getInitializeMethods(className, contextElement.project, contextElement.containingFile)
+        if (initMethods.isEmpty()) return false
+        if (initMethods.size == 1 && isEmptyFallback(initMethods.first()) && hasParamDeclarations(className, contextElement)) {
+            return false
+        }
+        checkArgumentCount(initMethods, arguments, methodNameElement, holder)
         return true
+    }
+
+    /** True when [method] takes no parameters at all (empty fallback shape). */
+    private fun isEmptyFallback(method: CrystalMethodDefinition): Boolean = method.parameterList?.parameterList.isNullOrEmpty()
+
+    /** True when [className] declares macro `param`s (project-wide lookup). */
+    private fun hasParamDeclarations(
+        className: String,
+        contextElement: PsiElement,
+    ): Boolean {
+        val file = contextElement.containingFile ?: return false
+        return io.github.unurgunite.crystal.type.CrystalParamLookup
+            .paramsForProject(className, contextElement.project, file)
+            .isNotEmpty()
     }
 
     /**
@@ -362,7 +411,7 @@ private object CrystalNewConstructorCheck {
         val file = contextElement.containingFile ?: return false
         val paramEntries =
             io.github.unurgunite.crystal.type.CrystalParamLookup
-                .paramsFor(className, file)
+                .paramsForProject(className, contextElement.project, file)
         if (paramEntries.isEmpty()) return false
         checkParamArity(paramEntries, arguments, methodNameElement, holder)
         return true

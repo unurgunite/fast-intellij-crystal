@@ -87,6 +87,49 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Array(Int8)", "Array(Int32)"))
     }
 
+    fun testUnboundTypeVariablesFitAnything() {
+        // `Hash#merge` infers `Hash(K, V)`: placeholders fit concrete args.
+        assertTrue(compat("Hash(K, V)", "Hash(String, String)"))
+        assertTrue(compat("Hash(String, String)", "Hash(K, V)"))
+        assertTrue(compat("Array(T)", "Array(Int32)"))
+        // Concrete mismatches still mismatch
+        assertFalse(compat("Hash(String, Bool)", "Hash(String, String)"))
+    }
+
+    fun testStdlibMergeUnionPlaceholdersFit() {
+        // stdlib `Hash#merge : Hash(K | L, V | W)`: all-placeholder unions
+        // fit concrete params. Naive split("|") cut this into `Hash(K` —
+        // depth-aware split keeps the member whole first.
+        assertTrue(compat("Hash(K | L, V | W)", "Hash(String, String)"))
+        assertFalse(compat("Hash(K | L, V | W)", "Array(Int32)"))
+    }
+
+    fun testBareGenericFitsParameterizedSameBase() {
+        // `Hash` (args unknown, e.g. unresolved `merge` inference) vs
+        // `Hash(String, String)`: same base, no definite mismatch.
+        // Different bases still mismatch.
+        assertTrue(compat("Hash", "Hash(String, String)"))
+        assertTrue(compat("Hash(String, String)", "Hash"))
+        assertTrue(compat("Array", "Array(Int32)"))
+        assertFalse(compat("Hash", "Array(Int32)"))
+        // Bare non-generics still escape as unknown (pre-existing leniency)
+        assertTrue(compat("Array", "String"))
+    }
+
+    fun testLeadingDoubleColonIsVoid() {
+        // `::Set(String)` == `Set(String)`: leading `::` is semantically void.
+        assertTrue(compat("::Set(String)", "Set(String)"))
+        assertTrue(compat("Set(String)", "::Set(String)"))
+        assertTrue(compat("::Hash(String, String)", "Hash(String, String)"))
+    }
+
+    fun testBytesAliasFitsSlice() {
+        // `Bytes` is `Slice(UInt8)`: slice reads fit Bytes params.
+        assertTrue(compat("Slice(UInt8)", "Bytes"))
+        assertTrue(compat("Bytes", "Slice(UInt8)"))
+        assertFalse(compat("Slice(String)", "Bytes"))
+    }
+
     fun testUnknownTypesEscape() {
         // Unknown param or arg types must not produce false positives
         assertTrue(compat("MyClass", "Int32"))
@@ -108,5 +151,14 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Hash(String, String)", "String"))
         assertFalse(compat("Array(Int32)", "String"))
         assertFalse(compat("Int32", "String"))
+    }
+
+    fun testUnionArgumentFitsWhenAnyMemberFits() {
+        // Overload-union arguments (`String | Hash(String, String)`) fit a
+        // concrete param when any member fits — the call may take any
+        // branch at runtime.
+        assertTrue(compat("String | Hash(String, String)", "Hash(String, String)"))
+        assertTrue(compat("Nil | String", "String"))
+        assertFalse(compat("Int32 | Bool", "String"))
     }
 }

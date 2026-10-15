@@ -49,19 +49,34 @@ object CrystalTypeInference {
         depth: Int = 0,
     ): List<String> {
         if (depth > MAX_INFERENCE_DEPTH) return emptyList()
-        // `@`-prefixed queries never match parameters by exact name (the
-        // shorthand strip only fires from the param side), so consult declared
-        // ivar types first; assignments still follow through the index below.
-        if (variableName.trimStart().startsWith("@")) {
-            val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
-            if (declared.isNotEmpty()) return declared
+        // Cross-bridge guard: inferTypeList ↔ resolveType call each other
+        // (`command.downcase` infers `command` whose assignment resolves
+        // through the resolver back into inference). The `depth` parameter
+        // resets at every bridge crossing (resolver calls inferTypeList
+        // with default depth 0), so a parameter budget alone never trips —
+        // redis cluster.cr hung the IDE this way (infinite ping-pong, not
+        // a stack overflow: each hop does PSI walks). ThreadLocal because
+        // inference runs on EDT and background threads concurrently.
+        val cross = crossBridgeDepth.get()
+        if (cross > MAX_INFERENCE_DEPTH) return emptyList()
+        crossBridgeDepth.set(cross + 1)
+        try {
+            // `@`-prefixed queries never match parameters by exact name (the
+            // shorthand strip only fires from the param side), so consult declared
+            // ivar types first; assignments still follow through the index below.
+            if (variableName.trimStart().startsWith("@")) {
+                val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
+                if (declared.isNotEmpty()) return declared
+            }
+            val paramType = inferFromParameter(variableName, context)
+            if (paramType != null) return paramType
+            return inferFromAssignmentList(variableName, context, project, depth)
+        } finally {
+            crossBridgeDepth.set(cross)
         }
-        val paramType = inferFromParameter(variableName, context)
-        if (paramType != null) return paramType
-        val assignTypes = inferFromAssignmentList(variableName, context, project, depth)
-        if (assignTypes.isNotEmpty()) return assignTypes
-        return emptyList()
     }
+
+    private val crossBridgeDepth = ThreadLocal.withInitial { 0 }
 
     /**
      * Check if the variable is a parameter with a type annotation.
@@ -166,17 +181,29 @@ object CrystalTypeInference {
     /**
      * Dotted calls: `Klasse.new`, `Klasse.method(...)` and `receiver.method`
      * (receiver type inferred recursively). Returns null when no dotted pattern matches.
+     *
+     * Chained calls (`ENV.fetch(...).to_i`) resolve through the tail-aware
+     * expression resolver first: the head-match regexes below would otherwise
+     * type the chain by its first link (`.fetch` → String, losing `.to_i`).
      */
     private fun inferFromDottedCall(
         expr: PsiElement,
         project: Project,
         depth: Int,
     ): List<String>? {
+        if (expr is CrystalExpression) {
+            val resolved = CrystalExpressionTypeResolver.resolveType(expr)
+            if (resolved != null) return splitTypeNames(resolved.typeName)
+        }
         val text = expr.text.trim()
 
-        // Pattern: Klasse.new (handles multi-line args and bare args without parens)
-        val newMatch = Regex("""^([A-Z]\w*(?:::\w+)*)\.new(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)
-        if (newMatch != null) return listOf(newMatch.groupValues[1])
+        // Pattern: Klasse.new (handles multi-line args and bare args without parens).
+        // Leading `::` tolerated (`::Set(String).new`); generic args kept.
+        val newMatch = Regex("""^(?:::)?([A-Z]\w*(?:::\w+)*)(\([^)]*\))?\.new(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)
+        if (newMatch != null) {
+            val args = newMatch.groupValues[2]
+            return listOf(newMatch.groupValues[1] + args)
+        }
 
         // Pattern: Klasse.method_name(...) (handles multi-line args and bare args)
         val classMethodMatch = Regex("""^([A-Z]\w*(?:::\w+)*)\.(\w+)(?:\([\s\S]*\)|\s+[\s\S]+)?$""").find(text)
