@@ -461,6 +461,29 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testClassMethodPrefersOwnClassOverload() {
+        // `URI.parse(connection_string)` against `String | URI`: the
+        // class-scoped `URI.parse : URI` wins over a same-named overload
+        // from another class (db/src/db.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class URI
+              def self.parse(raw : String) : URI
+              end
+            end
+            class Other
+              def self.parse(raw : String) : Array(String)
+              end
+            end
+            def build(uri : URI | String)
+            end
+            build(URI.parse("postgres://localhost"))
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testIndexHolderAfterDotCallIsNotAnArgument() {
         // `client.login["ok"].should be_true`: the `["ok"]` holder is index
         // access on the call result, never an argument of `login`

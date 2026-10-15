@@ -80,6 +80,12 @@ object CrystalCallReturnTypeResolver {
         val className = classMethodMatch.groupValues[1]
         val methodName = classMethodMatch.groupValues[2]
         if (methodName == "new") return ResolvedType(className)
+        // Class-scoped first (`URI.parse` must take URI.parse, not a
+        // same-named overload from another class): the project-wide
+        // first hit ignores the receiver class entirely.
+        lookupReturnTypeInClass(methodName, className.substringAfterLast("::"), project)?.let {
+            return ResolvedType(it)
+        }
         val returnType = lookupReturnType(methodName, project) ?: return null
         return ResolvedType(returnType)
     }
