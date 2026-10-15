@@ -311,9 +311,12 @@ CHAR_LITERAL = "'" ( [^'\\] | {CHAR_ESCAPE} ) "'"
 
 // Symbol (simple forms only — :"string" handled separately for interpolation support).
 // Crystal symbol names may carry a method-suffix operator: `:foo?`, `:foo!`, `:foo=`,
-// `:[]`, `:[]=`, `:()`. The trailing `?`/`!`/`=` and bracket forms are common in stdlib
-// (e.g. `delegate :pos=, :closed?`, `getter :foo?`).
+// `:[]`, `:[]=`, `:()`. Bare operator symbols (`:<<`, `:+`, `:==` — redis
+// `delegate :insert, :<<, :[]`) are legal too.
+// JFlex longest-match keeps `:<<` disjoint from COLON+LSHIFT; glued-only
+// (no space after `:`) so ternaries (`a ? :b : c`) are unaffected.
 SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
+SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" | "<<" | ">>" | "<" | "<=" | ">" | ">=" | "<=>" | "===" | "==" | "=~" | "&" | "|" | "^" | "~" | "[]" | "[]?" | "[]=" )
 
 %state STRING INTERPOLATION REGEX BACKTICK PERCENT_LITERAL HEREDOC_BODY HEREDOC_START_LINE MACRO_BODY MACRO_INTERPOLATION MACRO_CONTROL MACRO_HEREDOC_BODY
 
@@ -420,6 +423,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   {CHAR_LITERAL}       { return track(CrystalTypes.CHAR_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
 
   // Numbers (float before int since float is more specific with dot).
   // The float rule needs a digit after the dot, so `d[1..]` lexes INTEGER `1`
@@ -847,6 +851,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "asm"                { return track(CrystalTypes.ASM); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   {IDENTIFIER}         { return track(CrystalTypes.IDENTIFIER); }
   {CONSTANT}           { return track(CrystalTypes.CONSTANT); }
   {INSTANCE_VAR}       { return track(CrystalTypes.INSTANCE_VAR); }
@@ -1128,6 +1133,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "uninitialized"      { return track(CrystalTypes.UNINITIALIZED); }
   "asm"                { return track(CrystalTypes.ASM); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   "is_a?"              { return track(CrystalTypes.IS_A); }
   "nil?"               { return track(CrystalTypes.NIL_QUESTION); }
@@ -1314,6 +1320,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
                        }
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   "verbatim"           { return track(CrystalTypes.VERBATIM); }
   "if"                 { return track(CrystalTypes.IF); }

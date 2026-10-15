@@ -693,6 +693,13 @@ private param_name ::= IDENTIFIER | keyword_as_record_field
 // (COLON absent → fall through to prefix+name alternatives). No pin: no commit.
 parameter ::= OUT COLON type_reference [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
+            // Named multi-input proc (`&block : Subscription, self ->` —
+            // redis connection.cr): block name + proc type with several
+            // inputs and optional (possibly absent) return type. BEFORE the
+            // plain named alternative (PEG longer-first): otherwise `&block :
+            // Subscription` commits as one parameter and the `, self ->`
+            // tail dangles with no backtrack.
+            | param_prefix* AMPERSAND IDENTIFIER COLON type_union (COMMA type_union)* ARROW [type_union]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name IDENTIFIER [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [macro_interpolation] [COLON (splat_type | type_reference)] [ASSIGN expression]
             // Macro-splat parameter (`def initialize({{ x.map ... end.splat }})`
@@ -1247,6 +1254,13 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
 
 private primary_expression ::= grouped_expression
                              | type_receiver_expression
+                             // Nilable class literal as a value (`option(name, Bool?)`
+                             // binding to `T.class` — athena-console input.cr):
+                             // CONSTANT + glued `?` only where an argument ends
+                             // (`)`/`,` follow). The guard keeps real ternaries
+                             // (`cond ? a : b` — expression follows `?`) on the
+                             // expression-level QUESTION tail, never here.
+                             | CONSTANT QUESTION &(RPAREN | COMMA)
                              | macro_array_tail
                              | array_literal
                              | hash_literal
@@ -2013,7 +2027,7 @@ type_receiver_expression ::= type_path type_arguments &DOT
 private type_single ::= STAR type_path [type_arguments] [QUESTION]
                       | type_path macro_interpolation [QUESTION]
                       | type_path LPAREN NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* [NLS COMMA] NLS RPAREN [QUESTION]
-                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
+                      | type_path [type_arguments] [QUESTION] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF [QUESTION]

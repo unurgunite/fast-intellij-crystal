@@ -546,4 +546,57 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testNilableClassSuffixInParam() {
+        // `def read(type : UInt8?.class) : UInt8?`: `.class` after a nilable
+        // type in a parameter annotation (sqlite3 result_set.cr).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def read(type : UInt8?.class) : UInt8?
+            end
+            puts read(UInt8)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNamedMultiInputProcParam() {
+        // `&block : Subscription, self ->`: named block with several proc
+        // inputs and no return type (redis connection.cr).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(*channels : String, &block : Subscription, self ->)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNilableClassLiteralAsArgument() {
+        // `option(name, Bool?)` binding to `T.class`: nilable class literal
+        // as a call argument (athena-console input.cr).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def option(name : String, type : T.class) : T forall T
+            end
+            option("a", Bool?)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testOperatorSymbolsAsArguments() {
+        // `delegate :insert, :<<, :[], to: @columns`: bare operator symbols
+        // as arguments (athena-console table.cr).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            delegate :insert, :<<, :[], to: @columns
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
