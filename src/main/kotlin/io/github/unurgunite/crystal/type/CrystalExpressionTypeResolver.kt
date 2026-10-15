@@ -18,6 +18,7 @@ import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.type.resolveScopedOrFallback
 
 /**
  * Resolves the type of a Crystal expression.
@@ -252,23 +253,15 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
 
 /** DOT-call fragment type (file-level: detekt budget). `to_json` is String for every receiver. */
 private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    val (methodName, receiver) = dotCallPartsOf(expr)
+    val (methodName, receiver) = dotCallPartsOf(expr) ?: return null
     if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
-    if (methodName != null) {
-        // Receiver-class-scoped first (`data.to_hash` where data: PersonData
-        // must take PersonData#to_hash, not stdlib's generic `Hash#to_hash`):
-        // the project-wide first-hit fallback ignores the receiver and loses
-        // to same-named stdlib methods.
-        receiverClassNameOf(receiver)?.let { receiverClass ->
-            CrystalCallReturnTypeResolver.lookupReturnTypeInClass(methodName, receiverClass, expr.project)?.let {
-                return CrystalExpressionTypeResolver.ResolvedType(it)
-            }
-        }
-        CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
-            return CrystalExpressionTypeResolver.ResolvedType(it)
-        }
+    if (methodName == null) return null
+    // Fixed-yield conversions first (`to_s`, `to_i`, ...): defined by
+    // the method itself, independent of any receiver.
+    CrystalCallReturnTypeResolver.fixedReturnType(methodName)?.let {
+        return CrystalExpressionTypeResolver.ResolvedType(it)
     }
-    return null
+    return resolveScopedOrFallback(methodName, receiver, expr)
 }
 
 /**
@@ -281,7 +274,7 @@ private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeRes
  * `Params`) — the caller tries qualified scope first, short scope second.
  * Null when the receiver shape is unknown (fallback applies).
  */
-private fun receiverClassNameOf(receiver: PsiElement?): String? {
+internal fun receiverClassNameOf(receiver: PsiElement?): String? {
     if (receiver == null) return null
     if (receiver.node?.elementType == io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT) return receiver.text
     CrystalReceiverNames.direct(receiver)?.let { return it }

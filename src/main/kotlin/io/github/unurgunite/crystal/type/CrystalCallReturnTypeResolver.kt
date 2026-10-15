@@ -130,8 +130,11 @@ object CrystalCallReturnTypeResolver {
     /**
      * Conversion methods with a fixed yield regardless of receiver
      * (`Object#to_s`, `String#to_i`, ...). Table-driven: one lookup covers
-     * the family without per-name branches.
+     * the family without per-name branches. Public for the fragment
+     * resolver (fixed yields precede receiver scoping).
      */
+    internal fun fixedReturnType(methodName: String): String? = FIXED_RETURN_TYPES[methodName]
+
     private val FIXED_RETURN_TYPES =
         mapOf(
             "to_s" to "String",
@@ -258,4 +261,30 @@ internal object CrystalReceiverNames {
         val base = sibling?.text?.trim()?.takeIf { it.isNotEmpty() } ?: return refText.substringAfterLast("::")
         return base + refText
     }
+}
+
+/**
+ * Receiver-scoped lookup, then project-wide fallback for receiver-less
+ * fragments. Unknown receiver: no guessing — the first hit is a lottery
+ * across same-named methods (`command.downcase` typed as Char via
+ * Char#downcase when `command` is untyped). File-level: ReturnCount.
+ */
+internal fun resolveScopedOrFallback(
+    methodName: String,
+    receiver: PsiElement?,
+    expr: PsiElement,
+): ResolvedType? {
+    // Receiver-class-scoped (`data.to_hash` where data: PersonData must
+    // take PersonData#to_hash, not stdlib's generic `Hash#to_hash`).
+    val receiverClass = receiverClassNameOf(receiver)
+    if (receiverClass != null) {
+        CrystalCallReturnTypeResolver.lookupReturnTypeInClass(methodName, receiverClass, expr.project)?.let {
+            return ResolvedType(it)
+        }
+    }
+    if (receiverClass == null && receiver != null) return null
+    CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
+        return ResolvedType(it)
+    }
+    return null
 }

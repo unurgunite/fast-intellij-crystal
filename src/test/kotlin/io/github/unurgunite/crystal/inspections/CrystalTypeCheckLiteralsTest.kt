@@ -538,6 +538,33 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testUnknownReceiverYieldsNoGuess() {
+        // `command.downcase` with untyped `command`: the project-wide
+        // first hit is a lottery (`Char#downcase` vs `String#downcase`) —
+        // resolve nothing instead of guessing wrong (redis cluster.cr:
+        // `initial_pool_for(command, ...)` mistyped as Char).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class String
+              def downcase : String
+              end
+            end
+            struct Char
+              def downcase : Char
+              end
+            end
+            def pool_for(command : String)
+            end
+            def run(cmd)
+              command = cmd[0]
+              pool_for(command.downcase)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testDefinitionMacrosSkipArity() {
         // `define sum, count, ...` declares methods, never calls them —
         // arity against a same-named 2-param method is noise.
