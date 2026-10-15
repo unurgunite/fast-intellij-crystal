@@ -427,4 +427,24 @@ puts a
         val newOffset = edited.text.indexOf("x", edited.text.indexOf("puts"))
         assertEquals("String", CrystalTypeInference.inferType("x", edited.findElementAt(newOffset)!!, project))
     }
+
+    fun testToStringAlwaysYieldsString() {
+        // `proxy_id.to_s` where `proxy_id : Int32`: `to_s` always yields
+        // String — inference must not return the receiver's own type.
+        // NOTE: inferType("proxy_id") correctly answers Int32 (the parameter
+        // type); the `to_s` short-circuit lives one level up, in
+        // inferReturnTypeOfMethodList / lookupReturnType.
+        val types =
+            io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference.inferReturnTypeOfMethodList(
+                "to_s",
+                null,
+                project,
+            )
+        assertEquals(listOf("String"), types)
+        assertEquals(
+            "String",
+            io.github.unurgunite.crystal.type.CrystalCallReturnTypeResolver
+                .lookupReturnType("to_s", project),
+        )
+    }
 }

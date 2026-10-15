@@ -1514,7 +1514,29 @@ private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS exp
 // backtrack. try order: plain expression first (all non-brace values keep
 // their shape, goldens confirm), then the brace-type-tuple, then the legacy
 // decl_type_value path (fail-fast via its own scan guard).
-private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression) {pin=2}
+// The BRACE-LED value guard below covers the paren form's hash values
+// (`headers: HTTP::Headers{...}` — HTTP::Client calls): `expression` reads
+// `HTTP::Headers` as a namespace value and orphans the `{...}` with no
+// backtrack (`... expected, got '{'`). A `{`-led named value commits to the
+// brace value FIRST (fail-fast: a lone CONSTANT without `{` never enters).
+private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_brace_value | named_tuple_type_value | decl_type_value | expression) {pin=2}
+
+// Brace-led named value: `Type{...}` (type path + hash/tuple literal —
+// `HTTP::Headers{"Content-Type" => "application/json"}`) or a bare
+// hash/tuple/array literal. The `Type{...}` shape needs the full leading
+// path (CONSTANT (:: CONSTANT)*), not a lone `::Seg`: `namespace_access`
+// covers only one segment and its leading `::` cannot start a mid-list
+// value. Disjoint first tokens (CONSTANT-with-brace, LBRACE, LBRACKET):
+// plain values never start here, zero shape change elsewhere (goldens
+// confirm). No pin inside: fails cleanly with no input consumed when the
+// brace tail is absent.
+private named_brace_value ::= named_type_brace (hash_literal | tuple_literal | array_literal)
+                            | hash_literal
+                            | tuple_literal
+                            | array_literal
+// Leading type path of a brace value: `HTTP::Headers`, `::Socket::Protocol`.
+// A named (non-private) rule would emit a duplicate PSI getter pair; inline.
+private named_type_brace ::= [DOUBLE_COLON] CONSTANT (DOUBLE_COLON CONSTANT)*
 
 // Brace type tuple as a named-argument value (`as: {Int64, String?}` —
 // `DB#query_all(..., as: {...})` call sites with 4+ members incl. nullable).

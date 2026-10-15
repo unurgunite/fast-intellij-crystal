@@ -314,4 +314,18 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testBinaryOperatorTailIsNotACall() {
+        // `Time.utc - 1.second` parses as DOT_CALL `Time.utc` + detached
+        // `- 1.second`: `-` is a binary operator, not a method name — no
+        // "Too many arguments" against a 0-param phantom.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            @@last_call = Time.utc - 1.second
+            deadline = Time.utc + timeout_s.seconds
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
