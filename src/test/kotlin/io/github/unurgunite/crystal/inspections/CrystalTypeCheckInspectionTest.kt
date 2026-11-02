@@ -405,4 +405,30 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testNewPrefersReceiverInitializerOverUnrelatedClass() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Config
+            end
+
+            class Rule
+            end
+
+            class Runner
+              def initialize(rules : Array(Rule), name : String)
+              end
+            end
+
+            class Exception
+              def initialize(message : Config)
+              end
+            end
+
+            Runner.new([Rule.new], "name")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
