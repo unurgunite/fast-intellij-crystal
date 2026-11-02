@@ -43,7 +43,15 @@ import com.intellij.psi.TokenType;
     macroBodyAtLineStart = false;
     macroBodyBuffer.setLength(0);
     macroHeredocPending = false;
+    inLineComment = false;
   }
+
+  // Inside a `#` comment: the apostrophe rule below runs on raw text, so the
+  // `'...'` guard must be applied here too (prose like `the parameter's type`
+  // would otherwise drop the apostrophes and glob the next arg list). Comments
+  // never feed the parser, so the flag may stay stale across re-lexes. Set on
+  // the comment rules, cleared by NEWLINE and resetState().
+  private boolean inLineComment = false;
 
   private int interpolationDepth = 0;
   private int percentDepth = 0;
@@ -326,8 +334,8 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // Whitespace and comments
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   "\\" (\r\n | \r | \n) { return track(TokenType.WHITE_SPACE); }
-  {NEWLINE}            { afterDef = false; if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
-  {LINE_COMMENT}       { return track(CrystalTypes.LINE_COMMENT); }
+  {NEWLINE}            { afterDef = false; inLineComment = false; if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
+  {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
 
   // Keywords (longest match first for keywords with ? suffix)
   "abstract"           { return track(CrystalTypes.ABSTRACT); }
@@ -417,7 +425,12 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // Invalid single-quote string (more than one character between quotes)
   // This rule must come before CHAR_LITERAL because JFlex longest-match wins.
   // It matches 'xx...x' with 2+ characters inside, producing a single BAD_CHARACTER token.
-  "'" [^'\\] [^'\r\n] [^'\r\n]* "'" { return track(TokenType.BAD_CHARACTER); }
+  // Inside a comment an apostrophe is prose (`the parameter's type`), never a
+  // char literal — leaving it to the comment rule keeps the comment one token.
+  "'" [^'\\] [^'\r\n] [^'\r\n]* "'" { if (inLineComment) { yypushback(yylength()); } else { return track(TokenType.BAD_CHARACTER); } }
+  // A lone `'` (unpaired quote) needs no separate rule: BAD_CHARACTER is the
+  // catch-all already, and the pair rule above pushes a comment's quotes back
+  // onto it.
 
   // Literals
   {CHAR_LITERAL}       { return track(CrystalTypes.CHAR_LITERAL); }
@@ -808,8 +821,8 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // `#` starts a comment, but `#{` starts a nested interpolation (handled by
   // the `"#{"` rule above via longest-match). The negative lookahead keeps
   // `# comment` working while `#{...}` re-lexes as interpolation.
-  "#" [^{\r\n] [^\r\n]* { return track(CrystalTypes.LINE_COMMENT); }
-  "#"                  { return track(CrystalTypes.LINE_COMMENT); }
+  "#" [^{\r\n] [^\r\n]* { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
+  "#"                  { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
   // Control-flow / jump / value keywords (`"#{if a\n b\n end}"`,
   // `{{ if ... else ... end }}` — macros.cr `record` `copy_with`):
   // without these `if` lexes as IDENTIFIER and the `end` dangles.

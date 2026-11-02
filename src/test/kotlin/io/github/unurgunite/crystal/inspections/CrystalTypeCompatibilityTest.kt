@@ -161,4 +161,27 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Nil | String", "String"))
         assertFalse(compat("Int32 | Bool", "String"))
     }
+
+    fun testEnumerableParameterAcceptsCollections() {
+        // `Enumerable(T)` is a non-invariant module: any collection fits it.
+        assertTrue(compat("Array(String)", "Enumerable(String)"))
+        assertTrue(compat("Tuple(String)", "Enumerable(String)"))
+        assertTrue(compat("Array(Int32)", "Enumerable"))
+        // Element types are not compared by Array's invariance rule.
+        assertTrue(compat("Array(Int32)", "Enumerable(String)"))
+        // Nilable module param matches a collection too.
+        assertTrue(compat("Array(String)", "Enumerable?"))
+    }
+
+    fun testUnderscoreParameterAcceptsAnything() {
+        // `value : _` is a type wildcard.
+        assertTrue(compat("Array(String)", "_"))
+        assertTrue(compat("Bool", "_"))
+    }
+
+    fun testArrayInvarianceStillChecked() {
+        // Enumerable leniency must not leak into concrete invariant generics.
+        assertFalse(compat("Array(Int32)", "Array(String)"))
+        assertFalse(compat("Hash(String, String)", "Array(String)"))
+    }
 }

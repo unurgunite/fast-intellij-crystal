@@ -319,4 +319,59 @@ class CrystalArgumentCountSplatTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Block Body Is Never An Argument ====================
+    fun testBraceBlockWithCallBodyNotCounted() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def sync(&block)
+            end
+            def delete(id : Int32)
+            end
+            sync { delete(1) }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testEmptyBraceBlockNotCounted() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def sync(&block)
+            end
+            sync { }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testDoBlockWithCallBodyNotCounted() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def sync(&block)
+            end
+            def delete(id : Int32)
+            end
+            sync do
+              delete(1)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testBareCommandWithBraceBlock() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def perform(seconds : Int32, &block)
+            end
+            perform 30 { }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

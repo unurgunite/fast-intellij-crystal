@@ -29,6 +29,9 @@ object CrystalTypeCompatibility {
             "Regex",
         )
 
+    /** Prefix of a `Enumerable(T)` parameter type (module, not invariant). */
+    private const val ENUMERABLE_PREFIX = "Enumerable("
+
     /** All numeric types (integers + floats). */
     private val NUMERIC_TYPES =
         setOf(
@@ -102,6 +105,13 @@ object CrystalTypeCompatibility {
                 true
             }
 
+            // `_` wildcard (`value : _`) and the `Enumerable` module fit any
+            // argument: an Array passed to `Enumerable(T)` is valid Crystal, so
+            // element types must not be compared by Array's invariance rule.
+            acceptsAnyType(normalizedParam) -> {
+                true
+            }
+
             // Union argument (`String | Hash(String, String)` from overload
             // union): fits when ANY member fits — the call may take any
             // branch at runtime. Checked before generic/nilable branches so
@@ -140,16 +150,28 @@ object CrystalTypeCompatibility {
                 isCompatibleGeneric(normalizedArg, normalizedParam, isUnsuffixedNumericLiteral)
             }
 
-            // Unknown side: could be a superclass, alias or generic — never a definite mismatch
-            normalizedParam !in KNOWN_BUILTINS || normalizedArg !in KNOWN_BUILTINS -> {
-                true
-            }
-
-            // Both are known builtins and nothing matched → incompatible
+            // A known-collection argument against an invariant `Array`/`Hash`/
+            // `Set` parameter is a definite mismatch; anything unknown could be
+            // a superclass, alias or generic, so never report those.
             else -> {
-                false
+                !(normalizedParam in KNOWN_BUILTINS && normalizedArg in KNOWN_BUILTINS)
             }
         }
+    }
+
+    /**
+     * Parameters that constrain nothing about the argument:
+     * `_` is a type wildcard (`def add_parameter(key : String, value : _)`),
+     * and `Enumerable`/`Enumerable(T)` is a module, not an invariant
+     * container — Array, Tuple, Hash, Set and user collections all satisfy it,
+     * so comparing element types by the generic invariance rule above reports
+     * `Array(String)` against `Enumerable(Address | String)` as a mismatch
+     * that Crystal accepts.
+     */
+    private fun acceptsAnyType(normalizedParam: String): Boolean {
+        if (normalizedParam == "_") return true
+        if (normalizedParam == "Enumerable") return true
+        return normalizedParam.startsWith(ENUMERABLE_PREFIX)
     }
 
     /**
