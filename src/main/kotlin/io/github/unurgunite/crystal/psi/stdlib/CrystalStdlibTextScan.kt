@@ -186,11 +186,11 @@ private fun handleTypeLine(
     val name = full.substringAfterLast("::")
     // Offset of the (last-segment) name identifier: group 2's start — NOT the
     // whole-match start (which is the leading whitespace) — plus the prefix length.
-    val g1 = m.groups[2]!!
+    val g1 = m.groups[2] ?: return false
     val offset = lineStart + g1.range.first + (full.length - name.length)
     val enclosing = state.stack.lastOrNull()
     val qualified = if (enclosing != null) "$enclosing::$full" else full
-    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = true)
+    state.addSymbol(offset, name, qualified, isType = true)
     state.stack.addLast(qualified)
     state.openKinds.addLast("type")
     state.typeKinds.addLast(kind)
@@ -209,11 +209,11 @@ private fun handleAliasLine(
     val m = aliasRe.find(raw) ?: return false
     val full = m.groupValues[1]
     val name = full.substringAfterLast("::")
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[1] ?: return false
     val offset = lineStart + g1.range.first + (full.length - name.length)
     val enclosing = state.stack.lastOrNull()
     val qualified = if (enclosing != null) "$enclosing::$name" else name
-    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = false)
+    state.addSymbol(offset, name, qualified, isType = false)
     return true
 }
 
@@ -225,11 +225,11 @@ private fun handleConstLine(
 ): Boolean {
     val m = constRe.find(raw) ?: return false
     val name = m.groupValues[1]
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[1] ?: return false
     val offset = lineStart + g1.range.first
     val enclosing = state.stack.lastOrNull()
     val qualified = if (enclosing != null) "$enclosing::$name" else name
-    addSymbol(state.symbols, state.hasCanonical, state.relPath, offset, name, qualified, isType = false)
+    state.addSymbol(offset, name, qualified, isType = false)
     // ALL-CAPS enum members (`MAX = 0`) are real constants AND get a generated
     // `member?` predicate — index both keys (CamelCase members are handled by
     // handleEnumLine below; constRe never matches them).
@@ -251,12 +251,12 @@ private fun handleDefLine(
     val m = defRe.find(raw) ?: return false
     val sig = m.groupValues[1]
     val (recv, mname) = parseDefSig(sig)
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[1] ?: return false
     val offset = lineStart + g1.range.first + (sig.length - mname.length)
     val ns = recv ?: state.stack.lastOrNull()
     // For bare top-level builtins (no enclosing namespace) force the simple key
     // so e.g. `raise` jumps to raise.cr, not a private `def raise` elsewhere.
-    addMethodSymbol(state.symbols, state.relPath, offset, ns, mname)
+    state.addMethodSymbol(offset, ns, mname)
     // A `def`/`macro` beats a same-named `fun` for the bare key regardless of
     // VFS walk order (see handleFunLine) — native code shadows C bindings.
     if (ns == null && state.funBareKeys.remove(mname)) {
@@ -294,7 +294,7 @@ private fun handleFunLine(
 ): Boolean {
     val m = funRe.find(raw) ?: return false
     val name = m.groupValues[1]
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[1] ?: return false
     val offset = lineStart + g1.range.first
     val loc = SymbolLoc(state.relPath, offset)
     val ns = state.stack.lastOrNull()
@@ -348,14 +348,13 @@ private fun handleGenLine(
     for (nm in names) {
         val idx = raw.indexOf(nm)
         val off = if (idx >= 0) lineStart + idx else lineStart
-        addGenKeys(state, off, ns, base, suffix, nm)
+        state.addGenKeys(off, ns, base, suffix, nm)
     }
     return true
 }
 
 /** Generated keys for one `getter`/`setter`/`property` name (see [handleGenLine] matrix). */
-internal fun addGenKeys(
-    state: ScanState,
+internal fun ScanState.addGenKeys(
     off: Int,
     ns: String?,
     base: String,
@@ -363,24 +362,24 @@ internal fun addGenKeys(
     nm: String,
 ) {
     if (base == "setter") {
-        addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+        addMethodSymbol(off, ns, "$nm=")
         return
     }
     when (suffix) {
         "" -> {
-            addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+            addMethodSymbol(off, ns, nm)
         }
 
         "?" -> {
-            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
+            addMethodSymbol(off, ns, "$nm?")
         }
 
         "!" -> {
-            addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm?")
-            addMethodSymbol(state.symbols, state.relPath, off, ns, nm)
+            addMethodSymbol(off, ns, "$nm?")
+            addMethodSymbol(off, ns, nm)
         }
     }
-    if (base == "property") addMethodSymbol(state.symbols, state.relPath, off, ns, "$nm=")
+    if (base == "property") addMethodSymbol(off, ns, "$nm=")
 }
 
 /**
@@ -405,23 +404,21 @@ private fun handleEnumLine(
     if (state.typeKinds.lastOrNull() != "enum") return false
     if (!directlyInType(state)) return false
     val ns = state.stack.lastOrNull() ?: return false
-    var found = false
     // Accepted imprecision: a value expression containing a comma
     // (`A = f(x, y)`) splits into extra tokens, but only tokens STARTING with
     // a capitalized name yield keys, so the damage is one spurious key at worst.
-    for (tok in raw.split(',')) {
-        val name = enumMemberRe.find(tok)?.groupValues?.get(1) ?: continue
-        val g1 = enumMemberRe.find(tok)!!.groups[1]!!
+    val members = raw.split(',').mapNotNull { tok -> enumMemberRe.find(tok)?.let { tok to it } }
+    for ((tok, enumMatch) in members) {
+        val name = enumMatch.groupValues[1]
+        val range = enumMatch.groups[1]?.range ?: continue
         // tok is a substring of raw — locate it once, then add the in-token offset.
-        val tokStart = raw.indexOf(tok)
-        val offset = lineStart + tokStart + g1.range.first
+        val offset = lineStart + raw.indexOf(tok) + range.first
         state.symbols.putIfAbsent(
             "$ns#${CrystalNameUtils.crystalUnderscore(name)}?",
             SymbolLoc(state.relPath, offset),
         )
-        found = true
     }
-    return found
+    return members.isNotEmpty()
 }
 
 /**
@@ -446,7 +443,7 @@ private fun handleFieldLine(
     val ns = state.stack.lastOrNull() ?: return false
     val rawName = m.groupValues[1]
     val name = rawName.removePrefix("@@").removePrefix("@")
-    val g1 = m.groups[1]!!
+    val g1 = m.groups[1] ?: return false
     val offset = lineStart + g1.range.first + (g1.value.length - name.length)
     state.symbols.putIfAbsent("$ns#$name", SymbolLoc(state.relPath, offset))
     return true

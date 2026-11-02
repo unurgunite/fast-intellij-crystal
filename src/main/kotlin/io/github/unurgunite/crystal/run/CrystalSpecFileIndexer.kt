@@ -134,8 +134,9 @@ class CrystalSpecFileIndexer(
             val dir = File(dirPath)
 
             // Check if any spec file in the directory has been modified since last index
-            if (indexedFiles.contains(cacheKey) && dir.exists() && dir.isDirectory) {
-                val cached = cache[cacheKey]!!
+            val cached = cache[cacheKey]
+            val isCached = cached != null && indexedFiles.contains(cacheKey)
+            if (isCached && dir.exists() && dir.isDirectory) {
                 val anyModified =
                     dir
                         .walkTopDown()

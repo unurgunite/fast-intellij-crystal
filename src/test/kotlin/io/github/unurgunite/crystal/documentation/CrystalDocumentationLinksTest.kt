@@ -57,10 +57,9 @@ class CrystalDocumentationLinksTest : BasePlatformTestCase() {
                 """.trimIndent(),
                 "Dog",
             )
-        val doc = provider.generateDoc(classDef, null)
-        assertNotNull(doc)
-        assertTrue("Should contain 'class' keyword", doc!!.contains("class"))
-        assertTrue("Should contain class name 'Dog'", doc!!.contains("Dog"))
+        val doc = requireNotNull(provider.generateDoc(classDef, null))
+        assertTrue("Should contain 'class' keyword", doc.contains("class"))
+        assertTrue("Should contain class name 'Dog'", doc.contains("Dog"))
         assertTrue("Should contain superclass 'Animal'", doc.contains("Animal"))
         assertTrue("Superclass should be hyperlinked", doc.contains("psi_element://class:Animal"))
     }

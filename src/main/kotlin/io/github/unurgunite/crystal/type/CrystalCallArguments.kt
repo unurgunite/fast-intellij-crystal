@@ -81,7 +81,7 @@ internal object CrystalCallArguments {
             }
 
             is CrystalBareMethodCallExpression -> {
-                val argList = callExpr.callArgs?.argumentList
+                val argList = callExpr.callArgs.argumentList
                 if (argList != null) {
                     for (arg in argList.argumentList) {
                         result.add(extractShapedArgInfo(arg))

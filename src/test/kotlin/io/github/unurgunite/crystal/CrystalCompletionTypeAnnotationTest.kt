@@ -286,7 +286,7 @@ class CrystalCompletionTypeAnnotationTest : BasePlatformTestCase() {
         )
         val lookups = myFixture.complete(CompletionType.BASIC)
         if (lookups != null) {
-            val names = lookups.map { it.lookupString }
+            lookups.map { it.lookupString }
             // Should NOT contain override methods with "override" type text
             val overrideItems =
                 lookups.filter { element ->

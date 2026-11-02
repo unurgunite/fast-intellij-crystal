@@ -3,15 +3,12 @@ package io.github.unurgunite.crystal.debugger
 import com.intellij.execution.ExecutionResult
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.openapi.project.Project
 import com.intellij.platform.dap.DapBreakpointsDescription
 import com.intellij.platform.dap.DebugAdapterDescriptor
 import com.intellij.platform.dap.connection.CommandLineDebugAdapterHandle
 import com.intellij.platform.dap.connection.DebugAdapterHandle
 
-class CrystalDebugAdapterDescriptor(
-    private val project: Project,
-) : DebugAdapterDescriptor<CrystalDebugAdapterId>() {
+class CrystalDebugAdapterDescriptor : DebugAdapterDescriptor<CrystalDebugAdapterId>() {
     override val id: CrystalDebugAdapterId = CrystalDebugAdapterId
 
     override val breakpointsDescription: DapBreakpointsDescription =

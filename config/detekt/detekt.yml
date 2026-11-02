@@ -10,6 +10,11 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 140
+  AbstractClassCanBeConcreteClass:
+    active: true
+    # Hand-written base classes for generated PSI impls: they exist only to be
+    # extended by GrammarKit output, so they stay abstract with no abstract members.
+    excludes: ["**/psi/impl/**"]
 
 complexity:
   CyclomaticComplexMethod:

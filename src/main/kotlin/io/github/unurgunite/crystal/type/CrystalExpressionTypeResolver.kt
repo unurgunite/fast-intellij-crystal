@@ -151,11 +151,6 @@ object CrystalExpressionTypeResolver {
         return resolveWrapperInnerOf(expr)
     }
 
-    /** The wrapped expression inside a statement (expression/if/begin/assignment), if any. */
-    private fun innerOfStatement(expr: CrystalStatement): PsiElement? =
-        innerOfStatementOf(expr)
-            ?: expr.children.firstOrNull { it !is PsiWhiteSpace }
-
     /** Leaf literal tokens: integers, floats, strings, chars, symbols, bools, nil. */
     private fun resolveLiteralByToken(expr: PsiElement): ResolvedType? {
         val factory = LITERAL_TYPES[expr.node?.elementType]
@@ -253,7 +248,7 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
 
 /** DOT-call fragment type (file-level: detekt budget). `to_json` is String for every receiver. */
 private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    val (methodName, receiver) = dotCallPartsOf(expr) ?: return null
+    val (methodName, receiver) = dotCallPartsOf(expr)
     if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
     if (methodName == null) return null
     // Fixed-yield conversions first (`to_s`, `to_i`, ...): defined by
@@ -371,7 +366,7 @@ private fun hasToJsonCall(expr: PsiElement): Boolean {
         if (child.node?.elementType == CrystalTypes.DOT) {
             var next = child.nextSibling
             while (next is PsiWhiteSpace) next = next.nextSibling
-            val name = next?.text ?: ""
+            val name = next?.text.orEmpty()
             if (name == "to_json" || name.startsWith("to_json(")) return true
         }
         if (child.firstChild != null && hasToJsonCall(child)) return true

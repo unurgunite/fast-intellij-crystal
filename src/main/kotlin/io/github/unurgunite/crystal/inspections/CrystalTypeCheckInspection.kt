@@ -138,7 +138,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         arguments: List<ArgumentInfo>,
         holder: ProblemsHolder,
     ): List<CrystalMethodDefinition> {
-        var methods = CrystalDotCallOverloads.resolve(info, argsElement)
+        val methods = CrystalDotCallOverloads.resolve(info, argsElement)
 
         if (methods.isNotEmpty() || info.methodName != "new") return methods
 

@@ -178,18 +178,10 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     ): Boolean {
         if (className == null) return false
         if (CrystalNewConstructorCheck.checkRecord(className, arguments, methodNameElement, contextElement, holder)) return true
-        if (
-            CrystalNewConstructorCheck.checkInitialize(
-                className,
-                arguments,
-                methodNameElement,
-                contextElement,
-                holder,
-                ::checkArgumentCount,
-            )
-        ) {
-            return true
+        val checkCount: (List<CrystalMethodDefinition>) -> Unit = { methods ->
+            checkArgumentCount(methods, arguments, methodNameElement, holder)
         }
+        if (CrystalNewConstructorCheck.checkInitialize(className, contextElement, checkCount)) return true
         return CrystalNewConstructorCheck.checkParam(className, arguments, methodNameElement, contextElement, holder)
     }
 
@@ -381,16 +373,8 @@ private object CrystalNewConstructorCheck {
      */
     fun checkInitialize(
         className: String,
-        arguments: List<ArgumentInfo>,
-        methodNameElement: PsiElement,
         contextElement: PsiElement,
-        holder: ProblemsHolder,
-        checkArgumentCount: (
-            List<CrystalMethodDefinition>,
-            List<CrystalCallArguments.ArgumentInfo>,
-            PsiElement,
-            ProblemsHolder,
-        ) -> Unit,
+        checkArgumentCount: (List<CrystalMethodDefinition>) -> Unit,
     ): Boolean {
         val initMethods =
             CrystalMethodLookup.getInitializeMethods(className, contextElement.project, contextElement.containingFile)
@@ -398,7 +382,7 @@ private object CrystalNewConstructorCheck {
         if (initMethods.size == 1 && isEmptyFallback(initMethods.first()) && hasParamDeclarations(className, contextElement)) {
             return false
         }
-        checkArgumentCount(initMethods, arguments, methodNameElement, holder)
+        checkArgumentCount(initMethods)
         return true
     }
 

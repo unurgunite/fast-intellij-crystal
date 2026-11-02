@@ -70,15 +70,14 @@ class CrystalNamespaceAccessTest : BasePlatformTestCase() {
     // ==================== Namespace access has reference ====================
 
     fun testNamespaceAccessHasReference() {
-        val file =
-            myFixture.configureByText(
-                "test.cr",
-                """
-                class Foo
-                end
-                Foo::<caret>Bar
-                """.trimIndent(),
-            )
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Foo
+            end
+            Foo::<caret>Bar
+            """.trimIndent(),
+        )
         val leaf = myFixture.file.findElementAt(myFixture.caretOffset)
         assertNotNull("Leaf should exist", leaf)
 
@@ -247,19 +246,18 @@ class CrystalNamespaceAccessTest : BasePlatformTestCase() {
 
     fun testRelativeDbStillResolvesLocally() {
         // Without the leading `::`, `DB` inside `module DB` keeps resolving locally.
-        val file =
-            myFixture.configureByText(
-                "test.cr",
-                """
-                module DB
-                  class Database
-                  end
-                end
-                module DB
-                  <caret>Database
-                end
-                """.trimIndent(),
-            )
+        myFixture.configureByText(
+            "test.cr",
+            """
+            module DB
+              class Database
+              end
+            end
+            module DB
+              <caret>Database
+            end
+            """.trimIndent(),
+        )
         val leaf = myFixture.file.findElementAt(myFixture.caretOffset) ?: return
         val ref = leaf.reference ?: leaf.parent?.reference
         assertNotNull("Relative Database should still resolve locally", ref?.resolve())

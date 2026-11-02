@@ -18,14 +18,14 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
         val file = myFixture.file
         return CrystalFoldingBuilder()
             .buildFoldRegions(file, document, false)
-            .map { document.getText(it.range!!) }
+            .map { document.getText(it.range) }
     }
 
     private fun foldLines(code: String): List<Pair<Int, Int>> {
         val document = openDocument(code)
         val file = myFixture.file
         return CrystalFoldingBuilder().buildFoldRegions(file, document, false).map {
-            document.getLineNumber(it.range!!.startOffset) to document.getLineNumber(it.range.endOffset)
+            document.getLineNumber(it.range.startOffset) to document.getLineNumber(it.range.endOffset)
         }
     }
 
@@ -105,7 +105,7 @@ class CrystalFoldingBuilderTest : BasePlatformTestCase() {
         val placeholders =
             CrystalFoldingBuilder()
                 .buildFoldRegions(file, document, false)
-                .associate { it.element?.elementType to builder.getPlaceholderText(it.element!!) }
+                .associate { it.element.elementType to builder.getPlaceholderText(it.element) }
         assertEquals(" ... end", placeholders[CrystalTypes.DEF])
         assertEquals(" ... end", placeholders[CrystalTypes.CLASS])
         assertFalse(builder.isCollapsedByDefault(file.node.firstChildNode))

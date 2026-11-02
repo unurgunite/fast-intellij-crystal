@@ -114,14 +114,18 @@ internal object CrystalStructurePresentation {
 
     private fun methodInfo(element: CrystalMethodDefinition): Triple<String, Icon?, String?> {
         val name = element.name ?: "<anonymous>"
-        val params = element.parameterList?.text ?: ""
-        val returnType = element.typeReference?.text?.let { " : $it" } ?: ""
+        val params = element.parameterList?.text.orEmpty()
+        val returnType =
+            element.typeReference
+                ?.text
+                ?.let { " : $it" }
+                .orEmpty()
         return Triple("$name($params)$returnType", AllIcons.Nodes.Method, "def")
     }
 
     private fun macroInfo(element: CrystalMacroDefinition): Triple<String, Icon?, String?> {
         val name = element.name ?: "<anonymous>"
-        val params = element.parameterList?.text ?: ""
+        val params = element.parameterList?.text.orEmpty()
         return Triple("$name($params)", AllIcons.Nodes.Template, "macro")
     }
 

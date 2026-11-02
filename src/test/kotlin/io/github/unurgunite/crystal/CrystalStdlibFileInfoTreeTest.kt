@@ -55,7 +55,11 @@ class CrystalStdlibFileInfoTreeTest : BasePlatformTestCase() {
         assertNotNull("File::Info should resolve to struct Info in file/info.cr", target)
         assertTrue("Target should be a named element (not whitespace)", target is CrystalNamedElement)
         assertEquals("Resolved name should be Info", "Info", (target as CrystalNamedElement).name)
-        val nav = target.containingFile?.virtualFile?.path ?: ""
+        val nav =
+            target.containingFile
+                ?.virtualFile
+                ?.path
+                .orEmpty()
         assertTrue("Target should live in file/info.cr (was: $nav)", nav.endsWith("file/info.cr"))
     }
 

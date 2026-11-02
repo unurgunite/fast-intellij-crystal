@@ -14,8 +14,8 @@ class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
         val element = file.findElementAt(myFixture.caretOffset)
         assertNotNull("No element at caret", element)
         val context = ConfigurationContext(element!!)
-        return (context.createConfigurationsFromContext() ?: emptyList())
-            .mapNotNull { it.configurationSettings?.configuration as? CrystalRunConfiguration }
+        return (context.createConfigurationsFromContext().orEmpty())
+            .mapNotNull { it.configurationSettings.configuration as? CrystalRunConfiguration }
     }
 
     private fun singleConfigFromCaret(
@@ -88,8 +88,8 @@ class CrystalRunConfigurationProducerTest : BasePlatformTestCase() {
         assertNotNull("Should resolve temp spec dir", dir)
         val context = ConfigurationContext(dir!!)
         val configs =
-            (context.createConfigurationsFromContext() ?: emptyList())
-                .mapNotNull { it.configurationSettings?.configuration as? CrystalRunConfiguration }
+            (context.createConfigurationsFromContext().orEmpty())
+                .mapNotNull { it.configurationSettings.configuration as? CrystalRunConfiguration }
         assertEquals(1, configs.size)
         assertEquals(CrystalCommand.SPEC, configs[0].command)
         assertEquals(0, configs[0].specLine)

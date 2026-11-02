@@ -39,8 +39,12 @@ internal data class CrystalAbstractMethodInfo(
             return CrystalAbstractMethodInfo(
                 name = name,
                 arity = params?.parameterList?.size ?: 0,
-                paramsText = params?.let { "(${it.text})" } ?: "",
-                returnTypeText = abstractDef.typeReference?.text?.let { " : $it" } ?: "",
+                paramsText = params?.let { "(${it.text})" }.orEmpty(),
+                returnTypeText =
+                    abstractDef.typeReference
+                        ?.text
+                        ?.let { " : $it" }
+                        .orEmpty(),
                 forallText = forallSuffix(abstractDef),
             )
         }

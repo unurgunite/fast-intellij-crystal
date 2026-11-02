@@ -63,7 +63,7 @@ internal object CrystalEnterBrackets {
         if (!isClosingBracketLine(caretLineTrimmed) || !isInsideUnclosedBracket(document, ctx.prevLineNumber)) {
             return null
         }
-        val baseIndent = findOpeningBracketIndent(document, ctx.prevLineNumber) ?: ""
+        val baseIndent = findOpeningBracketIndent(document, ctx.prevLineNumber).orEmpty()
         val currentLineStart = document.getLineStartOffset(ctx.caretLine)
         val currentLineEnd = document.getLineEndOffset(ctx.caretLine)
         document.replaceString(currentLineStart, currentLineEnd, "$baseIndent$caretLineTrimmed")

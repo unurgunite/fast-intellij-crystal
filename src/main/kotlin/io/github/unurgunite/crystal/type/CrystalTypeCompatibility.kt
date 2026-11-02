@@ -49,21 +49,6 @@ object CrystalTypeCompatibility {
             "Float64",
         )
 
-    /** All integer types. */
-    private val INTEGER_TYPES =
-        setOf(
-            "Int8",
-            "Int16",
-            "Int32",
-            "Int64",
-            "Int128",
-            "UInt8",
-            "UInt16",
-            "UInt32",
-            "UInt64",
-            "UInt128",
-        )
-
     /**
      * Numeric autocast hierarchy: which suffixed types can be implicitly widened.
      * Crystal allows lossless widening (no precision loss).

@@ -68,7 +68,7 @@ internal object CrystalLocalScope {
         method: CrystalMethodDefinition,
         name: String,
     ): Boolean {
-        val params = method.parameterList?.parameterList ?: emptyList()
+        val params = method.parameterList?.parameterList.orEmpty()
         for (param in params) {
             val paramName =
                 param.node.findChildByType(CrystalTypes.IDENTIFIER)?.text

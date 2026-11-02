@@ -27,7 +27,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 class CrystalTestEventsConverter(
     testFrameworkName: String,
     consoleProperties: TestConsoleProperties,
-    private val testLocations: Map<String, List<CrystalSpecFileIndexer.TestLocation>> = emptyMap(),
+    testLocations: Map<String, List<CrystalSpecFileIndexer.TestLocation>> = emptyMap(),
     private val junitOutputFile: File? = null,
 ) : OutputToGeneralTestEventsConverter(testFrameworkName, consoleProperties) {
     private val log = Logger.getInstance(CrystalTestEventsConverter::class.java)
@@ -138,13 +138,13 @@ class CrystalTestEventsConverter(
 
     // ==================== Tree Node Types ====================
 
-    sealed class TestNode {
-        abstract val name: String
+    sealed interface TestNode {
+        val name: String
 
         data class Suite(
             override val name: String,
             val children: MutableList<TestNode> = mutableListOf(),
-        ) : TestNode()
+        ) : TestNode
 
         data class Test(
             override val name: String,
@@ -154,7 +154,7 @@ class CrystalTestEventsConverter(
             var failureMessage: String = "",
             var failureDetails: String = "",
             var durationMs: Long = -1,
-        ) : TestNode()
+        ) : TestNode
     }
 
     // ==================== Parsing (self-contained, testable) ====================

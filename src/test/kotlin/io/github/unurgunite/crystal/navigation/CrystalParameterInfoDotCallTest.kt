@@ -118,7 +118,7 @@ class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
                 argsHolder.containingFile,
             )
         assertNotNull("Should find initialize method for Apfelsaft", initMethod)
-        val params = initMethod!!.parameterList?.parameterList ?: emptyList()
+        val params = initMethod!!.parameterList?.parameterList.orEmpty()
         assertEquals("initialize should have 2 params", 2, params.size)
     }
 
@@ -173,7 +173,7 @@ class CrystalParameterInfoDotCallTest : BasePlatformTestCase() {
                 argsHolder.containingFile,
             )
         assertNotNull("Should find initialize method for Foo", initMethod)
-        val params = initMethod!!.parameterList?.parameterList ?: emptyList()
+        val params = initMethod!!.parameterList?.parameterList.orEmpty()
         assertEquals("initialize should have 2 params", 2, params.size)
     }
 

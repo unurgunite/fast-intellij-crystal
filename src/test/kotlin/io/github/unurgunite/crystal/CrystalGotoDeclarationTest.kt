@@ -114,14 +114,14 @@ class CrystalGotoDeclarationTest : BasePlatformTestCase() {
     }
 
     fun testDotCallDoesNotTriggerWithoutDot() {
-        val targets =
-            gotoTargets(
-                """
-                def hello
-                end
-                hell<caret>o
-                """.trimIndent(),
-            )
+        // Positions the caret on the identifier (and checks reference resolution).
+        gotoTargets(
+            """
+            def hello
+            end
+            hell<caret>o
+            """.trimIndent(),
+        )
         // No DOT before "hello" — GotoDeclarationHandler returns null for DOT-only logic.
         // The variable_reference PsiReference also resolves to the method definition,
         // so the GotoDeclarationHandler is not invoked. But we still expect the test to
