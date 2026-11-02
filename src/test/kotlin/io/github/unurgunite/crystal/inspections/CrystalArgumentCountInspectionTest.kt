@@ -359,4 +359,132 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testKeywordOnlyParamAfterBareStar() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store
+              def initialize(initial_capacity = nil, *, capacity = 0)
+              end
+            end
+
+            Store.new(initial_capacity: 8)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNewWithBlockAndKeywordOnlyParam() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store
+              def initialize(*, size = 0)
+              end
+            end
+
+            Store.new(size: 3)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNewOnGenericClassWithKeywordArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store(K, V)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Store(String, Int32).new(initial_capacity: 8)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroParamConstructorNamedArgs() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            abstract class QueuedJob
+              macro inherited
+                macro param(parameter)
+                end
+              end
+            end
+
+            class CamTestJob < QueuedJob
+              param attempt_id : Int64
+              param source : String
+            end
+
+            CamTestJob.new(attempt_id: 1_i64, source: "web")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testIvarShorthandParamsWithDefaults() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "", @project_path = path)
+              end
+            end
+
+            class Source
+              def self.new(code : String, *args, normalize = true, **opts)
+                new(code, *args, **opts)
+              end
+            end
+
+            Source.new("a = 1\n", "source.cr", normalize: false)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A reopened class-level `def self.new` supplies `normalize:`. */
+    fun testClassLevelNewAcceptsNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "")
+              end
+
+              def self.new(code : String, *args, normalize = true)
+                new(code, *args)
+              end
+            end
+
+            Source.new("a", "b", normalize: false)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A class-level `new` does not make unrelated names valid. */
+    fun testClassLevelNewRejectsUnknownNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "")
+              end
+
+              def self.new(code : String, *args, normalize = true)
+                new(code, *args)
+              end
+            end
+
+            Source.new("a", "b", <error descr="Unknown named argument 'bogus'">bogus: false</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

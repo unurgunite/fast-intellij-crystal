@@ -158,6 +158,13 @@ internal object CrystalCallArguments {
      * Works for CrystalMethodCallExpression / CrystalBareMethodCallExpression.
      */
     fun findClassNameBeforeNew(callExpr: PsiElement): String? {
+        // `Source.new(...)` parses as EXPRESSION > VARIABLE_REFERENCE 'Source' +
+        // DOT_CALL_ACCESS, so the receiver is a separate sibling of the dot-hold
+        // rather than a child of the call: resolve it from there.
+        val receiverFirst = callExpr.firstChild
+        if (receiverFirst != null && receiverFirst.node?.elementType == CrystalTypes.VARIABLE_REFERENCE) {
+            receiverClassNameAfterDotCallAccess(receiverFirst)?.let { return it }
+        }
         var child = callExpr.firstChild
         var foundDot = false
         while (child != null) {
@@ -168,9 +175,26 @@ internal object CrystalCallArguments {
                 // Found ".new", now look before the DOT for CONSTANT
                 var beforeDot = child.prevSibling
                 while (beforeDot is com.intellij.psi.PsiWhiteSpace) beforeDot = beforeDot.prevSibling
-                return classNameFromElement(beforeDot)
+                return classNameFromElement(beforeDot) ?: classNameFromElement(receiverFirst)
             }
             child = child.nextSibling
+        }
+        return null
+    }
+
+    /** `.new` inside the DOT_CALL_ACCESS sibling of [receiver]: the class name. */
+    private fun receiverClassNameAfterDotCallAccess(receiver: PsiElement): String? {
+        var sibling = receiver.nextSibling
+        while (sibling != null) {
+            val node = sibling.node
+            if (node != null && node.elementType == CrystalTypes.DOT_CALL_ACCESS) {
+                val dot = node.findChildByType(CrystalTypes.DOT) ?: return null
+                val name = dot.treeNext
+                if (name != null && name.elementType == CrystalTypes.IDENTIFIER && name.text == "new") {
+                    return classNameFromElement(receiver)
+                }
+            }
+            sibling = sibling.nextSibling
         }
         return null
     }
