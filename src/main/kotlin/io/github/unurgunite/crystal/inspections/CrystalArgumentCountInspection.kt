@@ -92,12 +92,18 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         val arguments = CrystalCallArguments.extractArguments(callExpr)
         val methodNameElement = findMethodNameElement(callExpr) ?: return
 
-        if (methodName == "new") {
-            val className = CrystalCallArguments.findClassNameBeforeNew(callExpr)
-            if (checkNewConstructorCall(className, arguments, methodNameElement, callExpr, holder)) return
-        }
-
-        val methods = CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
+        val methods =
+            if (methodName == "new") {
+                val className = CrystalCallArguments.findClassNameBeforeNew(callExpr)
+                if (checkNewConstructorCall(className, arguments, methodNameElement, callExpr, holder)) return
+                // Anything else must still be owned by the receiver: a name-only
+                // `new` lookup also returns stdlib reopenings such as
+                // `def Nil.new(pull : JSON::PullParser)`, whose required `pull`
+                // used to be demanded from every unrelated `X.new`.
+                className?.let { CrystalNewConstructorCheck.candidatesFor(it, callExpr.project) }.orEmpty()
+            } else {
+                CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
+            }
         if (methods.isEmpty()) return
 
         checkArgumentCount(methods, arguments, methodNameElement, holder)
@@ -141,7 +147,9 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         methods =
             methods.filter { method ->
                 val enclosing = CrystalMethodLookup.getEnclosingClassName(method)
-                enclosing == null || enclosing == info.receiverName
+                // `new` has no top-level form in Crystal: an ownerless candidate is
+                // always a `def Type.new` reopening resolving to the wrong receiver.
+                if (info.methodName == "new") enclosing == info.receiverName else enclosing == null || enclosing == info.receiverName
             }
 
         if (info.methodName == "new") {
@@ -336,6 +344,15 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
  * TooManyFunctions budget.
  */
 private object CrystalNewConstructorCheck {
+    /** `new` candidates owned by [className] (see [CrystalMethodLookup.getEnclosingClassName]). */
+    fun candidatesFor(
+        className: String,
+        project: com.intellij.openapi.project.Project,
+    ): List<CrystalMethodDefinition> =
+        CrystalOverloadEvaluator
+            .findCandidateMethods("new", project)
+            .filter { CrystalMethodLookup.getEnclosingClassName(it) == className }
+
     /** Record-definition fast path (highest priority). */
     fun checkRecord(
         className: String,

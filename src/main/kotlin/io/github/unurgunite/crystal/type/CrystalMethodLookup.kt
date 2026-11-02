@@ -160,6 +160,14 @@ object CrystalMethodLookup {
      * throws AssertionError out of inspections. Stub-only walk instead.
      */
     fun getEnclosingClassName(method: CrystalMethodDefinition): String? {
+        // `def Nil.new(pull : JSON::PullParser)` / `def Time::Location.new(pull)`: the
+        // declaring type is the TYPE_PATH in the header, not an enclosing definition.
+        // Without this every stdlib `def X.new` reopening looks like a top-level method
+        // and is offered as a candidate for any `Y.new`.
+        method.typePath
+            ?.text
+            ?.trim()
+            ?.let { return it }
         val stub = (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub
         if (stub != null) return enclosingNameFromStub(stub)
         return enclosingNameFromPsi(method)
