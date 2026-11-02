@@ -1380,11 +1380,14 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // hash parsing instead of becoming callee `big_i` + phantom `: ...` error
 // (big_int.cr). `::` lexes as DOUBLE_COLON (not COLON), so `::X`/namespaces
 // unaffected; `foo bar: 1` unaffected (COLON not adjacent to the callee).
-// `!DOUBLE_COLON`: a qualified path (`A::B::C(T).new`, `A::B.method`) is a
-// type/namespace expression, not a bare command whose callee is `A`. Without
-// this the first segment becomes the callee and the rest a positional
-// argument, so the dot-call receiver loses its leading segment.
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !DOUBLE_COLON !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+// The leading negative lookahead keeps a qualified path (`A::B::C(T).new`,
+// `A::B.method`, `A::B?`) a type/namespace expression instead of a bare command
+// whose callee is `A` with the rest as a positional argument (that split loses
+// the receiver's leading segment). It must fire ONLY on that shape:
+// `expect_raises ::Spec::Foo, "x" do` and `raise ::DB::Foo.new(msg)` are bare
+// commands whose FIRST ARGUMENT starts with `::` — the chain ends in `,`/string
+// there, not in `(`, `.` or `?`, so the lookahead declines and they still parse.
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
@@ -1471,6 +1474,12 @@ private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PE
 
 // First token of any bare argument/expression (shared by binary_op_lookahead and
 // the nested-bare guard below).
+// Tail of a `::`-chain in the bare-command callee guard below. Declared as a
+// separate private rule so the enclosing lookahead parses without forcing
+// GrammarKit to decide the repetition inline (an inline `(x)*` inside `!()`
+// shifted the enclosing bare_argument_list and broke hash arguments).
+private qualified_path_rest ::= (DOUBLE_COLON (CONSTANT | macro_interpolation))*
+
 private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
                                | SYMBOL_LITERAL | NIL | TRUE | FALSE | SELF | SUPER | PREVIOUS_DEF
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
