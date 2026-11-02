@@ -48,6 +48,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodCallExpression -> {
                         checkMethodCall(element, holder)

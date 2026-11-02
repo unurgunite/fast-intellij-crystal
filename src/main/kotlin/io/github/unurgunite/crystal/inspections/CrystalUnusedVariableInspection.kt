@@ -29,6 +29,7 @@ class CrystalUnusedVariableInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodDefinition -> analyzeScope(element, holder, skipNestedMethods = false)
                     is CrystalFile -> analyzeScope(element, holder, skipNestedMethods = true)

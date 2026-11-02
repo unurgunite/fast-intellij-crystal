@@ -3,6 +3,7 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.inspections.CrystalUnusedVarCollect.AssignmentInfo
 import io.github.unurgunite.crystal.psi.CrystalBeginStatement
+import io.github.unurgunite.crystal.psi.CrystalBlock
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement
 import io.github.unurgunite.crystal.psi.CrystalForStatement
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
@@ -71,9 +72,17 @@ internal object CrystalUnusedVarReads {
         return false
     }
 
-    /** Conditional constructs plus `begin`+rescue (plain `begin` always executes). */
+    /**
+     * Conditional constructs plus `begin`+rescue (plain `begin` always executes).
+     * A block body (`do ... end`, `{ ... }`) counts too: it may run zero or many
+     * times, so an assignment inside it never bounds an outer value's lifetime.
+     */
     private fun isConditionalConstruct(current: PsiElement): Boolean {
         when (current) {
+            is CrystalBlock -> {
+                return true
+            }
+
             is CrystalIfStatement,
             is CrystalUnlessStatement,
             is CrystalWhileStatement,
