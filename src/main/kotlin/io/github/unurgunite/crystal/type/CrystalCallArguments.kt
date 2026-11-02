@@ -22,7 +22,6 @@ import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
  * Splat value resolution lives in [CrystalSplatResolver].
  */
 internal object CrystalCallArguments {
-
     /**
      * One call argument: the wrapper element, its named label, shape flags and
      * the value expression for type resolution (defaults to the element itself).
@@ -261,16 +260,6 @@ private fun findNamedLabel(children: Array<ASTNode>): String? {
     return null
 }
 
-/**
- * True when [arg] is a brace group holding a bare command (`{ d.close }`)
- * rather than a value tuple (`{a, b}` / `{a: 1}`). GrammarKit parses both
- * as TUPLE_LITERAL; the command shape (single expression child that is a
- * bare command) means block body, never a positional argument.
- *
- * File-level (not a member) to keep the object above under detekt's
- * TooManyFunctions budget. GrammarKit has no empty TUPLE_LITERAL, so an
- * empty brace group (`sync { }`) arrives as HASH_LITERAL.
- */
 /**
  * Highlight target for an argument problem: first meaningful child of
  * wrapper elements, else the element itself (file-level: detekt budget).

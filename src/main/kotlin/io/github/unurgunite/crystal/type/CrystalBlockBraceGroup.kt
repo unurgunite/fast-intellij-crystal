@@ -37,10 +37,17 @@ internal fun isBlockBraceGroup(
     group: List<PsiElement>,
 ): Boolean =
     when (element) {
-        is CrystalHashLiteral -> element.text.replace(WHITESPACE, "") == "{}"
-        is CrystalTupleLiteral ->
+        is CrystalHashLiteral -> {
+            element.text.replace(WHITESPACE, "") == "{}"
+        }
+
+        is CrystalTupleLiteral -> {
             element.expressionList.expressionList.let { it.size <= 1 && it.all(::holdsCallShape) }
-        else -> group.any(::holdsCallShape)
+        }
+
+        else -> {
+            group.any(::holdsCallShape)
+        }
     }
 
 private val WHITESPACE = "\\s".toRegex()
