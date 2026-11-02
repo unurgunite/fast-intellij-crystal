@@ -436,23 +436,23 @@ private object CrystalNewConstructorCheck {
             }
         CrystalRecordArgumentCheck.checkRecordArguments(params, arguments, methodNameElement, holder)
     }
+}
 
 /**
-     * True when a bare call must not be arity-checked: the name resolves to a
-     * variable/parameter (shadows any method — binary-op ambiguity like
-     * `count + 87` parsed as a call), it is a spec matcher (accepts anything), or
-     * a definition macro (`define`, `delegate` — declare methods, not calls).
-     */
-    internal fun isSkippedBareCall(
-        callExpr: PsiElement,
-        methodName: String,
-    ): Boolean {
-        // The parameter shadows any same-named method, and a binary-op parse like
-        // `count + 87` must not be reported as a call.
-        val resolvedRef = callExpr.reference?.resolve()
-        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
-        val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
-        if (scope.isSpecMatcherCall(methodName)) return true
-        return scope.isDefinitionMacroCall(methodName)
-    }
+ * True when a bare call must not be arity-checked: the name resolves to a
+ * variable/parameter (shadows any method — binary-op ambiguity like
+ * `count + 87` parsed as a call), it is a spec matcher (accepts anything), or
+ * a definition macro (`define`, `delegate` — declare methods, not calls).
+ */
+internal fun isSkippedBareCall(
+    callExpr: PsiElement,
+    methodName: String,
+): Boolean {
+    // The parameter shadows any same-named method, and a binary-op parse like
+    // `count + 87` must not be reported as a call.
+    val resolvedRef = callExpr.reference?.resolve()
+    if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+    val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
+    if (scope.isSpecMatcherCall(methodName)) return true
+    return scope.isDefinitionMacroCall(methodName)
 }
