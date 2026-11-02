@@ -468,6 +468,7 @@
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalClassByEnclosingIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalMacroIndex"/>
         <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalConstantIndex"/>
+        <stubIndex implementation="io.github.unurgunite.crystal.stubs.CrystalAliasIndex"/>
 
         <stubElementTypeHolder class="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeHolder"/>
 

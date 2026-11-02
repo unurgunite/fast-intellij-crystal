@@ -172,9 +172,11 @@ object CrystalTypeHierarchy {
         val seen = mutableSetOf<String>()
         var current = findTypeByName(name, project, currentFile)
         while (current != null) {
-            val next = CrystalParentResolve.step(current, seen, project) ?: break
+            // The link itself always belongs to the chain; step() only decides
+            // whether the walk continues upward (a parentless type ends here
+            // and must still be returned).
             chain.add(current)
-            current = next
+            current = CrystalParentResolve.step(current, seen, project)
         }
         return chain
     }
@@ -366,8 +368,10 @@ internal object CrystalQualifiedLookup {
         scope: GlobalSearchScope,
         currentFile: PsiFile?,
     ): CrystalTypeHierarchy.TypeLookupResult? {
-        val short = qualified.substringAfterLast("::")
-        val namespace = qualified.substringBeforeLast("::")
+        // `AHK::Controller::ParameterMetadata` -> `Athena::HTTPKernel::...`
+        val expanded = CrystalAliasLookup.expand(qualified, project, currentFile) ?: qualified
+        val short = expanded.substringAfterLast("::")
+        val namespace = expanded.substringBeforeLast("::")
         val elements =
             StubIndex.getElements(
                 CrystalClassIndex.KEY,

@@ -11,7 +11,7 @@
   elementTypeHolderClass="io.github.unurgunite.crystal.psi.CrystalTypes"
   elementTypeClass="io.github.unurgunite.crystal.psi.CrystalElementType"
   tokenTypeClass="io.github.unurgunite.crystal.lexer.CrystalTokenType"
-  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
+  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment|alias_definition")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
 
   tokens = [
     // Keywords
@@ -307,7 +307,12 @@ annotation_usage ::= AT LBRACKET type_path [LPAREN NLS argument_list NLS RPAREN]
 
 // C-style function-pointer aliases may list comma-separated parameter types with an optional
 // return arrow: `alias AllocFunc = Void*, UInt, UInt -> Void*`.
-alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {pin=1}
+alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {
+  pin=1
+  stubClass="io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedAliasDefinitionImpl"
+  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
+}
 
 // ==================== Type Bodies ====================
 
@@ -1375,7 +1380,15 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // hash parsing instead of becoming callee `big_i` + phantom `: ...` error
 // (big_int.cr). `::` lexes as DOUBLE_COLON (not COLON), so `::X`/namespaces
 // unaffected; `foo bar: 1` unaffected (COLON not adjacent to the callee).
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+// The leading negative lookahead keeps a qualified path (`A::B::C(T).new`,
+// `A::B.method`, `A::B?`) a type/namespace expression instead of a bare command
+// whose callee is `A` with the rest as a positional argument (that split loses
+// the receiver's leading segment). It must fire ONLY on that shape:
+// `expect_raises ::Spec::Foo, "x" do` and `raise ::DB::Foo.new(msg)` are bare
+// commands whose FIRST ARGUMENT starts with `::` — the chain ends in `,`/string
+// there, not in `(`, `.` or `?`, so the lookahead declines and they still parse.
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+                          | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
@@ -1462,6 +1475,18 @@ private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PE
 
 // First token of any bare argument/expression (shared by binary_op_lookahead and
 // the nested-bare guard below).
+// Guards the CONSTANT callee of a bare command: `A::B::C(T).new` is a qualified
+// path, not callee `A` plus argument `::B::C(T)`. Only a CONSTANT callee gets
+// this guard — `foo ::Bar.baz` is a real bare command whose first argument
+// starts with `::`, and restricting the guard to CONSTANT keeps it parsing as
+// one call instead of two sibling expressions.
+//
+// Tail of a `::`-chain in the bare-command callee guard below. Declared as a
+// separate private rule so the enclosing lookahead parses without forcing
+// GrammarKit to decide the repetition inline (an inline `(x)*` inside `!()`
+// shifted the enclosing bare_argument_list and broke hash arguments).
+private qualified_path_rest ::= (DOUBLE_COLON (CONSTANT | macro_interpolation))*
+
 private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
                                | SYMBOL_LITERAL | NIL | TRUE | FALSE | SELF | SUPER | PREVIOUS_DEF
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
@@ -1660,6 +1685,18 @@ bare_argument ::= named_bare_argument
                  // `CONSTANT::...` tail of a bare callee (`IO::Memory.new` —
                  // the regression the NOTE documents; there `.` follows).
                  | namespace_access (namespace_access)* &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN)
+                 // Leading-`::` value that is a CALL on a constant
+                 // (`new ::HTTP::Request.new method, path`,
+                 // `raise ::DB::MappingException.new(msg)`): the plain path arm
+                 // above stops before the dot. Terminator-guarded so it cannot
+                 // steal a `CONSTANT::...` callee tail.
+                 | namespace_access (namespace_access)* dot_call_access &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN | SEMICOLON)
+                 // Nilable type as a bare argument (`should eq String?`,
+                 // `.get Bool?`, `foo A::B?`): the bare tower has no `?`
+                 // tail, so `B` parses and the `?` is left dangling. The
+                 // terminator set is the bare-argument boundary — the same
+                 // shape `primary_expression` already accepts.
+                 | (CONSTANT | namespace_access) (DOUBLE_COLON (CONSTANT | macro_interpolation) | namespace_access)* (type_arguments | named_tuple_type_args)? QUESTION
                  | bare_expression
 
 // Space-first leading value: the grouped/array first argument. Inlined into the

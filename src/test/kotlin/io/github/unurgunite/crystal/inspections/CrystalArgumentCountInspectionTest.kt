@@ -577,4 +577,72 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testAliasedQualifiedConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Athena::HTTPKernel
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String, @has : Bool = false, @default : T? = nil)
+                end
+              end
+            end
+
+            alias AHK = Athena::HTTPKernel
+
+            AHK::Controller::ParameterMetadata(String).new("a", false, nil)
+            AHK::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    // A qualified `::`-chain is a type/namespace expression only when it is
+    // followed by `(`, `.` or `?`. A bare command whose FIRST ARGUMENT starts
+    // with `::` (`expect_raises ::Spec::Foo, "msg"`, `raise ::DB::Foo.new(msg)`)
+    // must keep its callee-argument shape, otherwise the argument list and the
+    // block are dropped from the tree.
+    fun testBareCommandWithLeadingColonColonArgument() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            class Plain
+              def foo : Nil
+              end
+            end
+
+            expect_raises ::Spec::AssertionFailed, "msg" do
+            end
+
+            Plain.new.foo
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        assertEquals(
+            0,
+            com.intellij.psi.util.PsiTreeUtil
+                .collectElementsOfType(file, com.intellij.psi.PsiErrorElement::class.java)
+                .size,
+        )
+        assertTrue(file.text.contains("\"msg\""))
+        assertTrue(file.text.contains("do"))
+    }
+
+    fun testNestedStructConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Athena::HTTPKernel
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String)
+                end
+              end
+            end
+
+            Athena::HTTPKernel::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
