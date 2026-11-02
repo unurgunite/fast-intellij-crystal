@@ -577,4 +577,41 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testAliasedQualifiedConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Athena::HTTPKernel
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String, @has : Bool = false, @default : T? = nil)
+                end
+              end
+            end
+
+            alias AHK = Athena::HTTPKernel
+
+            AHK::Controller::ParameterMetadata(String).new("a", false, nil)
+            AHK::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNestedStructConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Athena::HTTPKernel
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String)
+                end
+              end
+            end
+
+            Athena::HTTPKernel::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

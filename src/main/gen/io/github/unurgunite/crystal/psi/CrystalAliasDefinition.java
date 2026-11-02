@@ -4,8 +4,10 @@ package io.github.unurgunite.crystal.psi;
 import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.StubBasedPsiElement;
+import io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub;
 
-public interface CrystalAliasDefinition extends PsiElement {
+public interface CrystalAliasDefinition extends CrystalNamedElement, StubBasedPsiElement<CrystalAliasDefinitionStub> {
 
   @NotNull
   List<CrystalMacroInterpolation> getMacroInterpolationList();

@@ -44,6 +44,20 @@ internal object CrystalDotCallScan {
      * `Hash(String, Int32)` definition exists to resolve methods against.
      */
     private fun receiverTypeName(receiver: PsiElement): String? {
+        // A qualified receiver is a chain of NAMESPACE_ACCESS nodes where each
+        // node owns only its own segment (`::D` for `A::B::C::D`), so the dot
+        // call would resolve against `::D` alone. Rebuild the whole path first.
+        if (receiver is io.github.unurgunite.crystal.psi.CrystalNamespaceAccess) {
+            val path =
+                io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                    .buildNamespacePath(receiver)
+            if (path.isNotEmpty()) {
+                return path
+                    .substringBefore('(')
+                    .removeSuffix("?")
+                    .ifEmpty { null }
+            }
+        }
         val text = receiver.text ?: return null
         val bare =
             text

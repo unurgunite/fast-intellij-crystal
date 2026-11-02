@@ -11,7 +11,7 @@
   elementTypeHolderClass="io.github.unurgunite.crystal.psi.CrystalTypes"
   elementTypeClass="io.github.unurgunite.crystal.psi.CrystalElementType"
   tokenTypeClass="io.github.unurgunite.crystal.lexer.CrystalTokenType"
-  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
+  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment|alias_definition")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
 
   tokens = [
     // Keywords
@@ -307,7 +307,12 @@ annotation_usage ::= AT LBRACKET type_path [LPAREN NLS argument_list NLS RPAREN]
 
 // C-style function-pointer aliases may list comma-separated parameter types with an optional
 // return arrow: `alias AllocFunc = Void*, UInt, UInt -> Void*`.
-alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {pin=1}
+alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {
+  pin=1
+  stubClass="io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedAliasDefinitionImpl"
+  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
+}
 
 // ==================== Type Bodies ====================
 
@@ -1375,7 +1380,11 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // hash parsing instead of becoming callee `big_i` + phantom `: ...` error
 // (big_int.cr). `::` lexes as DOUBLE_COLON (not COLON), so `::X`/namespaces
 // unaffected; `foo bar: 1` unaffected (COLON not adjacent to the callee).
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+// `!DOUBLE_COLON`: a qualified path (`A::B::C(T).new`, `A::B.method`) is a
+// type/namespace expression, not a bare command whose callee is `A`. Without
+// this the first segment becomes the callee and the rest a positional
+// argument, so the dot-call receiver loses its leading segment.
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !DOUBLE_COLON !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"

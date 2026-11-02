@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal.stubs
 
 import com.intellij.psi.stubs.StringStubIndexExtension
 import com.intellij.psi.stubs.StubIndexKey
+import io.github.unurgunite.crystal.psi.CrystalAliasDefinition
 import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
 import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
@@ -76,5 +77,19 @@ class CrystalClassByEnclosingIndex : StringStubIndexExtension<CrystalNamedElemen
     companion object {
         val KEY: StubIndexKey<String, CrystalNamedElement> =
             StubIndexKey.createIndexKey("crystal.class.by.enclosing.index")
+    }
+}
+
+/**
+ * Index that maps alias names (`alias AHK = Athena::HTTPKernel`) to their
+ * definitions, so a qualified reference through the alias (`AHK::Foo`) can be
+ * expanded to the aliased namespace before a type lookup.
+ */
+class CrystalAliasIndex : StringStubIndexExtension<CrystalAliasDefinition>() {
+    override fun getKey(): StubIndexKey<String, CrystalAliasDefinition> = KEY
+
+    companion object {
+        val KEY: StubIndexKey<String, CrystalAliasDefinition> =
+            StubIndexKey.createIndexKey("crystal.alias.index")
     }
 }

@@ -26,6 +26,8 @@ object CrystalStubElementTypeFactory {
 
             "CONSTANT_ASSIGNMENT" -> CrystalStubElementTypeHolder.CONSTANT_ASSIGNMENT
 
+            "ALIAS_DEFINITION" -> CrystalStubElementTypeHolder.ALIAS_DEFINITION
+
             else -> throw IllegalArgumentException("Unknown stub element type: $name")
         }
 }

@@ -33,13 +33,24 @@ internal object CrystalDotCallOverloads {
             }
 
             info.receiverName.isNotEmpty() && info.receiverName[0].isUpperCase() -> {
+                // The receiver may be qualified (`RvmCli::Tools`) while the
+                // method's owner is recorded under its short name (`Tools`).
                 CrystalOverloadEvaluator
                     .findCandidateMethods(info.methodName, argsElement.project)
-                    .filter { CrystalMethodLookup.getEnclosingClassName(it) == info.receiverName }
+                    .filter { ownedByReceiver(it, info.receiverName) }
             }
 
             else -> {
                 CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
             }
         }
+
+    /** True when [method]'s enclosing type is [receiverName] or its tail (`Tools` for `RvmCli::Tools`). */
+    private fun ownedByReceiver(
+        method: CrystalMethodDefinition,
+        receiverName: String,
+    ): Boolean {
+        val owner = CrystalMethodLookup.getEnclosingClassName(method) ?: return false
+        return owner == receiverName || receiverName.substringAfterLast("::") == owner
+    }
 }

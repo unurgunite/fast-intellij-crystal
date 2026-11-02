@@ -21,4 +21,6 @@ object CrystalStubElementTypeHolder {
     @JvmField val MACRO_DEFINITION = CrystalMacroDefinitionElementType("MACRO_DEFINITION")
 
     @JvmField val CONSTANT_ASSIGNMENT = CrystalConstantAssignmentElementType("CONSTANT_ASSIGNMENT")
+
+    @JvmField val ALIAS_DEFINITION = CrystalAliasDefinitionElementType("ALIAS_DEFINITION")
 }
