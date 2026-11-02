@@ -14,6 +14,9 @@ public interface CrystalArgument extends PsiElement {
   CrystalArrayLiteral getArrayLiteral();
 
   @Nullable
+  CrystalBareArgumentList getBareArgumentList();
+
+  @Nullable
   CrystalClassVarAccess getClassVarAccess();
 
   @Nullable

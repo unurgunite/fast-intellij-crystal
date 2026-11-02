@@ -191,6 +191,25 @@ class CrystalLexerTest {
     }
 
     @Test
+    fun testApostropheInCommentStaysInComment() {
+        // Prose apostrophes used to lex as BAD_CHARACTER and swallow the rest of
+        // the line (`# the parameter's type` ate `s type`).
+        val tokens = tokenize("# the parameter's type\nx = 1\n")
+        val comment = tokens.first { it.first == CrystalTypes.LINE_COMMENT }
+        assertEquals("# the parameter's type", comment.second)
+        assertTrue(
+            "No BAD_CHARACTER for a comment apostrophe",
+            tokens.none { it.first == TokenType.BAD_CHARACTER },
+        )
+    }
+
+    @Test
+    fun testApostropheOutsideCommentStillBadCharacter() {
+        val tokens = tokenize("x = 'dsadas'\n")
+        assertTrue("Bogus single-quote string still reported", tokens.any { it.first == TokenType.BAD_CHARACTER })
+    }
+
+    @Test
     fun testPercentLiterals() {
         // %w(...)
         val tokens = nonWhitespaceTokens("%w(foo bar)")

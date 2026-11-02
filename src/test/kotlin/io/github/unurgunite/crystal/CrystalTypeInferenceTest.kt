@@ -188,14 +188,18 @@ bet = bohne 22
     fun testSelfReferentialAssignmentTerminates() {
         // `x = x.to_s`: inferring x re-enters inference on x via the resolver
         // bridge (resolveType → inferTypeList → assignment → resolveType).
-        // Must terminate (unknown → null), not StackOverflowError.
+        // Must terminate, not StackOverflowError. The DOT-call fragment now
+        // resolves through the method index (`to_s` → String for every
+        // receiver), so the cycle breaks legitimately at the method's own
+        // return type instead of collapsing to unknown.
         myFixture.configureByText("test.cr", "x = x.to_s")
         val type = CrystalTypeInference.inferType("x", myFixture.file, project)
-        assertNull(type)
+        assertEquals("String", type)
     }
 
     fun testMutuallyReferentialAssignmentsTerminate() {
-        // a ↔ b cycle across two assignments: same termination requirement.
+        // a ↔ b cycle across two assignments: same termination requirement —
+        // and the same legitimate break at `to_s` → String.
         myFixture.configureByText(
             "test.cr",
             """
@@ -205,6 +209,15 @@ puts a
             """.trimIndent(),
         )
         val type = CrystalTypeInference.inferType("a", myFixture.file, project)
+        assertEquals("String", type)
+    }
+
+    fun testBareCyclicAssignmentTerminatesUnknown() {
+        // A cycle with no method call to break it (`x = x`) still
+        // terminates via the recursion guard, yielding unknown (null) —
+        // this is the test that proves the guard itself is alive.
+        myFixture.configureByText("test.cr", "x = x")
+        val type = CrystalTypeInference.inferType("x", myFixture.file, project)
         assertNull(type)
     }
 

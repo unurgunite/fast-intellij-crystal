@@ -18,6 +18,7 @@ import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.type.resolveScopedOrFallback
 
 /**
  * Resolves the type of a Crystal expression.
@@ -125,7 +126,11 @@ object CrystalExpressionTypeResolver {
         if (expr is CrystalMethodCallExpression || expr is CrystalBareMethodCallExpression) {
             return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(expr)
         }
-        if (expr.node?.elementType.toString() != "DOT_CALL_ACCESS") return null
+        // NOTE: compare by PSI class, never by elementType.toString() — its
+        // rendering is "CrystalElementType.DOT_CALL_ACCESS", so string
+        // equality against "DOT_CALL_ACCESS" is always false (dead branch
+        // that silently dropped every DOT-call fragment resolution).
+        if (expr !is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) return null
         val parentCall = expr.parent
         if (parentCall is CrystalMethodCallExpression || parentCall is CrystalBareMethodCallExpression) {
             return CrystalCallReturnTypeResolver.resolveMethodCallReturnType(parentCall)
@@ -236,7 +241,10 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
             methodName = next?.text
             var prev = child.prevSibling
             while (prev is PsiWhiteSpace) prev = prev.prevSibling
-            receiver = prev
+            // DOT-first composite (`.parse(s)` in `URI.parse(s)`): the
+            // receiver lives outside, as the composite's preceding sibling
+            // in the flattened postfix chain — not inside as a child.
+            receiver = prev ?: CrystalPsiUtils.receiverBeforeDot(next ?: child, child)
         }
         child = child.nextSibling
     }
@@ -245,14 +253,41 @@ private fun dotCallPartsOf(expr: PsiElement): Pair<String?, PsiElement?> {
 
 /** DOT-call fragment type (file-level: detekt budget). `to_json` is String for every receiver. */
 private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    val (methodName, _) = dotCallPartsOf(expr)
+    val (methodName, receiver) = dotCallPartsOf(expr) ?: return null
     if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
-    if (methodName != null) {
-        CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
-            return CrystalExpressionTypeResolver.ResolvedType(it)
-        }
+    if (methodName == null) return null
+    // Fixed-yield conversions first (`to_s`, `to_i`, ...): defined by
+    // the method itself, independent of any receiver.
+    CrystalCallReturnTypeResolver.fixedReturnType(methodName)?.let {
+        return CrystalExpressionTypeResolver.ResolvedType(it)
     }
-    return null
+    return resolveScopedOrFallback(methodName, receiver, expr)
+}
+
+/**
+ * Class name behind a DOT-call receiver: a CONSTANT (`PersonData.new`), an
+ * uppercase reference (`URI` parses as VARIABLE_REFERENCE, not a CONSTANT
+ * token — same meaning), a qualified path (`HTTP::Params` parses as
+ * VARIABLE_REFERENCE + NAMESPACE_ACCESS siblings), or the resolved type
+ * of a lowercase variable reference (`data` → PersonData via inference).
+ * Returns the FULL qualified path when known (`HTTP::Params`, not just
+ * `Params`) — the caller tries qualified scope first, short scope second.
+ * Null when the receiver shape is unknown (fallback applies).
+ */
+internal fun receiverClassNameOf(receiver: PsiElement?): String? {
+    if (receiver == null) return null
+    if (receiver.node?.elementType == io.github.unurgunite.crystal.psi.CrystalTypes.CONSTANT) return receiver.text
+    CrystalReceiverNames.direct(receiver)?.let { return it }
+    val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
+    // Strip union/nilable wrappers to the first concrete member for scoping.
+    // Depth-aware split: naive split("|") cut `Hash(K | L, V | W)` into `Hash(K`.
+    return io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
+        .splitTypeNames(typeName)
+        .firstOrNull()
+        ?.trim()
+        ?.removeSuffix("?")
+        ?.substringAfterLast("::")
+        ?.takeIf { it.isNotEmpty() }
 }
 
 /** Value inside an ARGUMENT shell, re-resolved (file-level: detekt budget). */
@@ -282,37 +317,48 @@ private fun innerOfStatementOf(expr: CrystalStatement): PsiElement? =
         ?: expr.children.firstOrNull { it !is PsiWhiteSpace }
 
 /**
- * DOT-call fragment inside an argument wrapper: direct children first
- * (cheap), then transparent shells (EXPRESSION / HASH / ARRAY / TUPLE /
- * GROUPED). Single function (file-level: detekt budget).
+ * Last DOT-call fragment of an expression: the chain tail decides the type
+ * (`ENV.fetch(...).to_i` is Int32 by `.to_i`, not String by `.fetch`).
+ * Direct children win over nested shells; among siblings the rightmost
+ * one is the tail. The old first-hit order typed chains by their head.
+ * Single function (file-level: detekt budget).
  */
 private fun findDotCallDeep(expr: PsiElement): PsiElement? {
     var current: PsiElement? = expr.firstChild
+    var found: PsiElement? = null
     while (current != null) {
-        if (current.node?.elementType.toString() == "DOT_CALL_ACCESS") return current
+        if (current is io.github.unurgunite.crystal.psi.CrystalDotCallAccess) found = current
         if (isTransparentShell(current)) {
-            findDotCallDeep(current)?.let { return it }
+            findDotCallDeep(current)?.let { found = it }
         }
         current = current.nextSibling
     }
-    return null
+    return found
 }
 
 /** Shell node types transparent to the fragment search. */
-private fun isTransparentShell(child: PsiElement): Boolean {
-    val type = child.node?.elementType.toString()
-    return type == "EXPRESSION" || type == "HASH_LITERAL" || type == "ARRAY_LITERAL" ||
-        type == "TUPLE_LITERAL" || type == "GROUPED_EXPRESSION"
-}
+private fun isTransparentShell(child: PsiElement): Boolean =
+    child is CrystalExpression ||
+        child is io.github.unurgunite.crystal.psi.CrystalHashLiteral ||
+        child is io.github.unurgunite.crystal.psi.CrystalArrayLiteral ||
+        child is io.github.unurgunite.crystal.psi.CrystalTupleLiteral ||
+        child is CrystalGroupedExpression
 
 /** Wrapper descent once fragments are ruled out (file-level: detekt budget). */
 private fun resolveWrapperInnerOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
-    if (expr.node?.elementType.toString() == "EXPRESSION") {
-        val inner = CrystalPsiUtils.firstSignificantChild(expr) ?: return null
-        if (inner !== expr) return CrystalExpressionTypeResolver.resolveType(inner)
+    if (expr is CrystalExpression) {
+        // DOT-call fragment first (`data.to_hash`): firstChild descent
+        // would take the bare receiver (`data` → PersonData) and lose the
+        // call's own return type. But ONLY the fragment resolves here —
+        // anything else (ternary, operators) falls through to composite's
+        // resolveCompoundExpression; descending here would steal the
+        // condition/left-operand type instead of computing the result.
+        findDotCallDeep(expr)?.let { dotCall ->
+            resolveDotCallFragmentOf(dotCall)?.let { return it }
+        }
         return null
     }
-    if (expr.node?.elementType.toString() == "ARGUMENT") {
+    if (expr is io.github.unurgunite.crystal.psi.CrystalArgument) {
         return resolveArgumentValueOf(expr)
     }
     return resolveWrapperLeafOf(expr)

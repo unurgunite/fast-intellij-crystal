@@ -148,9 +148,9 @@ public class CrystalLibExternalVarImpl extends ASTWrapperPsiElement implements C
   }
 
   @Override
-  @Nullable
-  public CrystalNamespaceAccess getNamespaceAccess() {
-    return PsiTreeUtil.getChildOfType(this, CrystalNamespaceAccess.class);
+  @NotNull
+  public List<CrystalNamespaceAccess> getNamespaceAccessList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalNamespaceAccess.class);
   }
 
   @Override
@@ -217,6 +217,12 @@ public class CrystalLibExternalVarImpl extends ASTWrapperPsiElement implements C
   @Nullable
   public CrystalTupleLiteral getTupleLiteral() {
     return PsiTreeUtil.getChildOfType(this, CrystalTupleLiteral.class);
+  }
+
+  @Override
+  @Nullable
+  public CrystalTypeArguments getTypeArguments() {
+    return PsiTreeUtil.getChildOfType(this, CrystalTypeArguments.class);
   }
 
   @Override

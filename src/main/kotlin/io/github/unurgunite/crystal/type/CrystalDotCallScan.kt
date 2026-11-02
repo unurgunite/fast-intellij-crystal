@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
@@ -20,6 +21,16 @@ internal object CrystalDotCallScan {
      * "Too many arguments").
      */
     fun detectDotCall(argsElement: PsiElement): DotCallInfo? {
+        // Operator RHS masquerading as args (`@@last_call = Time.utc - 1.second`
+        // parses as DOT_CALL_ACCESS `.utc` + holder `- 1.second`): the holder
+        // starts with a binary-operator token, so it is the operator's RHS,
+        // never a call argument list. Skip before name/receiver matching.
+        if (startsWithOperator(argsElement)) return null
+        return detectNamedDotCall(argsElement)
+    }
+
+    /** Name + receiver match once the operator-RHS shape is ruled out. */
+    private fun detectNamedDotCall(argsElement: PsiElement): DotCallInfo? {
         val methodNameNode = findDetachedMethodName(argsElement) ?: return null
         if (isOperatorTail(argsElement, methodNameNode)) return null
         val receiver = findDotCallReceiver(methodNameNode) ?: return null
@@ -69,6 +80,33 @@ internal object CrystalDotCallScan {
         if (dot.node?.elementType != CrystalTypes.DOT) return null
         return CrystalPsiUtils.receiverBeforeDot(methodNameNode, dot)
     }
+
+    /**
+     * True when [argsElement]'s first meaningful child is a binary-operator
+     * token: the holder is an operator RHS (`- 1.second`), not arguments.
+     * Looks one level down through bare wrappers (BARE_ARGUMENT_LIST /
+     * BARE_ARGUMENT), which carry the operator as their own first child.
+     */
+    private fun startsWithOperator(argsElement: PsiElement): Boolean {
+        var current: PsiElement? = argsElement
+        while (current != null) {
+            var child = current.firstChild
+            while (child is PsiWhiteSpace) child = child.nextSibling
+            if (child == null) return false
+            if (isOperatorToken(child)) return true
+            if (isIndexBracket(child)) return true
+            if (child.firstChild == null) return false
+            current = child
+        }
+        return false
+    }
+
+    /**
+     * True for an index-access bracket: a holder starting with `[`
+     * (`client.login["ok"]` parses the `["ok"]` into the call's holder) is
+     * element access on the call result, never a call argument list.
+     */
+    private fun isIndexBracket(child: PsiElement): Boolean = child.node?.elementType == CrystalTypes.LBRACKET
 }
 
 /** Binary-operator token types (never method names). */

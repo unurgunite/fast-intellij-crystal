@@ -1,5 +1,6 @@
 package io.github.unurgunite.crystal.type
 
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.CachedValueProvider
@@ -34,6 +35,9 @@ internal object CrystalParamLookup {
     /**
      * `param` entries declared directly in [typeName]'s body, in document
      * order. Empty when the type declares none (no guessing across types).
+     *
+     * Current-file only: the call site and the class usually share a file
+     * (tests, single-file scripts). Cross-file callers use [paramsForProject].
      */
     fun paramsFor(
         typeName: String,
@@ -44,6 +48,30 @@ internal object CrystalParamLookup {
                 CachedValueProvider.Result(indexFile(file), PsiModificationTracker.MODIFICATION_COUNT)
             }
         return byType[typeName] ?: emptyList()
+    }
+
+    /**
+     * Project-wide `param` lookup: current-file fast path, then the file
+     * where [typeName] is actually defined (stub class index).
+     *
+     * Real projects split call sites and class definitions across files
+     * (`app.cr` calls `CamTestJob.new`, the class lives in `pipeline.cr`):
+     * file-local lookup reported "Unknown named argument" on every such
+     * call. The definition file's own per-file index is reused, so no
+     * whole-project PSI walk happens on the inspection hot path.
+     */
+    fun paramsForProject(
+        typeName: String,
+        project: Project,
+        currentFile: PsiFile,
+    ): List<ParamEntry> {
+        paramsFor(typeName, currentFile).takeIf { it.isNotEmpty() }?.let { return it }
+        val definition =
+            CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile)?.element
+                ?: return emptyList()
+        val definitionFile = definition.containingFile ?: return emptyList()
+        if (definitionFile.virtualFile == currentFile.virtualFile) return emptyList()
+        return paramsFor(typeName, definitionFile)
     }
 
     /** All `param` calls of [file] grouped by enclosing type name. */

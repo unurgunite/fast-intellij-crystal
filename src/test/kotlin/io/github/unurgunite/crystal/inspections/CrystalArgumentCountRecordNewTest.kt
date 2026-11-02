@@ -357,4 +357,113 @@ class CrystalArgumentCountRecordNewTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testParamConstructorAcrossFilesWithChainedCall() {
+        // Real-project shape: the class lives in another file (pipeline.cr)
+        // while the call site chains (`CamTestJob.new(attempt_id: ...).enqueue`
+        // in app.cr). File-local lookup missed the `param` entries entirely.
+        myFixture.addFileToProject(
+            "jobs.cr",
+            """
+            class CamTestJob < MosquitoJob
+              param attempt_id : Int64
+            end
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "app.cr",
+            "CamTestJob.new(attempt_id: 5).enqueue\n",
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testEmptyInheritedInitializeYieldsToParam() {
+        // Mosquito's QueuedJob ships `def initialize; end` (zero-params
+        // fallback); the macro-generated `initialize(@attempt_id, ...)` is
+        // invisible in source. Arity must go to `param`, not the fallback.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class QueuedJob
+              def initialize; end
+            end
+            class CamTestJob < QueuedJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(attempt_id: 5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNewMatchesAcrossOverloads() {
+        // `Array(String).new(initial_capacity: ...)` must match the
+        // `initialize(initial_capacity)` overload, not the empty one
+        // (redis commands shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Array(T)
+              def initialize
+              end
+              def initialize(initial_capacity : Int)
+              end
+            end
+            Array(String).new(initial_capacity: 5)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testForeignSameNamedInitializeIgnored() {
+        // Same-short-name collision (`Error` in two namespaces): a foreign
+        // `initialize(ssl, return_code)` must not shadow the hierarchy's
+        // own `(message = nil)` overload (redis errors shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class SslError
+              def initialize(ssl : String, return_code : Int32)
+              end
+            end
+            class Error < Exception
+            end
+            Error.new("boom")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testBareSuperclassResolvesInNamespaceFirst() {
+        // `class QueuedJob < Job` inside `module Mosquito` means
+        // `Mosquito::Job` — a same-named stdlib `Job` (Benchmark::IPS::Job
+        // with its own `initialize`) must not poison the hierarchy walk
+        // and shadow `param` constructors (mosquito `.new` red).
+        myFixture.addFileToProject(
+            "framework.cr",
+            """
+            module Mosquito
+              abstract class Job
+              end
+              abstract class QueuedJob < Job
+                def initialize; end
+              end
+            end
+            class Job
+              def initialize(calculation : Int32)
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "app.cr",
+            """
+            class CamTestJob < Mosquito::QueuedJob
+              param attempt_id : Int64
+            end
+            CamTestJob.new(attempt_id: 5).enqueue
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

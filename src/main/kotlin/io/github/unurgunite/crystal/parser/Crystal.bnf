@@ -288,7 +288,9 @@ lib_definition ::= LIB CONSTANT lib_body END {pin=1}
 // definition's `end` (`record EndOfRequest` inside `module HTTP` consumed the
 // module's `end`, breaking all of http/common.cr past that point): with an empty
 // class_body, `class_body END` matches the outer `end` and PEG commits to it.
-record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
+// `record Foo(T) < Base, field : T do ... end` (athena parameter_bag.cr): the
+// superclass clause is legal on a record and sits before the field list.
+record_definition ::= RECORD type_name [type_parameters] [superclass_clause] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
 
 record_field ::= (IDENTIFIER | keyword_as_record_field) [COLON type_reference] [ASSIGN expression] | STAR
 
@@ -693,6 +695,13 @@ private param_name ::= IDENTIFIER | keyword_as_record_field
 // (COLON absent → fall through to prefix+name alternatives). No pin: no commit.
 parameter ::= OUT COLON type_reference [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
+            // Named multi-input proc (`&block : Subscription, self ->` —
+            // redis connection.cr): block name + proc type with several
+            // inputs and optional (possibly absent) return type. BEFORE the
+            // plain named alternative (PEG longer-first): otherwise `&block :
+            // Subscription` commits as one parameter and the `, self ->`
+            // tail dangles with no backtrack.
+            | param_prefix* AMPERSAND IDENTIFIER COLON type_union (COMMA type_union)* ARROW [type_union]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name IDENTIFIER [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [macro_interpolation] [COLON (splat_type | type_reference)] [ASSIGN expression]
             // Macro-splat parameter (`def initialize({{ x.map ... end.splat }})`
@@ -746,6 +755,9 @@ visibility_modifier ::= (PRIVATE | PROTECTED) (method_definition | macro_definit
 
 statement_list ::= statement_or_separator*
 
+// A heredoc whose body follows the statement it opens (`foo(<<-TXT)`): the
+// lexer emits the opener line normally and switches to the body after its
+// newline, so the body arrives as a separate top-level chunk.
 private statement_or_separator ::= NEWLINE | SEMICOLON | statement
 
 // `when` can never start a statement (reserved word — a `when` at statement
@@ -781,7 +793,7 @@ statement ::= !WHEN (if_statement
             | method_definition
             | macro_definition
             | macro_definition_open
-            | expression_statement)
+            | expression_statement) heredoc_deferred_body?
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
 
@@ -1047,7 +1059,7 @@ private postfix_expression ::= primary_expression postfix_op*
 private postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
                      | NLS dot_call_access [block]
                      | namespace_access
-                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
+                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
                      | NLS DOT (INSTANCE_VAR | CLASS_VAR)
                      | NLS DOT IDENTIFIER assign_op expression
 
@@ -1160,7 +1172,14 @@ dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS 
                   // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
                   // handled by postfix_op/index_assign_suffix — untouched).
-                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] {
+                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+                  // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
+                  // executor.cr): dot-form operator with paren args. Same PSI
+                  // class (alternative, not a separate rule — a separate rule
+                  // would fork every CrystalDotCallAccess check). call_args
+                  // only (no bare-arg tail — `a.+ b` stays binary via the
+                  // expression tower).
+                  | DOT (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE) [call_args] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalDotCallAccessMixin"
 }
 
@@ -1240,11 +1259,30 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
 
 private primary_expression ::= grouped_expression
                              | type_receiver_expression
+                             // Nilable class literal as a value (`option(name, Bool?)`
+                             // binding to `T.class` — athena-console input.cr):
+                             // CONSTANT + glued `?` only where an argument ends
+                             // (`)`/`,` follow). The guard keeps real ternaries
+                             // (`cond ? a : b` — expression follows `?`) on the
+                             // expression-level QUESTION tail, never here.
+                             // The full path form covers qualified types in value
+                             // position (`read(JSON::PullParser?)`, `Array(Int32)?`).
+                             // (type_single covers the qualified and generic
+                             // shapes: `JSON::PullParser?`, `Array(Int32)?`,
+                             // `Tuple(Int64, Int64)?`.)
                              | macro_array_tail
                              | array_literal
                              | hash_literal
                              | tuple_literal
                              | proc_literal
+                             // Nilable/generic type as a bare argument
+                             // (`Bool?`, `Array(Int32)?`, `Tuple(Int64, Int64)?`).
+                             // `&QUESTION` is a lookahead BEFORE the arm, so it
+                             // must run on the type's first token: keep this arm
+                             // ahead of `namespace_access` only for the `?` form.
+                             // (A general type-as-value arm here broke 5
+                             // resolution tests — do not widen it.)
+                             | (CONSTANT | namespace_access) (DOUBLE_COLON CONSTANT | namespace_access)* (type_arguments | named_tuple_type_args)? QUESTION &(RPAREN | COMMA | NEWLINE | DO | SEMICOLON | LBRACE)
                              | namespace_access
                              | method_call_expression
                              | bare_command_expression
@@ -1420,8 +1458,11 @@ method_call_expression ::= type_path call_args [block]
 // Covers all expression-starting tokens: identifiers, constants, literals, vars, group/array/hash
 // literals, percent literals, heredocs, commands, regex, and macro interpolation.
 // Tradeoff: bare calls with splat like "add *args" need parentheses: "add(*args)".
-private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR)
-                               (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
+private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR) expression_start_lookahead
+
+// First token of any bare argument/expression (shared by binary_op_lookahead and
+// the nested-bare guard below).
+private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
                                | SYMBOL_LITERAL | NIL | TRUE | FALSE | SELF | SUPER | PREVIOUS_DEF
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
                                | LPAREN | LBRACKET | LBRACE
@@ -1465,7 +1506,11 @@ argument_list ::= (macro_arg_splice | argument | macro_control) (NLS COMMA NLS (
 argument ::= STAR expression
            | SPLAT expression
            | DOUBLE_STAR expression
-           | AMPERSAND expression
+           // `&.` shorthand also takes bare trailing args (`&.should eq A::B`
+           // — ameba specs). `implicit_object_call`'s own `[bare_argument_list]`
+           // is unreachable from here because `& ` commits as AMPERSAND+expression,
+           // so the callee tolerates the list itself.
+           | AMPERSAND expression [bare_argument_list]
            | OUT (IDENTIFIER | instance_var_access)
            | named_argument
            | and_assign_argument
@@ -1608,6 +1653,13 @@ bare_argument ::= named_bare_argument
                 // prefix form — bare_expression would otherwise consume lone `out`
                 // (OUT is in variable_reference) and orphan `x` with no backtrack.
                  | OUT (IDENTIFIER | instance_var_access)
+                 // Leading-`::` positional value (`it ::HTTP::Status do`,
+                 // `foo ::A::B, x`): the bare tower has no leading-`::` primary
+                 // (see the NOTE below), so it needs its own arm. Guarded by a
+                 // terminator after the path so it can never steal the
+                 // `CONSTANT::...` tail of a bare callee (`IO::Memory.new` —
+                 // the regression the NOTE documents; there `.` follows).
+                 | namespace_access (namespace_access)* &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN)
                  | bare_expression
 
 // Space-first leading value: the grouped/array first argument. Inlined into the
@@ -1641,7 +1693,10 @@ private named_bare_argument ::= bare_arg_name COLON named_bare_value [ASSIGN bar
 // regressed): the grouped arm is FIRST inside named_bare_value (PEG
 // longer-first within the rule). The `= tid` tail belongs to the OUTER
 // named_bare_argument [ASSIGN ...], not here — no inner ASSIGN.
- private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | bare_expression
+// Control expressions as a named value (`skip: if skip.is_a?(Category) ...
+// else ... end` — ameba visitors). The bare tower has no `if`, so the arm is
+// explicit; peg order keeps it after the narrower shapes.
+ private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | if_statement | bare_expression
 private grouped_named_value ::= grouped_expression bare_postfix_op*
 
 // Bare-call label: plain identifier or any non-reserved keyword usable as a label.
@@ -1708,7 +1763,7 @@ private bare_postfix_expression ::= bare_primary_expression bare_postfix_op*
 private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
                          | NLS dot_call_access
                          | namespace_access
-                         | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
+                         | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
 
 // Bare primary: like primary but no blocks or method calls with bare args (to prevent ambiguity).
 // The nested-bare alternative (`exec new_request method, path, headers, body` —
@@ -1724,7 +1779,11 @@ private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_refere
 // crystal 1.21.0. `foo bar: 1` still parses as outer+ named arg: the guard
 // fires, inner `bar: 1` fails (no args after callee `bar`), PEG backtracks
 // to the plain alternatives.
-private bare_primary_expression ::= &(IDENTIFIER IDENTIFIER (COMMA | COLON)) bare_command_expression
+// Nested-bare guard: any first argument token after the inner callee counts
+// (`should be_within 0.00001, of: 42` — literal first arg; the old
+// IDENTIFIER-only guard made the outer call eat `be_within` as a variable and
+// orphan the comma).
+private bare_primary_expression ::= &(IDENTIFIER expression_start_lookahead (COMMA | COLON)) bare_command_expression
                                   | grouped_expression
                                   | type_receiver_expression
                                   | macro_array_tail
@@ -1837,7 +1896,12 @@ regex_expression ::= REGEX_BEGIN (REGEX_LITERAL | STRING_ESCAPE | STRING_INTERPO
 
 command_expression ::= COMMAND_BEGIN (COMMAND_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* COMMAND_END
 
+// A heredoc used as the last call argument puts the closing bracket before the
+// body (`foo(<<-TXT)`), so START and the body are NOT contiguous: the lexer
+// emits the tail line normally and opens the body after its newline. The
+// trailing heredoc_body arm accepts that deferred shape.
 heredoc_literal ::= HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+heredoc_deferred_body ::= (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END
 
 percent_literal ::= PERCENT_LITERAL_BEGIN percent_literal_content* PERCENT_LITERAL_END
                   | PERCENT_SYMBOL_BEGIN percent_symbol_content* PERCENT_SYMBOL_END
@@ -2006,7 +2070,7 @@ type_receiver_expression ::= type_path type_arguments &DOT
 private type_single ::= STAR type_path [type_arguments] [QUESTION]
                       | type_path macro_interpolation [QUESTION]
                       | type_path LPAREN NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* [NLS COMMA] NLS RPAREN [QUESTION]
-                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
+                      | type_path [type_arguments] [QUESTION] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF [QUESTION]
@@ -2025,6 +2089,8 @@ type_path ::= [DOUBLE_COLON] (CONSTANT | macro_interpolation) (DOUBLE_COLON (CON
 
 type_arguments ::= LPAREN NLS type_argument (NLS COMMA NLS type_argument)* [NLS COMMA] NLS RPAREN
 
+// Named member of a generic type argument (`NamedTuple(a: Int64, b: Int32)?`
+// in value position): the label is part of the type argument, not a value arg.
 private type_argument ::= type_reference | INTEGER_LITERAL
 
 // Static/named index on a type (`UInt8[16]`, `UInt8[LibC::MAX_PATH]`,
@@ -2042,7 +2108,9 @@ private type_parameter_item ::= [STAR] CONSTANT [ASSIGN type_reference]
 
 // ==================== Type Names ====================
 
-private type_name ::= (CONSTANT | macro_interpolation) (DOUBLE_COLON (CONSTANT | macro_interpolation))*
+// A leading `::` re-opens the top level (`class ::HTTP::Server::Response`,
+// `lib ::LibC`) and is legal on every type definition header.
+private type_name ::= [DOUBLE_COLON] (CONSTANT | macro_interpolation) (DOUBLE_COLON (CONSTANT | macro_interpolation))*
 
 // ==================== Typeof / Sizeof ====================
 
@@ -2110,5 +2178,9 @@ private asm_option_list ::= string_expression (NLS COMMA NLS string_expression)*
 expression_list ::= (assignment | expression | macro_control) ((NLS COMMA NLS !MACRO_CONTROL_BEGIN (assignment | expression)) | ([NLS COMMA] NLS macro_control [NLS (assignment | expression)]))* [NLS COMMA]
 
 // ==================== Helper Rules ====================
+
+// Named members in a type's generic list (`NamedTuple(a: Int64)?` in value
+// position) — `type_arguments` covers only positional members.
+private named_tuple_type_args ::= LPAREN NLS (IDENTIFIER COLON NLS type_reference) (NLS COMMA NLS IDENTIFIER COLON NLS type_reference)* [NLS COMMA] NLS RPAREN
 
 private NLS ::= NEWLINE*

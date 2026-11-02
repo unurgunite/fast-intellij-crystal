@@ -103,13 +103,10 @@ object CrystalCollectionTypeResolver {
         return ResolvedType("Tuple($typeList)")
     }
 
-    /** First union member of an annotation, with generic arguments stripped. */
+    /** First union member of an annotation, generics kept (depth-aware split). */
     private fun firstUnionMember(annotation: String): String =
-        annotation
-            .trim()
-            .split("|")
-            .first()
-            .trim()
-            .replace(Regex("""\(.*\)"""), "")
-            .trim()
+        io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
+            .splitTypeNames(annotation.trim())
+            .firstOrNull()
+            ?.trim() ?: annotation.trim()
 }

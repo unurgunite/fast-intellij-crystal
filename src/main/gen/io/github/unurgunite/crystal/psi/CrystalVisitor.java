@@ -199,6 +199,10 @@ public class CrystalVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitHeredocDeferredBody(@NotNull CrystalHeredocDeferredBody o) {
+    visitPsiElement(o);
+  }
+
   public void visitHeredocLiteral(@NotNull CrystalHeredocLiteral o) {
     visitPsiElement(o);
   }

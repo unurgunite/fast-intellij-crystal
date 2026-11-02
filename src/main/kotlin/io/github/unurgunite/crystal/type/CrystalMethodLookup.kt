@@ -22,26 +22,53 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
  */
 object CrystalMethodLookup {
     /**
-     * Finds the `initialize` method of a class/struct (the Crystal constructor).
+     * First `initialize` overload of a class/struct (compat shim — new code
+     * prefers [getInitializeMethods]). Guarded by hierarchy membership: the
+     * class index keys by SHORT name, so `Error` collides `Redis::Error`
+     * with `OpenSSL::Error` — a foreign `initialize(ssl, return_code)`
+     * must not shadow the real constructor.
      */
     fun getInitializeMethod(
         typeName: String,
         project: Project,
         currentFile: PsiFile? = null,
     ): CrystalMethodDefinition? {
-        // Fast path: direct lookup by class name — avoids full hierarchy traversal
-        directInitialize(typeName, project)?.let { return it }
-
-        // Slow path: resolve type hierarchy (for inherited initialize from parent classes)
-        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return null
-        return CrystalTypeHierarchy.getMethodsFromType(result).firstOrNull { it.name == "initialize" }
+        val all = getInitializeMethods(typeName, project, currentFile)
+        if (all.size <= 1) return all.firstOrNull()
+        // Several same-named classes (`Error` in redis/openssl): keep only
+        // overloads from the resolved type's own hierarchy.
+        val result = CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile) ?: return all.firstOrNull()
+        val hierarchySignatures =
+            CrystalTypeHierarchy
+                .getMethodsFromType(result)
+                .filter { it.name == "initialize" }
+                .map { getParameterSignature(it) }
+                .toSet()
+        return all.firstOrNull { getParameterSignature(it) in hierarchySignatures } ?: all.firstOrNull()
     }
 
-    /** `initialize` defined directly on [typeName], without hierarchy traversal. */
-    private fun directInitialize(
+    /**
+     * All `initialize` overloads of a class/struct visible from the project:
+     * direct definitions plus inherited ones. Plural: matching `.new` against
+     * only the FIRST overload mistyped `Array(String).new(initial_capacity:)`
+     * against empty `Array#initialize` while `initialize(initial_capacity)`
+     * sits right below it. Callers best-match across the list.
+     */
+    fun getInitializeMethods(
         typeName: String,
         project: Project,
-    ): CrystalMethodDefinition? {
+        currentFile: PsiFile? = null,
+    ): List<CrystalMethodDefinition> {
+        // Resolved chain first (namespace-aware): short-name index hits mix
+        // same-named classes (`Job` = Mosquito::Job + Benchmark::IPS::Job),
+        // so candidates are filtered by qualified enclosing per chain link.
+        val chain = CrystalTypeHierarchy.resolveChain(typeName, project, currentFile)
+        if (chain.isNotEmpty()) {
+            val scoped = scopedInitializers(chain, project)
+            if (scoped.isNotEmpty()) return scoped
+        }
+        // Unresolved type: legacy direct lookup (may mix same-named classes,
+        // but guessing beats silence when the type itself is unknown).
         val scope = GlobalSearchScope.allScope(project)
         return StubIndex
             .getElements(
@@ -50,7 +77,78 @@ object CrystalMethodLookup {
                 project,
                 scope,
                 CrystalMethodDefinition::class.java,
-            ).firstOrNull { it.name == "initialize" }
+            ).filter { it.name == "initialize" }
+    }
+
+    /**
+     * `initialize` overloads owned by the resolved chain links (qualified
+     * enclosing match per link, top-level ownerless methods kept). File-level
+     * shape keeps getInitializeMethods under complexity budget.
+     */
+    private fun scopedInitializers(
+        chain: List<CrystalTypeHierarchy.TypeLookupResult>,
+        project: Project,
+    ): List<CrystalMethodDefinition> {
+        val scope = GlobalSearchScope.allScope(project)
+        val out = mutableListOf<CrystalMethodDefinition>()
+        for (link in chain) {
+            val short = link.element.name ?: continue
+            val qualified = qualifiedNameOf(link.element)
+            val hits =
+                StubIndex
+                    .getElements(
+                        CrystalMethodByClassIndex.KEY,
+                        short,
+                        project,
+                        scope,
+                        CrystalMethodDefinition::class.java,
+                    ).filter { it.name == "initialize" }
+            for (method in hits) {
+                // Ownerless (top-level) methods only match top-level links:
+                // a top-level `Job#initialize` must not attach to the
+                // `Mosquito::Job` link of another class's chain.
+                val owner = methodOwnerQualified(method)
+                if (owner == null && qualified != null && qualified.contains("::")) continue
+                if (owner == null || owner == qualified) {
+                    out.add(method)
+                }
+            }
+        }
+        return out.distinctBy { getParameterSignature(it) }
+    }
+
+    /**
+     * Qualified name of a type element (`Mosquito::Job`), top-level short
+     * name when unnested. File-level: used by the scoped lookup above.
+     */
+    private fun qualifiedNameOf(element: io.github.unurgunite.crystal.psi.CrystalNamedElement): String? =
+        io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+            .buildQualifiedName(element)
+            ?: element.name
+
+    /**
+     * Qualified enclosing type of a method from its stub tree (never touches
+     * the AST — stub/AST mismatch safe). Null for top-level methods.
+     * Walks from the stub's PARENT (the method stub itself is named and
+     * would pollute the path with `initialize`). Stub-less elements
+     * (in-memory test PSI) fall back to the PSI parent chain.
+     */
+    private fun methodOwnerQualified(method: CrystalMethodDefinition): String? {
+        val stub = (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub
+        if (stub != null) {
+            val parent = stub.parentStub ?: return null
+            return io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                .buildQualifiedNameFromStub(parent)
+        }
+        var current: com.intellij.psi.PsiElement? = method.parent
+        while (current != null) {
+            val qualified =
+                io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                    .buildQualifiedName(current)
+            if (qualified != null) return qualified
+            current = current.parent
+        }
+        return null
     }
 
     /**

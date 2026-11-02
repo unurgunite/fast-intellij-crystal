@@ -47,6 +47,12 @@ public class CrystalRecordDefinitionImpl extends ASTWrapperPsiElement implements
 
   @Override
   @Nullable
+  public CrystalSuperclassClause getSuperclassClause() {
+    return PsiTreeUtil.getChildOfType(this, CrystalSuperclassClause.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalTypeParameters getTypeParameters() {
     return PsiTreeUtil.getChildOfType(this, CrystalTypeParameters.class);
   }

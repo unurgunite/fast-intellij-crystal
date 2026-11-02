@@ -72,10 +72,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         holder: ProblemsHolder,
     ) {
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
-
-        // Skip if method name is actually a local variable/parameter (binary operator ambiguity)
-        // e.g. "text * times" parsed as bare call "text(*times)" but actually is binary "text * times"
-        if (CrystalLocalScope.isLocalVariableOrParameter(callExpr, methodName)) return
+        if (isSkippedMethodCall(callExpr, methodName)) return
 
         val arguments = CrystalCallArguments.extractArguments(callExpr)
         if (arguments.isEmpty()) return
@@ -103,6 +100,8 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         info: DotCallInfo,
         holder: ProblemsHolder,
     ) {
+        // Spec matchers accept anything — never arity/type-check them.
+        if (CrystalLocalScope.isSpecMatcherCall(info.methodName)) return
         val arguments = CrystalCallArguments.extractArgumentsFromArgsElement(argsElement)
         if (arguments.isEmpty()) return
 
@@ -267,3 +266,15 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
             firstType == CrystalTypes.AMPERSAND
     }
 }
+
+/**
+ * True when a method call needs no checks: local variable/parameter
+ * shadowing (binary-op ambiguity) or a spec matcher (accepts anything).
+ * File-level: keeps the inspection class under TooManyFunctions.
+ */
+private fun isSkippedMethodCall(
+    callExpr: PsiElement,
+    methodName: String,
+): Boolean =
+    CrystalLocalScope.isLocalVariableOrParameter(callExpr, methodName) ||
+        CrystalLocalScope.isSpecMatcherCall(methodName)

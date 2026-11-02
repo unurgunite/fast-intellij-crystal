@@ -256,6 +256,12 @@ public class CrystalAssignmentImpl extends CrystalAssignmentMixin implements Cry
 
   @Override
   @NotNull
+  public List<CrystalTypeArguments> getTypeArgumentsList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeArguments.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReceiverExpression.class);
   }
