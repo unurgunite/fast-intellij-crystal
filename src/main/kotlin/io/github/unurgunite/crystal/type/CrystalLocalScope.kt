@@ -20,8 +20,15 @@ internal object CrystalLocalScope {
      */
     private val SPEC_MATCHER_CALLS = setOf("should", "should_not")
 
-    /** True when [methodName] is a spec expectation entry point. */
-    fun isSpecMatcherCall(methodName: String): Boolean = methodName in SPEC_MATCHER_CALLS
+    /**
+     * Spec lifecycle hooks take exactly one block and are defined by the
+     * `spec` shard (not resolvable here), so a same-named 0-param definition
+     * from elsewhere must not turn `before_each { }` into "Too many arguments".
+     */
+    private val SPEC_HOOK_CALLS = setOf("before_each", "after_each")
+
+    /** True when [methodName] is a spec expectation entry point or lifecycle hook. */
+    fun isSpecMatcherCall(methodName: String): Boolean = methodName in SPEC_MATCHER_CALLS || methodName in SPEC_HOOK_CALLS
 
     /**
      * Definition macros (`define`, `delegate`, `getter`, ...) declare

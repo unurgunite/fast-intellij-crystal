@@ -226,16 +226,22 @@ private data class ArgShapeFlags(
  * CONSTANT text of an element: direct token or a wrapper
  * (CrystalVariableReferenceImpl, CrystalTypePathImpl) holding one.
  */
-private fun classNameFromElement(element: PsiElement?): String? {
-    if (element == null) return null
-    // Direct CONSTANT token
-    if (element.node?.elementType == CrystalTypes.CONSTANT) {
-        return element.text
-    }
-    // Wrapper containing a CONSTANT child
-    val constantChild = element.node?.findChildByType(CrystalTypes.CONSTANT)
-    if (constantChild != null) {
-        return constantChild.text
+private fun classNameFromElement(element: PsiElement?): String? = firstConstantText(element?.node)
+
+/**
+ * First CONSTANT token in [node]'s subtree. Nested shapes matter: a generic
+ * receiver like `Hash(String, Int32)` is TYPE_RECEIVER_EXPRESSION > TYPE_PATH >
+ * CONSTANT, two levels below the call, so a shallow child scan misses it.
+ */
+private fun firstConstantText(node: com.intellij.lang.ASTNode?): String? {
+    if (node == null) return null
+    if (node.elementType == CrystalTypes.CONSTANT) return node.text
+    // Do not descend into type arguments: `Hash(String, ...)` keeps its own name.
+    var child = node.firstChildNode
+    while (child != null) {
+        if (child.elementType == CrystalTypes.TYPE_ARGUMENTS) break
+        firstConstantText(child)?.let { return it }
+        child = child.treeNext
     }
     return null
 }

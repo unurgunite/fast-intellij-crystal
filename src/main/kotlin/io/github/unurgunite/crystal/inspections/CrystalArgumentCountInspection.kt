@@ -195,6 +195,10 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     ) {
         // If any argument has an unresolvable splat/double-splat, skip the check entirely
         if (CrystalOverloadEvaluator.hasUnresolvedSplat(arguments)) return
+        // `severity :warning` / `queue_name :q`: macro-defined DSL setters share
+        // their name with a generated zero-param getter, so arity is unknowable.
+        val name = methodNameElement.text
+        if (name != "new" && CrystalMacroSetters.hasMacro(name, methodNameElement.project)) return
 
         // Expand resolved splats into effective argument counts
         val effectivePositionalCount = CrystalOverloadEvaluator.effectivePositionalCount(arguments)

@@ -487,4 +487,94 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    /** Generic receiver: `Hash(K, V)` resolves its class-level overloads. */
+    fun testGenericReceiverKeepsClassName() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Box(T)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Box(Int32).new(initial_capacity: 64)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** ...and a genuinely unknown name is still reported. */
+    fun testGenericReceiverRejectsUnknownNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Box(T)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Box(Int32).new(<error descr="Unknown named argument 'bogus'">bogus: 64</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A macro-defined DSL setter shares its name with a generated getter. */
+    fun testMacroSetterCallIsNotArityChecked() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Job
+              def self.queue_name : String
+                "default"
+              end
+
+              macro queue_name(name)
+                def self.queue_name : String
+                  "{{ name.id }}"
+                end
+              end
+            end
+
+            class Job
+              queue_name :demo_queue
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Without a same-named macro the excess argument is still reported. */
+    fun testExcessArgsStillReportedWithoutMacro() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Plain
+              def self.foo : Int32
+                1
+              end
+            end
+
+            Plain.foo(<error descr="Too many arguments: expected at most 0, got 1">1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Spec lifecycle hooks take a block; a 0-param namesake must not report. */
+    fun testSpecHookBlockIsNotArityChecked() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def before_each
+            end
+
+            before_each do
+              puts 1
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
