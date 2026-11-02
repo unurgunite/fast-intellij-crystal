@@ -34,8 +34,25 @@ internal object CrystalDotCallScan {
         val methodNameNode = findDetachedMethodName(argsElement) ?: return null
         if (isOperatorTail(argsElement, methodNameNode)) return null
         val receiver = findDotCallReceiver(methodNameNode) ?: return null
-        val receiverName = receiver.text ?: return null
+        val receiverName = receiverTypeName(receiver) ?: return null
         return DotCallInfo(receiverName, methodNameNode.text, methodNameNode)
+    }
+
+    /**
+     * Receiver name without generic arguments and without `?`/`*`: type lookups
+     * take the bare class name (`Hash(String, Int32)` -> `Hash`), since no
+     * `Hash(String, Int32)` definition exists to resolve methods against.
+     */
+    private fun receiverTypeName(receiver: PsiElement): String? {
+        val text = receiver.text ?: return null
+        val bare =
+            text
+                .substringBefore('(')
+                .trim()
+                .removeSuffix("?")
+                .removePrefix("*")
+                .trim()
+        return bare.ifEmpty { null }
     }
 
     /**
