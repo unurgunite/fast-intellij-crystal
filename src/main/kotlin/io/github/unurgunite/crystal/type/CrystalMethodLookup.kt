@@ -77,7 +77,7 @@ object CrystalMethodLookup {
                 project,
                 scope,
                 CrystalMethodDefinition::class.java,
-            ).filter { it.name == "initialize" }
+            ).filter { it.name == "initialize" || (it.name == "new" && isStaticMethod(it)) }
     }
 
     /**
@@ -102,7 +102,7 @@ object CrystalMethodLookup {
                         project,
                         scope,
                         CrystalMethodDefinition::class.java,
-                    ).filter { it.name == "initialize" }
+                    ).filter { it.name == "initialize" || (it.name == "new" && isStaticMethod(it)) }
             for (method in hits) {
                 // Ownerless (top-level) methods only match top-level links:
                 // a top-level `Job#initialize` must not attach to the

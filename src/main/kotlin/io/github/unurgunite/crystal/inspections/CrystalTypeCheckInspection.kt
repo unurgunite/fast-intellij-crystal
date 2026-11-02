@@ -48,6 +48,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodCallExpression -> {
                         checkMethodCall(element, holder)
@@ -137,17 +138,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         arguments: List<ArgumentInfo>,
         holder: ProblemsHolder,
     ): List<CrystalMethodDefinition> {
-        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
-
-        // Filter to methods defined inside a class/module matching the receiver name.
-        // This prevents false positives like ENV.fetch(...) matching Hash#fetch.
-        // Only apply for CONSTANT receivers (class/module names start with uppercase in Crystal).
-        if (info.receiverName.isNotEmpty() && info.receiverName[0].isUpperCase()) {
-            methods =
-                methods.filter { method ->
-                    CrystalMethodLookup.getEnclosingClassName(method) == info.receiverName
-                }
-        }
+        var methods = CrystalDotCallOverloads.resolve(info, argsElement)
 
         if (methods.isNotEmpty() || info.methodName != "new") return methods
 

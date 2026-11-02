@@ -46,6 +46,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodCallExpression -> {
                         checkCall(element, holder)

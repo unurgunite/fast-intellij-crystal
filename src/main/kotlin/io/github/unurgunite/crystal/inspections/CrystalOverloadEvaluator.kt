@@ -13,17 +13,37 @@ import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
  * for error reporting. Shared by regular methods and `record` constructors.
  */
 internal object CrystalOverloadEvaluator {
+    // Relative weights for overload mismatch scoring. An unknown named argument
+    // means the parameter sets disagree outright; missing/excess are milder.
+    private const val UNKNOWN_NAMED_WEIGHT = 4
+    private const val MISSING_PARAM_WEIGHT = 2
+    private const val EXCESS_ARG_WEIGHT = 1
+
     data class OverloadMatch(
         val isValid: Boolean,
         val missingParams: List<String> = emptyList(),
         val excessStartIndex: Int = -1,
         val maxArgs: Int = 0,
+        val excessArgCount: Int = 0,
         val unknownNamedArgs: Set<String> = emptySet(),
     ) {
-        fun isBetterThan(other: OverloadMatch): Boolean {
-            // Prefer match with fewer missing params
-            return missingParams.size < other.missingParams.size
-        }
+        /**
+         * Total mismatch cost across all failure kinds: unknown named args are the
+         * strongest signal that an overload is the wrong one, then missing required
+         * params, then excess args. Comparing only one kind let an overload with
+         * zero missing params but a wrong parameter set win over the right one.
+         */
+        val mismatchCost: Int
+            get() =
+                unknownNamedArgs.size * UNKNOWN_NAMED_WEIGHT +
+                    missingParams.size * MISSING_PARAM_WEIGHT +
+                    excessArgs * EXCESS_ARG_WEIGHT
+
+        /** Excess positional count encoded by [excessStartIndex]; 0 when none. */
+        private val excessArgs: Int
+            get() = if (excessStartIndex < 0) 0 else excessArgCount
+
+        fun isBetterThan(other: OverloadMatch): Boolean = mismatchCost < other.mismatchCost
     }
 
     data class ParamInfo(
@@ -163,10 +183,12 @@ internal object CrystalOverloadEvaluator {
         if (hasSplat) return null
         val maxPositional = regularCount - namedArgNames.intersect(paramNames).size
         if (positionalCount > maxPositional) {
+            val excess = positionalCount - maxPositional
             return OverloadMatch(
                 isValid = false,
-                excessStartIndex = argCount - (positionalCount - maxPositional),
+                excessStartIndex = argCount - excess,
                 maxArgs = regularCount,
+                excessArgCount = excess,
             )
         }
         return null
