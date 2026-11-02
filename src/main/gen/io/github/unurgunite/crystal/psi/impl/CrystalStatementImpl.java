@@ -95,6 +95,12 @@ public class CrystalStatementImpl extends ASTWrapperPsiElement implements Crysta
 
   @Override
   @Nullable
+  public CrystalHeredocDeferredBody getHeredocDeferredBody() {
+    return PsiTreeUtil.getChildOfType(this, CrystalHeredocDeferredBody.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalIfStatement getIfStatement() {
     return PsiTreeUtil.getChildOfType(this, CrystalIfStatement.class);
   }

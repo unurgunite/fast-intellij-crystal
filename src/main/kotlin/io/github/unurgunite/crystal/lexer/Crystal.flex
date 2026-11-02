@@ -160,6 +160,10 @@ import com.intellij.psi.TokenType;
   private String heredocId = "";
   private boolean heredocIndented = false;
   private boolean heredocRaw = false;
+  // A heredoc opener was already lexed on the current line; the body starts
+  // after the line's newline. Set when the opener's line carries more code
+  // (`foo(<<-TXT)`) and we fall back to YYINITIAL for that tail.
+  private boolean heredocBodyNext = false;
 
   // State stack for nested string interpolation
   private final java.util.ArrayDeque<Integer> stateStack = new java.util.ArrayDeque<>();
@@ -334,7 +338,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // Whitespace and comments
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   "\\" (\r\n | \r | \n) { return track(TokenType.WHITE_SPACE); }
-  {NEWLINE}            { afterDef = false; inLineComment = false; if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
+  {NEWLINE}            { afterDef = false; inLineComment = false; if (heredocBodyNext) { heredocBodyNext = false; yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); } if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
   {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
 
   // Keywords (longest match first for keywords with ? suffix)
@@ -945,6 +949,15 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
 <HEREDOC_START_LINE> {
   // Consume the rest of the line after <<-ID (could have more code on same line)
   {NEWLINE}            { yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); }
+  // The heredoc may be the last argument (`foo(<<-TXT)`, `File.write f, <<-TXT)`):
+  // the closing bracket belongs to the call, not the opener line. Emit up to it
+  // and return to YYINITIAL; the NEWLINE rule above then enters HEREDOC_BODY.
+  .* [)\],}]           {
+                         yypushback(1);
+                         int n = yylength();
+                         if (n == 0) { heredocBodyNext = true; yybegin(YYINITIAL); }
+                         else { heredocBodyNext = true; yybegin(YYINITIAL); return track(CrystalTypes.HEREDOC_START); }
+                       }
   .+                   { return track(CrystalTypes.HEREDOC_START); }
 }
 
@@ -1288,6 +1301,9 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
 
   <MACRO_CONTROL> {
   "%}"                 { popState(); return track(CrystalTypes.MACRO_CONTROL_END); }
+  // `#` comments inside `{% %}` (multi-line macro code — athena view.cr):
+  // plain line comments; the parser skips them as whitespace.
+  {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
   "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   // Escaped `\{{` inside `{% %}` stays body TEXT (BACKSLASH + pushback —
   // the delimiter re-lexes as code but the parser pairs BACKSLASH +

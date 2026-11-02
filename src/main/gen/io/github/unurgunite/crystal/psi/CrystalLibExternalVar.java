@@ -67,8 +67,8 @@ public interface CrystalLibExternalVar extends PsiElement {
   @Nullable
   CrystalMethodCallExpression getMethodCallExpression();
 
-  @Nullable
-  CrystalNamespaceAccess getNamespaceAccess();
+  @NotNull
+  List<CrystalNamespaceAccess> getNamespaceAccessList();
 
   @Nullable
   CrystalNextExpression getNextExpression();
@@ -102,6 +102,9 @@ public interface CrystalLibExternalVar extends PsiElement {
 
   @Nullable
   CrystalTupleLiteral getTupleLiteral();
+
+  @Nullable
+  CrystalTypeArguments getTypeArguments();
 
   @Nullable
   CrystalTypeReceiverExpression getTypeReceiverExpression();
