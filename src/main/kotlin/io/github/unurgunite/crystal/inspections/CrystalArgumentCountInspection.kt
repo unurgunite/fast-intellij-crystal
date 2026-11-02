@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
+import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
@@ -70,6 +71,14 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
                             checkDotCall(element, dotCallInfo, holder)
                         }
                     }
+
+                    is CrystalDotCallAccess -> {
+                        val dotCallInfo = CrystalDotCallScan.detectParenlessDotCall(element)
+                        if (dotCallInfo != null) {
+                            // A paren-less call carries no argument list.
+                            checkDotCallShape(element, dotCallInfo, emptyList(), holder)
+                        }
+                    }
                 }
             }
         }
@@ -95,31 +104,22 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     }
 
     /**
-     * True when a bare call needs no checks: the name resolves to a local
-     * variable/parameter (shadows any method — binary-op ambiguity like
-     * `count + 87` parsed as a call), it is a spec matcher (accepts
-     * anything), or a definition macro (`define`, `delegate` — declare
-     * methods, not calls). File-level shape keeps checkCall under ReturnCount.
+     * Paren-less dot call (`Foo::Bar.new`, `x.empty?`): no args holder exists,
+     * so the call carries zero arguments. Without this the receiver was never
+     * checked at all — a missing-required-argument call went unreported.
      */
-    private fun isSkippedBareCall(
-        callExpr: PsiElement,
-        methodName: String,
-    ): Boolean {
-        // Skip if the method name resolves to a local variable or parameter.
-        // This prevents false positives when a bare call like "count + 87" is parsed
-        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
-        // operators followed by literals. The parameter shadows any same-named method.
-        val resolvedRef = callExpr.reference?.resolve()
-        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
-        val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
-        // Spec matchers accept anything — never arity/type-check them.
-        if (scope.isSpecMatcherCall(methodName)) return true
-        return scope.isDefinitionMacroCall(methodName)
-    }
-
     private fun checkDotCall(
         argsElement: PsiElement,
         info: DotCallInfo,
+        holder: ProblemsHolder,
+    ) {
+        checkDotCallShape(argsElement, info, CrystalCallArguments.extractArgumentsFromArgsElement(argsElement), holder)
+    }
+
+    private fun checkDotCallShape(
+        contextElement: PsiElement,
+        info: DotCallInfo,
+        arguments: List<ArgumentInfo>,
         holder: ProblemsHolder,
     ) {
         // Spec matchers accept anything — never arity/type-check them.
@@ -133,9 +133,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         val firstChar = info.receiverName.firstOrNull() ?: return
         if (!firstChar.isUpperCase()) return
 
-        val arguments = CrystalCallArguments.extractArgumentsFromArgsElement(argsElement)
-
-        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
+        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, contextElement.project)
 
         // Filter to methods defined inside a class/module matching the receiver name.
         // This prevents false positives like ::Bytes.new(...) matching unrelated new overloads.
@@ -147,7 +145,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
             }
 
         if (info.methodName == "new") {
-            if (checkNewConstructorCall(info.receiverName, arguments, info.methodNameElement, argsElement, holder)) return
+            if (checkNewConstructorCall(info.receiverName, arguments, info.methodNameElement, contextElement, holder)) return
         }
 
         if (methods.isEmpty()) return
@@ -437,5 +435,24 @@ private object CrystalNewConstructorCheck {
                 CrystalOverloadEvaluator.ParamInfo(it.name, it.hasDefault)
             }
         CrystalRecordArgumentCheck.checkRecordArguments(params, arguments, methodNameElement, holder)
+    }
+
+/**
+     * True when a bare call must not be arity-checked: the name resolves to a
+     * variable/parameter (shadows any method — binary-op ambiguity like
+     * `count + 87` parsed as a call), it is a spec matcher (accepts anything), or
+     * a definition macro (`define`, `delegate` — declare methods, not calls).
+     */
+    internal fun isSkippedBareCall(
+        callExpr: PsiElement,
+        methodName: String,
+    ): Boolean {
+        // The parameter shadows any same-named method, and a binary-op parse like
+        // `count + 87` must not be reported as a call.
+        val resolvedRef = callExpr.reference?.resolve()
+        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+        val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
+        if (scope.isSpecMatcherCall(methodName)) return true
+        return scope.isDefinitionMacroCall(methodName)
     }
 }

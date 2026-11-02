@@ -2,6 +2,9 @@ package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.tree.IElementType
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
@@ -29,6 +32,47 @@ internal object CrystalDotCallScan {
         return detectNamedDotCall(argsElement)
     }
 
+    /**
+     * Receiver + method name of a paren-less dot call (`Foo::Bar.new`,
+     * `IO::Memory.new`, `x.empty?`). Such calls have no args holder, so they
+     * never reach [detectDotCall]; the arity checks then skip them entirely
+     * even though the receiver IS resolvable. Returns null when the call has
+     * a `CALL_ARGS` child (that shape is handled elsewhere) or when no
+     * receiver precedes the DOT.
+     */
+    fun detectParenlessDotCall(dotCall: CrystalDotCallAccess): DotCallInfo? {
+        // The holder's `DOT` and name are LEAVES, not child nodes, so walk the
+        // leaf chain instead of `children`. Only the truly argument-less form
+        // belongs here: `Widget.new(...)` keeps CALL_ARGS inside the holder and
+        // the bare form `Widget.new 1, 2` carries a BARE_ARGUMENT_LIST.
+        val nameNode = findChildLeaf(dotCall, CrystalTypes.DOT)?.nextSibling
+        val isArgumentsCarrier =
+            dotCall.node.findChildByType(CrystalTypes.CALL_ARGS) != null ||
+                dotCall.node.findChildByType(CrystalTypes.BARE_ARGUMENT_LIST) != null
+        if (nameNode == null || nameNode.node.elementType !in DOT_NAME_TYPES || isArgumentsCarrier) return null
+        // No method-name sibling exists here (the name is INSIDE the holder),
+        // so resolve the receiver from the holder's left neighbour.
+        val receiverName = receiverTypeName(CrystalPsiUtils.prevMeaningfulSibling(dotCall) ?: return null)
+        return receiverName?.let { DotCallInfo(it, nameNode.text, nameNode) }
+    }
+
+    /** First direct leaf child of [parent] with [type], or null. */
+    private fun findChildLeaf(
+        parent: PsiElement,
+        type: IElementType,
+    ): PsiElement? {
+        var child: PsiElement? = PsiTreeUtil.firstChild(parent)
+        while (child != null) {
+            if (child.node.elementType == type) return child
+            child = child.nextSibling
+        }
+        return null
+    }
+
+    /** Name token kinds a paren-less dot call can carry. */
+    private val DOT_NAME_TYPES =
+        setOf(CrystalTypes.IDENTIFIER, CrystalTypes.CONSTANT, CrystalTypes.CLASS_VAR, CrystalTypes.INSTANCE_VAR)
+
     /** Name + receiver match once the operator-RHS shape is ruled out. */
     private fun detectNamedDotCall(argsElement: PsiElement): DotCallInfo? {
         val methodNameNode = findDetachedMethodName(argsElement) ?: return null
@@ -43,7 +87,7 @@ internal object CrystalDotCallScan {
      * take the bare class name (`Hash(String, Int32)` -> `Hash`), since no
      * `Hash(String, Int32)` definition exists to resolve methods against.
      */
-    private fun receiverTypeName(receiver: PsiElement): String? {
+    internal fun receiverTypeName(receiver: PsiElement): String? {
         // A qualified receiver is a chain of NAMESPACE_ACCESS nodes where each
         // node owns only its own segment (`::D` for `A::B::C::D`), so the dot
         // call would resolve against `::D` alone. Rebuild the whole path first.
