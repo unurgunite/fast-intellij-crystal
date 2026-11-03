@@ -2237,7 +2237,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-  //                           | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  //                           | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
   //                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
   //                           | macro_callee_call [block] [postfix_modifier]
   public static boolean bare_command_expression(PsiBuilder builder_, int level_) {
@@ -2445,7 +2445,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  // [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
   private static boolean bare_command_expression_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1")) return false;
     boolean result_;
@@ -2504,7 +2504,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION))
+  // !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA))
   private static boolean bare_command_expression_1_5(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1_5")) return false;
     boolean result_;
@@ -2514,7 +2514,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION)
+  // DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)
   private static boolean bare_command_expression_1_5_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1_5_0")) return false;
     boolean result_;
@@ -2536,13 +2536,14 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // LPAREN | DOT | QUESTION
+  // LPAREN | DOT | QUESTION | COMMA
   private static boolean bare_command_expression_1_5_0_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1_5_0_3")) return false;
     boolean result_;
     result_ = consumeToken(builder_, LPAREN);
     if (!result_) result_ = consumeToken(builder_, DOT);
     if (!result_) result_ = consumeToken(builder_, QUESTION);
+    if (!result_) result_ = consumeToken(builder_, COMMA);
     return result_;
   }
 
