@@ -43,7 +43,7 @@ object CrystalCollectionTypeResolver {
         if (typeRefs.isNotEmpty()) return ResolvedType("Array(${firstUnionMember(typeRefs.first().text)})")
 
         // Infer from elements
-        val elements = expr.expressionList?.expressionList ?: emptyList()
+        val elements = expr.expressionList?.expressionList.orEmpty()
         if (elements.isEmpty()) return null
 
         val elementTypes = elements.mapNotNull { resolveType(it) }
@@ -66,7 +66,7 @@ object CrystalCollectionTypeResolver {
             return ResolvedType("Hash($keyType, $valueType)")
         }
 
-        val entries = expr.hashEntryList?.hashEntryList ?: emptyList()
+        val entries = expr.hashEntryList?.hashEntryList.orEmpty()
         if (entries.isEmpty()) return null
 
         val keyTypes = entries.mapNotNull { resolveKeyType(it.expressionList.getOrNull(0)) }
@@ -93,7 +93,7 @@ object CrystalCollectionTypeResolver {
     }
 
     private fun resolveTupleLiteral(expr: CrystalTupleLiteral): ResolvedType? {
-        val elements = expr.expressionList?.expressionList ?: return null
+        val elements = expr.expressionList.expressionList
         if (elements.isEmpty()) return null
 
         val types = elements.mapNotNull { resolveType(it) }

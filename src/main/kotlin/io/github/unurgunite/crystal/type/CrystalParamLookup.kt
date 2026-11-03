@@ -47,7 +47,7 @@ internal object CrystalParamLookup {
             CachedValuesManager.getCachedValue(file) {
                 CachedValueProvider.Result(indexFile(file), PsiModificationTracker.MODIFICATION_COUNT)
             }
-        return byType[typeName] ?: emptyList()
+        return byType[typeName].orEmpty()
     }
 
     /**

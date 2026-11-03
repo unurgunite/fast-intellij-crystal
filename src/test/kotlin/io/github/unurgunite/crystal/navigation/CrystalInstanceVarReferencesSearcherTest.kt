@@ -61,7 +61,7 @@ end
         val usages = searcherRefs(found[0])
         // All accesses except the target itself
         assertEquals(3, usages.size)
-        val usageTexts = usages.map { it.element?.text }.toSet()
+        val usageTexts = usages.map { it.element.text }.toSet()
         assertTrue("@x" in usageTexts)
     }
 

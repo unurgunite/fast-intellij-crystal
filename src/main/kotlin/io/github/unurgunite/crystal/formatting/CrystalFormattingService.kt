@@ -32,9 +32,6 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
             }
 
         return object : FormattingTask {
-            @Volatile
-            private var processHandler: CapturingProcessHandler? = null
-
             override fun run() {
                 try {
                     val project = request.context.project
@@ -53,10 +50,7 @@ class CrystalFormattingService : AsyncDocumentFormattingService() {
                 }
             }
 
-            override fun cancel(): Boolean {
-                processHandler?.destroyProcess()
-                return true
-            }
+            override fun cancel(): Boolean = true
         }
     }
 

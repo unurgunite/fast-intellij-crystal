@@ -99,7 +99,7 @@ internal object CrystalDocSignatures {
             } else {
                 ""
             }
-        val retTypeText = method.typeReference?.let { " : ${it.text}" } ?: ""
+        val retTypeText = method.typeReference?.let { " : ${it.text}" }.orEmpty()
         return "$methodNameText($paramsText)$retTypeText"
     }
 

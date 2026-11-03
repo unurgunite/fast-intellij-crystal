@@ -69,7 +69,7 @@ internal object CrystalOverloadEvaluator {
         var bestMatch: OverloadMatch? = null
 
         for (method in methods) {
-            val params = method.parameterList?.parameterList ?: emptyList()
+            val params = method.parameterList?.parameterList.orEmpty()
             val match = evaluateOverload(params, effectiveArgCount, effectivePositionalCount, namedArgNames)
 
             if (match.isValid) return null // At least one overload accepts this call
@@ -130,8 +130,7 @@ internal object CrystalOverloadEvaluator {
 
         // Check too many args (only if no splat)
         return checkExcessArgs(
-            regularCount = regularParams.size,
-            paramNames = paramNames,
+            regularParams = regularParams,
             namedArgNames = namedArgNames,
             positionalCount = positionalCount,
             argCount = argCount,
@@ -173,14 +172,15 @@ internal object CrystalOverloadEvaluator {
 
     /** Excess positional args beyond the signature, unless a splat absorbs them. */
     private fun checkExcessArgs(
-        regularCount: Int,
-        paramNames: Set<String>,
+        regularParams: List<ParamInfo>,
         namedArgNames: Set<String>,
         positionalCount: Int,
         argCount: Int,
         hasSplat: Boolean,
     ): OverloadMatch? {
         if (hasSplat) return null
+        val regularCount = regularParams.size
+        val paramNames = regularParams.map { it.name }.toSet()
         val maxPositional = regularCount - namedArgNames.intersect(paramNames).size
         if (positionalCount > maxPositional) {
             val excess = positionalCount - maxPositional

@@ -58,9 +58,9 @@ object CrystalSdkDetector {
 
     private fun findInPath(): String? =
         try {
-            val cmd = if (SystemInfo.isWindows) arrayOf("where", "crystal") else arrayOf("which", "crystal")
+            val cmd = if (SystemInfo.isWindows) listOf("where", "crystal") else listOf("which", "crystal")
             val process =
-                ProcessBuilder(*cmd)
+                ProcessBuilder(cmd)
                     .redirectErrorStream(true)
                     .start()
             val output =

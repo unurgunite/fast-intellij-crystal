@@ -49,7 +49,7 @@ class CrystalStructureViewElement(
 
     override fun canNavigateToSource(): Boolean = element is NavigationItem && element.canNavigateToSource()
 
-    override fun getAlphaSortKey(): String = presentation.presentableText ?: ""
+    override fun getAlphaSortKey(): String = presentation.presentableText.orEmpty()
 
     override fun getPresentation(): ItemPresentation {
         if (element is PsiFile) {

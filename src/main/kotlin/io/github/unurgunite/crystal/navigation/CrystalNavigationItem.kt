@@ -10,7 +10,10 @@ class CrystalNavigationItem(
     override fun getName(): String = symbol.name
 
     override fun getPresentation(): ItemPresentation {
-        val location = symbol.element.containingFile?.name ?: ""
+        val location =
+            symbol.element.containingFile
+                ?.name
+                .orEmpty()
         return PresentationData(symbol.name, location, symbol.kind.icon, null)
     }
 

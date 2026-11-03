@@ -49,35 +49,39 @@ object CrystalCompletionHelper {
         val typeResult = CrystalTypeHierarchy.findTypeByName(typeName, project) ?: return emptyList()
         val hierarchy = CrystalTypeHierarchy.hierarchyWithImplicitObject(typeResult)
 
-        val scope = GlobalSearchScope.allScope(project)
-        val result = mutableListOf<LookupElement>()
-        val seen = mutableSetOf<String>()
+        val sink = CompletionSink(project, GlobalSearchScope.allScope(project))
 
         for ((depth, className) in hierarchy.withIndex()) {
-            addHierarchyLevelLookups(className, project, scope, seen, result, hierarchyPriority(depth))
+            addHierarchyLevelLookups(className, sink, hierarchyPriority(depth))
         }
-        return result
+        return sink.result
+    }
+
+    /** Where one completion pass writes: search context plus the dedup set and output. */
+    private class CompletionSink(
+        val project: Project,
+        val scope: GlobalSearchScope,
+    ) {
+        val result = mutableListOf<LookupElement>()
+        val seen = mutableSetOf<String>()
     }
 
     /** Instance-method lookups of one hierarchy level, deduplicated (overloads kept). */
     private fun addHierarchyLevelLookups(
         className: String,
-        project: Project,
-        scope: GlobalSearchScope,
-        seen: MutableSet<String>,
-        result: MutableList<LookupElement>,
+        sink: CompletionSink,
         priority: Double,
     ) {
         val elements =
             StubIndex.getElements(
                 CrystalMethodByClassIndex.KEY,
                 className,
-                project,
-                scope,
+                sink.project,
+                sink.scope,
                 CrystalMethodDefinition::class.java,
             )
         for (method in elements) {
-            addUniqueMethodLookup(method, seen, result, priority)
+            addUniqueMethodLookup(method, sink.seen, sink.result, priority)
         }
     }
 

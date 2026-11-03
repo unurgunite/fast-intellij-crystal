@@ -12,7 +12,7 @@ internal class CrystalSpecFailures(
     private val roots: List<TestNode>,
 ) {
     private var currentFailureName: String? = null
-    private var currentFailureMessage = StringBuilder()
+    private val currentFailureMessage = StringBuilder()
     private var failureFileLocation: String? = null
     private var collectingFailureMessage = false
 

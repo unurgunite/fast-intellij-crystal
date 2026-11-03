@@ -110,7 +110,7 @@ internal object CrystalSpecLocations {
     ): CrystalSpecFileIndexer.TestLocation? {
         val queue =
             locationQueues.getOrPut(fullName) {
-                (testLocations[fullName] ?: emptyList()).toMutableList()
+                (testLocations[fullName].orEmpty()).toMutableList()
             }
         return if (queue.isNotEmpty()) queue.removeFirst() else null
     }

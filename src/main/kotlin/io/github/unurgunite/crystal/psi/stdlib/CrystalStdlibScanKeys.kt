@@ -7,10 +7,7 @@ import io.github.unurgunite.crystal.psi.references.SymbolLoc
  * scan file (which hit detekt's TooManyFunctions budget): line handlers stay
  * there, key emission lives here.
  */
-internal fun addSymbol(
-    symbols: MutableMap<String, SymbolLoc>,
-    hasCanonical: MutableSet<String>,
-    relPath: String,
+internal fun ScanState.addSymbol(
     offset: Int,
     name: String,
     qualified: String,
@@ -34,9 +31,7 @@ internal fun addSymbol(
 
 // Register a `Class#method` (and bare `method` for top-level defs) symbol-table entry.
 // Used by both `def`/`macro` lines and expanded `getter`/`setter`/`property` macros.
-internal fun addMethodSymbol(
-    symbols: MutableMap<String, SymbolLoc>,
-    relPath: String,
+internal fun ScanState.addMethodSymbol(
     offset: Int,
     ns: String?,
     mname: String,

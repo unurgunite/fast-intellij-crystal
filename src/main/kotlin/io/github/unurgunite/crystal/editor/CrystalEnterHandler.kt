@@ -86,7 +86,7 @@ class CrystalEnterHandler : EnterHandlerDelegateAdapter() {
 
             // Handle continuation inside collections (lines ending with ,)
             trimmed.endsWith(",") && CrystalEnterBrackets.isInsideUnclosedBracket(document, ctx.prevLineNumber) -> {
-                val elemIndent = CrystalEnterBrackets.findFirstElementIndent(document, ctx.prevLineNumber) ?: ""
+                val elemIndent = CrystalEnterBrackets.findFirstElementIndent(document, ctx.prevLineNumber).orEmpty()
                 ctx.indentCurrentLine(elemIndent)
             }
 
