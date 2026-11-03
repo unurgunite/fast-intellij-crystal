@@ -131,7 +131,11 @@ internal object CrystalCallArguments {
         val methodNameNode = CrystalDotCallScan.findDetachedMethodName(argsElement) ?: return null
         if (methodNameNode.text != "new") return null
         val receiver = CrystalDotCallScan.findDotCallReceiver(methodNameNode) ?: return null
-        return classNameFromElement(receiver)
+        // Qualified receivers: `findDotCallReceiver` hands back the LAST
+        // NAMESPACE_ACCESS segment (`::Location`), so a bare name lookup would
+        // resolve an unrelated same-named class (`Crystal::Location` ->
+        // `Time::Location`).
+        return CrystalDotCallScan.receiverTypeName(receiver) ?: classNameFromElement(receiver)
     }
 
     /** Method name of a call expression: after DOT when present, else the leading name. */
