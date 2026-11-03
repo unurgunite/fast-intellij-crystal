@@ -167,6 +167,7 @@ internal object CrystalCallArguments {
         // rather than a child of the call: resolve it from there.
         val receiverFirst = callExpr.firstChild
         if (receiverFirst != null && receiverFirst.node?.elementType == CrystalTypes.VARIABLE_REFERENCE) {
+            qualifiedReceiverPath(receiverFirst)?.let { return it }
             receiverClassNameAfterDotCallAccess(receiverFirst)?.let { return it }
         }
         var child = callExpr.firstChild
@@ -186,6 +187,21 @@ internal object CrystalCallArguments {
         return null
     }
 
+    /**
+     * `ACON::Question::Choice.new` keeps its segments as sibling NAMESPACE_ACCESS
+     * nodes, so a bare name lookup would resolve an unrelated same-named class.
+     * Null when [receiver] has no namespace segments.
+     */
+    private fun qualifiedReceiverPath(receiver: PsiElement): String? {
+        val segments = mutableListOf(receiver.text)
+        var sibling = receiver.nextSibling
+        while (sibling != null && sibling.node?.elementType == CrystalTypes.NAMESPACE_ACCESS) {
+            segments.add(sibling.text.removePrefix("::"))
+            sibling = sibling.nextSibling
+        }
+        return if (segments.size > 1) segments.joinToString("::") else null
+    }
+
     /** `.new` inside the DOT_CALL_ACCESS sibling of [receiver]: the class name. */
     private fun receiverClassNameAfterDotCallAccess(receiver: PsiElement): String? {
         var sibling = receiver.nextSibling
@@ -195,7 +211,10 @@ internal object CrystalCallArguments {
                 val dot = node.findChildByType(CrystalTypes.DOT) ?: return null
                 val name = dot.treeNext
                 if (name != null && name.elementType == CrystalTypes.IDENTIFIER && name.text == "new") {
-                    return classNameFromElement(receiver)
+                    // Qualified receiver: `classNameFromElement` would return only
+                    // the first CONSTANT (`ACON` for `ACON::Question::Choice`).
+                    return CrystalDotCallScan.receiverTypeName(receiver)
+                        ?: classNameFromElement(receiver)
                 }
             }
             sibling = sibling.nextSibling

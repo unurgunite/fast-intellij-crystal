@@ -64,4 +64,35 @@ class CrystalTypeCheckQualifiedReceiverTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testQualifiedBareCommandConstructorDoesNotResolveUnrelatedSameNamedClass() {
+        myFixture.enableInspections(CrystalTypeCheckInspection())
+        myFixture.addFileToProject(
+            "lib/other_choice.cr",
+            """
+            class Choice
+              def initialize(choices : Array(Int32))
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "lib/nested_choice.cr",
+            """
+            class ACON::Question::Choice
+              def initialize(question : String, heroes : Array(String), attempts : Int32)
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "test.cr",
+            """
+            heroes = ["a"]
+            question = ACON::Question::Choice.new "Who", heroes, 2
+            puts question
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
