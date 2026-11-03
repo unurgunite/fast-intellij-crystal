@@ -261,6 +261,11 @@ object CrystalTypeCompatibility {
     private fun normalizeType(type: String): String {
         // Leading `::` is semantically void (`::Set(String)` == `Set(String)`).
         val trimmed = type.trim().removePrefix("::")
+        // `{A, B}` is sugar for `Tuple(A, B)`: a tuple literal resolves to
+        // `Tuple(Int32, Int32)` while the parameter says `{Int32, Int32}`.
+        if (trimmed.length > 1 && trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return "Tuple(" + trimmed.substring(1, trimmed.length - 1) + ")"
+        }
         return TYPE_ALIASES[trimmed] ?: trimmed
     }
 

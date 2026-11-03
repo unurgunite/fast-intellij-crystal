@@ -184,4 +184,13 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Array(Int32)", "Array(String)"))
         assertFalse(compat("Hash(String, String)", "Array(String)"))
     }
+
+    fun testTupleSugarMatchesTupleType() {
+        assertTrue(compat("Tuple(Int32, Int32)", "{Int32, Int32}"))
+        assertTrue(compat("Tuple(Int32, Int32)", "::Tuple(Int32, Int32)"))
+    }
+
+    fun testTupleElementMismatchStillDetected() {
+        assertFalse(compat("Tuple(Int32, String)", "{String, String}"))
+    }
 }
