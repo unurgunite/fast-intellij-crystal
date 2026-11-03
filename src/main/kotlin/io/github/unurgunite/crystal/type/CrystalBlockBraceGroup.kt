@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
@@ -22,6 +23,10 @@ import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 internal fun isBareBlockTuple(arg: PsiElement): Boolean {
     // Splats (`foo(*args)`) are never brace groups — never a block body.
     if (arg.node.findChildByType(CrystalTypes.STAR) != null) return false
+    // A brace group is a TUPLE_LITERAL (`{...}`) or an empty HASH_LITERAL.
+    // A parenthesised argument (`raise(Foo.new(x))`) has neither, so it is a
+    // real positional argument, never a block body.
+    if (CrystalPsiUtils.firstSignificantChild(arg)?.let(::holdsBraceNode) != true) return false
     val child = CrystalPsiUtils.firstSignificantChild(arg) ?: return false
     val group = listOfNotNull(child, CrystalPsiUtils.firstSignificantChild(child))
     return group.any { isBlockBraceGroup(it, group) }
@@ -51,6 +56,12 @@ internal fun isBlockBraceGroup(
     }
 
 private val WHITESPACE = "\\s".toRegex()
+
+/** True when [expr] is (or directly wraps) a brace group literal. */
+private fun holdsBraceNode(expr: PsiElement): Boolean =
+    expr is CrystalTupleLiteral || expr is CrystalHashLiteral ||
+        PsiTreeUtil.findChildOfType(expr, CrystalTupleLiteral::class.java) != null ||
+        PsiTreeUtil.findChildOfType(expr, CrystalHashLiteral::class.java) != null
 
 /**
  * True when [expr] holds a call shape: a bare command, a DOT-call fragment,
