@@ -4,7 +4,6 @@ import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement
-import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
 import io.github.unurgunite.crystal.psi.CrystalStatement
 import io.github.unurgunite.crystal.psi.CrystalTypes
@@ -20,7 +19,7 @@ object CrystalControlFlowTypeResolver {
     private const val MIN_BINARY_OPERATOR_CHILDREN = 3
 
     /** Ternary first (QUESTION always means ternary), then operators, then first child. */
-    fun resolveCompoundExpression(expr: CrystalExpression): ResolvedType? {
+    fun resolveCompoundExpression(expr: PsiElement): ResolvedType? {
         val astChildren = expr.node.getChildren(null)
 
         // Index access `d["phone"]` / `d["phone"]?`: yields the collection's

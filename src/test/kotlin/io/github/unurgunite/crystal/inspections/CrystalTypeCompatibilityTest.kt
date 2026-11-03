@@ -193,4 +193,14 @@ class CrystalTypeCompatibilityTest : TestCase() {
     fun testTupleElementMismatchStillDetected() {
         assertFalse(compat("Tuple(Int32, String)", "{String, String}"))
     }
+
+    fun testSelfTypeIsLenientOnBothSides() {
+        assertTrue(compat("self", "Array(String)"))
+        assertTrue(compat("Array(String)", "self"))
+        assertTrue(compat("self", "Set(String)"))
+    }
+
+    fun testSelfTypeDoesNotHideRealMismatch() {
+        assertFalse(compat("Int32", "String"))
+    }
 }
