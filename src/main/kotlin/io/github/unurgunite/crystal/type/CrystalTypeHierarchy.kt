@@ -253,6 +253,13 @@ internal object CrystalParentResolve {
             CrystalTypeHierarchy
                 .findTypeByName(parentName, project)
                 ?.let { return it }
+            // Relative reference: `Rule::Base` inside `module Ameba` means
+            // `Ameba::Rule::Base`. Prefixing the enclosing namespace keeps
+            // such parents inside their own namespace instead of falling
+            // through to a bare-name lookup that grabs an unrelated type.
+            enclosingNamespaceOf(current)?.let { namespace ->
+                CrystalTypeHierarchy.findTypeByName("$namespace::$parentName", project)?.let { return it }
+            }
             return CrystalTypeHierarchy.findTypeByName(parentName.substringAfterLast("::"), project)
         }
         enclosingNamespaceOf(current)?.let { namespace ->
