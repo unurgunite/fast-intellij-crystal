@@ -67,7 +67,12 @@ internal object CrystalUnusedVarCollect {
             else -> listOf(child)
         }
 
-    /** Local assignment recorded; compound ops also recorded as reads. */
+    /**
+     * Local assignment recorded; compound ops also recorded as reads.
+     * `header.ids = [...]` is an attribute write, not a rebinding: `header` is
+     * read as the receiver there, so it counts as a read and never as a new
+     * assignment (otherwise the earlier value looks dead).
+     */
     private fun recordAssignment(
         child: PsiElement,
         assignments: MutableList<AssignmentInfo>,
@@ -75,6 +80,10 @@ internal object CrystalUnusedVarCollect {
     ) {
         if (child !is CrystalAssignment) return
         val info = extractLocalAssignment(child) ?: return
+        if (child.dotCallAccessList.isNotEmpty()) {
+            references.add(ReferenceInfo(info.name, info.offset))
+            return
+        }
         assignments.add(info)
         if (info.isCompound) {
             references.add(ReferenceInfo(info.name, info.offset))
