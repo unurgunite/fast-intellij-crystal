@@ -32,6 +32,9 @@ object CrystalTypeCompatibility {
     /** Prefix of a `Enumerable(T)` parameter type (module, not invariant). */
     private const val ENUMERABLE_PREFIX = "Enumerable("
 
+    /** The `self` type: unresolvable here, so never a definite mismatch. */
+    private const val SELF_TYPE = "self"
+
     /** All numeric types (integers + floats). */
     private val NUMERIC_TYPES =
         setOf(
@@ -90,9 +93,11 @@ object CrystalTypeCompatibility {
                 true
             }
 
-            // `_` wildcard (`value : _`) and the `Enumerable` module fit any
-            // argument: an Array passed to `Enumerable(T)` is valid Crystal, so
-            // element types must not be compared by Array's invariance rule.
+            // `_` wildcard (`value : _`), the `Enumerable` module and the
+            // `self` type fit any argument: an Array passed to `Enumerable(T)`
+            // is valid Crystal, so element types must not be compared by
+            // Array's invariance rule; `self` (`x : self`, `Array#reverse!`)
+            // is not tracked here at all.
             acceptsAnyType(normalizedParam) -> {
                 true
             }
@@ -155,6 +160,7 @@ object CrystalTypeCompatibility {
      */
     private fun acceptsAnyType(normalizedParam: String): Boolean {
         if (normalizedParam == "_") return true
+        if (normalizedParam == SELF_TYPE) return true
         if (normalizedParam == "Enumerable") return true
         return normalizedParam.startsWith(ENUMERABLE_PREFIX)
     }
@@ -261,6 +267,11 @@ object CrystalTypeCompatibility {
     private fun normalizeType(type: String): String {
         // Leading `::` is semantically void (`::Set(String)` == `Set(String)`).
         val trimmed = type.trim().removePrefix("::")
+        // `{A, B}` is sugar for `Tuple(A, B)`: a tuple literal resolves to
+        // `Tuple(Int32, Int32)` while the parameter says `{Int32, Int32}`.
+        if (trimmed.length > 1 && trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return "Tuple(" + trimmed.substring(1, trimmed.length - 1) + ")"
+        }
         return TYPE_ALIASES[trimmed] ?: trimmed
     }
 
@@ -344,6 +355,9 @@ internal object BareGenericCheck {
         normalizedParam: String,
         isUnsuffixedNumericLiteral: Boolean,
     ): Boolean {
+        // `self` (`Array#reverse!` returns it) is not tracked by the resolver,
+        // so it is never a definite mismatch.
+        if (argType.trim() == "self") return true
         expandKnownAlias(argType)?.let {
             return CrystalTypeCompatibility.isCompatible(it, normalizedParam, isUnsuffixedNumericLiteral)
         }

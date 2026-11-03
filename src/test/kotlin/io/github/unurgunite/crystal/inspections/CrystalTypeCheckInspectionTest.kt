@@ -431,4 +431,31 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Keyword-only (`*`) marker ====================
+
+    fun testBareStarMakesLaterParamsKeywordOnly() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def run(args : Enumerable(String), *, env : Int32 = 0, clear : Bool = false)
+            end
+            mod = "x"
+            run("ffmpeg", mod)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testKeywordOnlyParamStillCheckedByName() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def run(args : Enumerable(String), *, env : Int32 = 0)
+            end
+            run("ffmpeg", env: <error descr="Type mismatch: expected 'Int32', got 'String'">"x"</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

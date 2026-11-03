@@ -651,4 +651,43 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testHashWithFatArrowKeyIsNotASymbol() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def consume(fields : Hash(String, String))
+            end
+            key = "abc"
+            consume({key => ">"})
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testTupleLiteralMatchesBraceParameterType() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Loc
+            end
+            def take(loc : {Int32, Int32})
+            end
+            take({1, 2})
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testTupleLiteralMismatchStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(loc : {String, String})
+            end
+            take(<error descr="Type mismatch: expected '{String, String}', got 'Tuple(Int32, String)'">{1, "x"}</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

@@ -230,21 +230,15 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
     ): CrystalParameter? {
         // Named argument: find parameter by name
         if (argName != null) {
-            for (param in params) {
-                val paramName = param.node.findChildByType(CrystalTypes.IDENTIFIER)?.text
-                if (paramName == argName) return param
-            }
-            return null
+            return params.firstOrNull { it.node.findChildByType(CrystalTypes.IDENTIFIER)?.text == argName }
         }
 
-        // Positional: find by index, skipping splat parameters for counting
+        // Positional: find by index. A bare `*` makes every later parameter
+        // keyword-only, so the positional walk stops there.
         var positionalIndex = 0
         for (param in params) {
-            if (isSplatParameter(param)) {
-                // Splat absorbs all remaining positional args
-                return param
-            }
-            if (positionalIndex == argIndex) return param
+            if (isKeywordOnlyBoundary(param)) return null
+            if (isSplatParameter(param) || positionalIndex == argIndex) return param
             positionalIndex++
         }
         return null
@@ -256,6 +250,20 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         return firstType == CrystalTypes.STAR || firstType == CrystalTypes.DOUBLE_STAR ||
             firstType == CrystalTypes.AMPERSAND
     }
+}
+
+/**
+ * True when a bare `*` (keyword-only marker) precedes [param] in its
+ * parameter list, so [param] cannot be filled positionally.
+ */
+private fun isKeywordOnlyBoundary(param: CrystalParameter): Boolean {
+    var sibling = param.prevSibling
+    while (sibling != null) {
+        if (sibling.node?.elementType == CrystalTypes.STAR) return true
+        if (sibling is CrystalParameter) return false
+        sibling = sibling.prevSibling
+    }
+    return false
 }
 
 /**

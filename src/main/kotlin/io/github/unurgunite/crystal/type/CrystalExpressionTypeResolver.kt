@@ -83,26 +83,42 @@ object CrystalExpressionTypeResolver {
     /** Control flow, references, grouped expressions and compound wrappers. */
     private fun resolveCompositeShape(expr: PsiElement): ResolvedType? {
         resolveControlFlowOrReference(expr)?.let { return it }
+        resolveGroupedOrBare(expr)?.let { return it }
 
-        // For composite expressions (e.g. grouped_expression), try the inner expression
-        if (expr is CrystalGroupedExpression) {
-            val inner = expr.children.firstOrNull { it is CrystalExpression }
-            if (inner != null) return resolveType(inner)
-        }
+        if (expr !is CrystalExpression) return null
 
         // Expression wrapper — ternary, operators, then first meaningful child.
         // NOTE: a DOT-call fragment nested anywhere inside (`{...}.to_json`
         // as an argument value) resolves FIRST: firstChild descent below
         // would take the bare receiver (`{...}` → Hash) and lose the call.
-        if (expr is CrystalExpression) {
-            findDotCallDeep(expr)?.let { dotCall ->
-                resolveDotCallFragmentOf(dotCall)?.let { return it }
-            }
-            return CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
+        findDotCallDeep(expr)?.let { dotCall ->
+            resolveDotCallFragmentOf(dotCall)?.let { return it }
         }
-
-        return null
+        return CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
     }
+
+    /**
+     * Grouped expression or bare-argument wrapper: both hold their value
+     * expression as a child, not as themselves. A bare argument's
+     * ternary/operator children sit directly in the wrapper, so a compound
+     * resolution runs first — first-child descent would take only the
+     * ternary condition.
+     */
+    private fun resolveGroupedOrBare(expr: PsiElement): ResolvedType? =
+        when {
+            expr is CrystalGroupedExpression -> {
+                expr.children.firstOrNull { it is CrystalExpression }?.let { resolveType(it) }
+            }
+
+            expr is CrystalBareArgument -> {
+                CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
+                    ?: CrystalPsiUtils.firstSignificantChild(expr)?.let { resolveType(it) }
+            }
+
+            else -> {
+                null
+            }
+        }
 
     /** Control-flow shapes, variable references and method calls. */
     private fun resolveControlFlowOrReference(expr: PsiElement): ResolvedType? {
@@ -296,7 +312,6 @@ private fun resolveArgumentValueOf(expr: PsiElement): CrystalExpressionTypeResol
 private fun resolveWrapperLeafOf(expr: PsiElement): CrystalExpressionTypeResolver.ResolvedType? {
     val inner: PsiElement? =
         when (expr) {
-            is CrystalBareArgument -> CrystalPsiUtils.firstSignificantChild(expr)
             is CrystalStatement -> innerOfStatementOf(expr)
             is CrystalExpressionStatement -> expr.expressionList.firstOrNull()
             else -> return null
