@@ -7,6 +7,7 @@ import io.github.unurgunite.crystal.psi.CrystalBlock
 import io.github.unurgunite.crystal.psi.CrystalCaseStatement
 import io.github.unurgunite.crystal.psi.CrystalForStatement
 import io.github.unurgunite.crystal.psi.CrystalIfStatement
+import io.github.unurgunite.crystal.psi.CrystalProcLiteral
 import io.github.unurgunite.crystal.psi.CrystalSelectStatement
 import io.github.unurgunite.crystal.psi.CrystalUnlessStatement
 import io.github.unurgunite.crystal.psi.CrystalUntilStatement
@@ -69,17 +70,35 @@ internal object CrystalUnusedVarReads {
             if (isConditionalConstruct(current)) return true
             current = current.parent
         }
-        return false
+        return isInsideMacroBlock(element)
+    }
+
+    /**
+     * A macro block (`{% for ... %}`, `{% if ... %}`) wraps its body in source
+     * text, but the grammar keeps that body as ordinary siblings rather than
+     * nesting it, so the wrapping cannot be seen from the tree. Compare the
+     * enclosing statement list's text before this element instead: an unbalanced
+     * macro control opener means the element sits inside one.
+     */
+    private fun isInsideMacroBlock(element: PsiElement): Boolean {
+        val statement = element.parent ?: return false
+        val holder = statement.parent ?: return false
+        val before = holder.text.substring(0, statement.textRange.startOffset - holder.textRange.startOffset)
+        val opens = MACRO_CONTROL_OPEN.findAll(before).count()
+        val closes = MACRO_CONTROL_CLOSE.findAll(before).count()
+        return opens > closes
     }
 
     /**
      * Conditional constructs plus `begin`+rescue (plain `begin` always executes).
-     * A block body (`do ... end`, `{ ... }`) counts too: it may run zero or many
+     * A block or proc body (`do ... end`, `{ ... }`, `-> { ... }`) counts too: it may run zero or many
      * times, so an assignment inside it never bounds an outer value's lifetime.
      */
     private fun isConditionalConstruct(current: PsiElement): Boolean {
         when (current) {
-            is CrystalBlock -> {
+            is CrystalBlock,
+            is CrystalProcLiteral,
+            -> {
                 return true
             }
 
@@ -100,4 +119,7 @@ internal object CrystalUnusedVarReads {
         }
         return false
     }
+
+    private val MACRO_CONTROL_OPEN = Regex("""\{%(?!\s*end)""")
+    private val MACRO_CONTROL_CLOSE = Regex("""\{%\s*end\s*%\}""")
 }

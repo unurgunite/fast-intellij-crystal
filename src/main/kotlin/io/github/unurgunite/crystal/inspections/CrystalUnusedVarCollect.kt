@@ -9,6 +9,7 @@ import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalBlock
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
+import io.github.unurgunite.crystal.psi.CrystalProcLiteral
 import io.github.unurgunite.crystal.psi.CrystalStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
@@ -135,17 +136,19 @@ internal object CrystalUnusedVarCollect {
         val holders = mutableListOf<PsiElement>()
         holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalMethodDefinition::class.java))
         holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalBlock::class.java))
+        holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalProcLiteral::class.java))
         return holders
             .filter { it !== scope }
             .mapNotNull { holder -> parameterNames(holder)?.let { ShadowRange(it, holder.textRange) } }
     }
 
-    /** Parameter names declared by a block or method, or null when it has none. */
+    /** Parameter names declared by a block, proc or method, or null when it has none. */
     private fun parameterNames(holder: PsiElement): Set<String>? {
         val list =
             when (holder) {
                 is CrystalMethodDefinition -> holder.parameterList?.parameterList
                 is CrystalBlock -> holder.parameterList?.parameterList
+                is CrystalProcLiteral -> holder.parameterList?.parameterList
                 else -> null
             } ?: return null
         val names = list.mapNotNull { extractParameterName(it) }.toSet()
