@@ -71,4 +71,74 @@ class CrystalUnusedVarShadowTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    /** A nested method's own local does not rebind the outer variable. */
+    fun testNestedMethodLocalDoesNotRebindOuter() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Variable 'value' is never used">value</weak_warning> = compute
+              def inner
+                value = 1
+                puts value
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A nested method assigning its own local must not close the outer read window. */
+    fun testNestedMethodLocalKeepsOuterRead() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              def inner
+                value = 1
+                puts value
+              end
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A read two methods deep still uses the outer value. */
+    fun testDeeplyNestedReadCounts() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              def middle
+                def inner
+                  puts value
+                end
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A block shares the scope: assigning there rebinds, reading keeps alive. */
+    fun testBlockAssignmentThenOuterRead() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              [1].each do |x|
+                value = x
+              end
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

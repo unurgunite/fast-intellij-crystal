@@ -68,11 +68,35 @@ internal object CrystalUnusedVarCollect {
         var child = element.firstChild
         while (child != null) {
             val next = child.nextSibling
-            if (!(skipNestedMethods && child is CrystalMethodDefinition)) {
-                visitChild(child, assignments, references, skipNestedMethods)
+            when {
+                // A file-level pass skips method bodies entirely; a method-level
+                // pass descends into them for READS only, because a nested `def`
+                // starts a new scope: its locals cannot rebind this one's, but a
+                // read there still uses the outer value.
+                child is CrystalMethodDefinition && skipNestedMethods -> Unit
+
+                child is CrystalMethodDefinition -> collectNestedScope(child, references)
+
+                else -> visitChild(child, assignments, references, skipNestedMethods)
             }
             child = next
         }
+    }
+
+    /**
+     * Reads of a nested `def` only count for names it does not bind itself:
+     * a local assignment or a parameter there creates an inner variable, so a
+     * use of that name says nothing about the outer one.
+     */
+    private fun collectNestedScope(
+        method: CrystalMethodDefinition,
+        references: MutableList<ReferenceInfo>,
+    ) {
+        val inner = mutableListOf<AssignmentInfo>()
+        val innerRefs = mutableListOf<ReferenceInfo>()
+        collectElements(method, inner, innerRefs, false)
+        val bound = inner.map { it.name }.toSet() + parameterNames(method).orEmpty()
+        innerRefs.filterTo(references) { it.name !in bound }
     }
 
     /** One child: records assignments/references, then recurses structurally. */
