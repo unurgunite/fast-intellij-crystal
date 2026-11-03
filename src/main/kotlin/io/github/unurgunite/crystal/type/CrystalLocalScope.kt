@@ -21,6 +21,14 @@ internal object CrystalLocalScope {
     private val SPEC_MATCHER_CALLS = setOf("should", "should_not")
 
     /**
+     * Expectation helpers: `should eq(1)` parses `eq(...)` as the bare argument
+     * of a dot call, so `eq` reaches the bare-call path by itself. Its stdlib
+     * definition (`Spec::Expectations#eq(value)`) is a module method, so arity
+     * checking it against unrelated resolution results is pure noise.
+     */
+    private val SPEC_EXPECTATION_CALLS = setOf("eq", "expect_raises")
+
+    /**
      * Spec lifecycle hooks take exactly one block and are defined by the
      * `spec` shard (not resolvable here), so a same-named 0-param definition
      * from elsewhere must not turn `before_each { }` into "Too many arguments".
@@ -28,7 +36,8 @@ internal object CrystalLocalScope {
     private val SPEC_HOOK_CALLS = setOf("before_each", "after_each")
 
     /** True when [methodName] is a spec expectation entry point or lifecycle hook. */
-    fun isSpecMatcherCall(methodName: String): Boolean = methodName in SPEC_MATCHER_CALLS || methodName in SPEC_HOOK_CALLS
+    fun isSpecMatcherCall(methodName: String): Boolean =
+        methodName in SPEC_MATCHER_CALLS || methodName in SPEC_HOOK_CALLS || methodName in SPEC_EXPECTATION_CALLS
 
     /**
      * Definition macros (`define`, `delegate`, `getter`, ...) declare

@@ -149,7 +149,13 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
                 val enclosing = CrystalMethodLookup.getEnclosingClassName(method)
                 // `new` has no top-level form in Crystal: an ownerless candidate is
                 // always a `def Type.new` reopening resolving to the wrong receiver.
-                if (info.methodName == "new") enclosing == info.receiverName else enclosing == null || enclosing == info.receiverName
+                if (info.methodName ==
+                    "new"
+                ) {
+                    enclosing == info.receiverName
+                } else {
+                    ownsDotCall(enclosing, info.receiverName, method, contextElement)
+                }
             }
 
         if (info.methodName == "new") {
@@ -456,4 +462,23 @@ internal fun isSkippedBareCall(
     val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
     if (scope.isSpecMatcherCall(methodName)) return true
     return scope.isDefinitionMacroCall(methodName)
+}
+
+/**
+ * A non-`new` candidate is an acceptable match when its owner matches the
+ * receiver, or when it has no owner but lives in the file being analyzed.
+ *
+ * Ownerless candidates come from module-level definitions in shards and the
+ * stdlib (`def eq(value)` in `Spec::Expectations`, top-level `def raise`),
+ * which are reachable from everywhere and so used to be matched against every
+ * call of the same name — 60-80 reported problems per name.
+ */
+private fun ownsDotCall(
+    enclosing: String?,
+    receiverName: String,
+    method: CrystalMethodDefinition,
+    callSite: PsiElement,
+): Boolean {
+    if (enclosing == receiverName) return true
+    return enclosing == null && method.containingFile?.virtualFile == callSite.containingFile?.virtualFile
 }
