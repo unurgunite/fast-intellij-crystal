@@ -74,4 +74,55 @@ class CrystalUnusedVariableSetterTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    /** A dotted path of any depth is still a member write, not a rebinding. */
+    fun testDeepAttributeWriteCountsAsRead() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Inner
+              property c = 0
+            end
+
+            class Outer
+              getter b = Inner.new
+            end
+
+            def go
+              a = Outer.new
+              a.b.c = 1
+              puts a
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** An index write reads the receiver too. */
+    fun testIndexWriteCountsAsRead() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def go
+              x = [0, 0]
+              x[1] = 2
+              puts x
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A plain local binding written and never read is still reported. */
+    fun testPlainLocalAssignmentStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def go
+              <weak_warning descr="Variable 'y' is never used">y</weak_warning> = 1
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

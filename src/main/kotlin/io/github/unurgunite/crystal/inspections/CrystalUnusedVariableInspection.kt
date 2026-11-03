@@ -47,8 +47,9 @@ class CrystalUnusedVariableInspection : LocalInspectionTool() {
 
         CrystalUnusedVarCollect.collectElements(scope, assignments, references, skipNestedMethods)
 
+        val shadowed = CrystalUnusedVarCollect.collectShadowRanges(scope)
         for (assignment in assignments) {
-            checkAssignment(assignment, assignments, references, holder)
+            checkAssignment(assignment, assignments, references, shadowed, holder)
         }
     }
 
@@ -57,11 +58,12 @@ class CrystalUnusedVariableInspection : LocalInspectionTool() {
         assignment: AssignmentInfo,
         assignments: List<AssignmentInfo>,
         references: List<ReferenceInfo>,
+        shadowed: List<CrystalUnusedVarCollect.ShadowRange>,
         holder: ProblemsHolder,
     ) {
         if (assignment.name.startsWith("_")) return
         if (assignment.isCompound) return
-        if (hasLaterRead(assignment, assignments, references)) return
+        if (hasLaterRead(assignment, assignments, references, shadowed)) return
 
         val otherAssignments = assignments.count { it.name == assignment.name }
         val message =
@@ -86,19 +88,35 @@ class CrystalUnusedVariableInspection : LocalInspectionTool() {
         assignment: AssignmentInfo,
         assignments: List<AssignmentInfo>,
         references: List<ReferenceInfo>,
+        shadowed: List<CrystalUnusedVarCollect.ShadowRange>,
     ): Boolean {
         val assignOffset = assignment.offset
         val nextAssign = CrystalUnusedVarReads.nextAssignment(assignments, assignment.name, assignOffset)
         if (nextAssign == null) {
-            return references.any { ref ->
-                ref.name == assignment.name && ref.offset > assignOffset
-            }
+            return readsInRange(assignment, references, shadowed, assignOffset, Int.MAX_VALUE)
         }
         // Use the end offset of the next assignment as upper bound, so that
         // references on its RHS (e.g. `abc = abc.upcase`) are counted as reads.
         val effectiveUpperBound = CrystalUnusedVarReads.readWindowEnd(assignments, assignment, nextAssign)
-        return references.any { ref ->
-            ref.name == assignment.name && ref.offset > assignOffset && ref.offset < effectiveUpperBound
-        }
+        return readsInRange(assignment, references, shadowed, assignOffset, effectiveUpperBound)
     }
+
+    /**
+     * A read counts only when it is not inside a nested scope that declares the
+     * same name as its own parameter — there the inner binding shadows the outer
+     * variable, so the outer value stays unused.
+     */
+    private fun readsInRange(
+        assignment: AssignmentInfo,
+        references: List<ReferenceInfo>,
+        shadowed: List<CrystalUnusedVarCollect.ShadowRange>,
+        from: Int,
+        to: Int,
+    ): Boolean =
+        references.any { ref ->
+            ref.name == assignment.name &&
+                ref.offset > from &&
+                ref.offset < to &&
+                shadowed.none { assignment.name in it.names && it.range.contains(ref.offset) }
+        }
 }
