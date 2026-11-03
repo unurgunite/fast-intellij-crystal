@@ -253,12 +253,24 @@ internal object CrystalParentResolve {
             CrystalTypeHierarchy
                 .findTypeByName(parentName, project)
                 ?.let { return it }
+            // Relative reference: `Rule::Base` inside `module Ameba` means
+            // `Ameba::Rule::Base`. Prefixing the enclosing namespace keeps
+            // such parents inside their own namespace instead of falling
+            // through to a bare-name lookup that grabs an unrelated type.
+            enclosingNamespaceOf(current)?.let { namespace ->
+                CrystalTypeHierarchy.findTypeByName("$namespace::$parentName", project)?.let { return it }
+            }
             return CrystalTypeHierarchy.findTypeByName(parentName.substringAfterLast("::"), project)
         }
         enclosingNamespaceOf(current)?.let { namespace ->
             CrystalTypeHierarchy.findTypeByName("$namespace::$parentName", project)?.let { return it }
         }
-        return CrystalTypeHierarchy.findTypeByName(parentName, project)
+        // A bare name declared in several namespaces: picking any one of them
+        // gives the subclass a foreign hierarchy and a foreign initializer,
+        // so staying unresolved beats reporting invented arguments.
+        return CrystalTypeHierarchy
+            .findTypeByName(parentName, project)
+            ?.takeUnless { isAmbiguousTypeName(parentName, project) }
     }
 
     /**
@@ -394,3 +406,21 @@ internal object CrystalQualifiedLookup {
         return CrystalTypeHierarchy.TypeLookupResult(owned, kind)
     }
 }
+
+/**
+ * True when a bare [name] is declared in more than one namespace, so no single
+ * definition can be chosen for it. Kept outside [CrystalTypeHierarchy] to stay
+ * within the object's function budget.
+ */
+private fun isAmbiguousTypeName(
+    name: String,
+    project: Project,
+): Boolean =
+    StubIndex
+        .getElements(
+            CrystalClassIndex.KEY,
+            name,
+            project,
+            GlobalSearchScope.allScope(project),
+            CrystalNamedElement::class.java,
+        ).count { CrystalTypeHierarchy.kindOf(it) != null } > 1
