@@ -651,4 +651,17 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testHashWithFatArrowKeyIsNotASymbol() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def consume(fields : Hash(String, String))
+            end
+            key = "abc"
+            consume({key => ">"})
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

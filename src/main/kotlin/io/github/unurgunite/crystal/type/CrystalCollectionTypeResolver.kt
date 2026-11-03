@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.psi.CrystalRegexExpression
 import io.github.unurgunite.crystal.psi.CrystalSizeofExpression
 import io.github.unurgunite.crystal.psi.CrystalSymbolStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTupleLiteral
+import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.ResolvedType
 import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.resolveType
 
@@ -69,7 +70,7 @@ object CrystalCollectionTypeResolver {
         val entries = expr.hashEntryList?.hashEntryList.orEmpty()
         if (entries.isEmpty()) return null
 
-        val keyTypes = entries.mapNotNull { resolveKeyType(it.expressionList.getOrNull(0)) }
+        val keyTypes = entries.mapNotNull { resolveKeyType(it, it.expressionList.getOrNull(0)) }
         val valueTypes = entries.mapNotNull { it.expressionList.getOrNull(1)?.let { e -> resolveType(e) } }
         if (keyTypes.size != entries.size || valueTypes.size != entries.size) return null
 
@@ -84,11 +85,19 @@ object CrystalCollectionTypeResolver {
         }
     }
 
-    /** Hash key type: bare identifiers are symbols, anything else resolves normally. */
-    private fun resolveKeyType(keyExpr: PsiElement?): ResolvedType? {
+    /**
+     * Hash key type: in the `key: value` sugar a bare identifier IS a symbol,
+     * but in `key => value` it is an ordinary expression — `{key => ">"}`
+     * (redis streaming_spec) hashes a String, not a Symbol.
+     */
+    private fun resolveKeyType(
+        entry: PsiElement,
+        keyExpr: PsiElement?,
+    ): ResolvedType? {
         if (keyExpr == null) return null
+        val isFatArrow = entry.node.findChildByType(CrystalTypes.DOUBLE_ARROW) != null
         val keyText = keyExpr.text.trim()
-        if (keyText.matches(Regex("^[a-zA-Z_]\\w*[?!]?$"))) return ResolvedType("Symbol")
+        if (!isFatArrow && keyText.matches(Regex("^[a-zA-Z_]\\w*[?!]?$"))) return ResolvedType("Symbol")
         return resolveType(keyExpr)
     }
 
