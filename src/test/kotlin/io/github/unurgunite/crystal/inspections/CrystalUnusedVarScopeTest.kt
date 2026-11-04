@@ -200,4 +200,90 @@ class CrystalUnusedVarScopeTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testMacroElseBranchIsNotAnOpener() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              {% for item in [1] %}
+                puts item
+              {% else %}
+                puts 2
+              {% end %}
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroElsifBranchIsNotAnOpener() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              {% if flag %}
+                puts 1
+              {% elsif other %}
+                puts 2
+              {% end %}
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testStandaloneMacroDirectiveIsNotAnOpener() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              {% debug %}
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testVerbatimBodyDoesNotSuppressLaterReports() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              {% verbatim %}
+                literal
+              {% end %}
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroForWithFilterKeepsReadWindow() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              {% for item in [1] if item.positive? %}
+                value = item
+              {% end %}
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

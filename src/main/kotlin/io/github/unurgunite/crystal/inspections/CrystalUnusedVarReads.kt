@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.inspections
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.inspections.CrystalUnusedVarCollect.AssignmentInfo
 import io.github.unurgunite.crystal.psi.CrystalBeginStatement
@@ -93,20 +94,36 @@ internal object CrystalUnusedVarReads {
         while (sibling != null) {
             val control = PsiTreeUtil.findChildOfType(sibling, CrystalMacroControl::class.java)
             if (control != null && control.textRange.startOffset < element.textRange.startOffset) {
-                depth += if (isMacroBlockEnd(control)) -1 else 1
+                depth += macroBlockDelta(control)
             }
             sibling = sibling.prevSibling
         }
         return depth > 0
     }
 
-    /** True when the macro control is a `{% end %}` closer. */
-    private fun isMacroBlockEnd(control: CrystalMacroControl): Boolean =
-        control.firstChild
-            ?.nextSibling
+    /**
+     * How the macro control changes the block depth: openers add one, `{% end %}` removes one,
+     * and branch/standalone controls (`{% else %}`, `{% elsif %}`, `{% when %}`, `{% in %}`,
+     * `{% debug %}`) leave it unchanged. Treating only `end` as neutral-prefix would otherwise
+     * count `else` as an opener and leave the depth permanently above zero.
+     */
+    private fun macroBlockDelta(control: CrystalMacroControl): Int =
+        when (control.firstKeyword()) {
+            CrystalTypes.END -> -1
+            in OPENING_MACRO_KEYWORDS -> 1
+            else -> 0
+        }
+
+    /**
+     * The control's leading keyword, skipping the `{%` token and whitespace. The lexer emits
+     * keywords as dedicated tokens inside [CrystalMacroControl], so the kind is knowable
+     * without re-reading the text.
+     */
+    private fun CrystalMacroControl.firstKeyword(): IElementType? =
+        firstChild
             ?.let { PsiTreeUtil.skipWhitespacesForward(it) }
             ?.node
-            ?.elementType == CrystalTypes.END
+            ?.elementType
 
     /**
      * Conditional constructs plus `begin`+rescue (plain `begin` always executes).
@@ -138,4 +155,13 @@ internal object CrystalUnusedVarReads {
         }
         return false
     }
+
+    /**
+     * `{% ... %}` keywords that wrap a body and are therefore terminated by `{% end %}`.
+     * Everything else (`{% else %}`, `{% elsif %}`, `{% when %}`, `{% in %}`, `{% debug %}`)
+     * is a branch marker or a standalone directive and must not change the depth — counting
+     * them as openers leaves the depth above zero and silently hides later assignments.
+     */
+    private val OPENING_MACRO_KEYWORDS: Set<IElementType> =
+        setOf(CrystalTypes.FOR, CrystalTypes.IF, CrystalTypes.UNLESS, CrystalTypes.BEGIN, CrystalTypes.MACRO, CrystalTypes.VERBATIM)
 }
