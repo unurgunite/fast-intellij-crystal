@@ -203,4 +203,17 @@ class CrystalTypeCompatibilityTest : TestCase() {
     fun testSelfTypeDoesNotHideRealMismatch() {
         assertFalse(compat("Int32", "String"))
     }
+
+    fun testIndexableParameterAcceptsTuple() {
+        // `Indexable(T)` is a module: Tuple, Array and StaticArray all satisfy it.
+        assertTrue(compat("Tuple(String)", "Indexable(String)"))
+        assertTrue(compat("Tuple(String, String)", "Indexable(String)"))
+        assertTrue(compat("Tuple(String)", "Indexable"))
+        assertTrue(compat("Tuple(String)", "Indexable(String)?"))
+    }
+
+    fun testIndexableLeniencyDoesNotHideRealMismatch() {
+        assertFalse(compat("Int32", "String"))
+        assertFalse(compat("Hash(String, String)", "Array(String)"))
+    }
 }
