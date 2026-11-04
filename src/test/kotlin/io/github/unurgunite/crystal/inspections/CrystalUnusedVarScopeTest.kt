@@ -102,4 +102,102 @@ class CrystalUnusedVarScopeTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testMacroBeginAssignmentThenReadAfter() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              {% begin %}
+                value = 2
+              {% end %}
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroUnlessAssignmentThenReadAfter() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              {% unless flag %}
+                value = 2
+              {% end %}
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroIfElseBranchesThenReadAfter() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              {% if flag %}
+                value = 2
+              {% else %}
+                value = 3
+              {% end %}
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNestedMacroBlocksAssignmentThenReadAfter() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              {% for item in [1] %}
+                {% if flag %}
+                  value = item
+                {% end %}
+              {% end %}
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroTextInStringIsNotABlock() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              puts "{% if flag %}"
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroTextInCommentIsNotABlock() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = compute
+              # {% end %}
+              value = 2
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
