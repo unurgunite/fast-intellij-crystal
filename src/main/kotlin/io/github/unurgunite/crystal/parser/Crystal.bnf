@@ -1539,6 +1539,7 @@ argument ::= STAR expression
            | OUT (IDENTIFIER | instance_var_access)
            | named_argument
            | and_assign_argument
+           | assign_argument
            | bracket_type_label
            | macro_control
            | expression
@@ -1564,6 +1565,14 @@ private macro_arg_splice ::= macro_control (NLS (argument | macro_control))+
 // `&&=`/`||=` as an argument value (`m(x &&= 5, 1)` — real call sites).
 // PEG order: before `expression` so the assign-op is not left dangling.
 private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS expression
+
+// `name = value` as an argument (`M.new(headers = ..., body = ...)` — spec
+// suites build fixtures this way). Without this arm `expression` reads the
+// argument list's COMMA as a multi-assign separator, so the list collapses
+// and the rest of the call becomes ERROR_ELEMENTs. Guarded by pin=2: the
+// alternative only commits on `name <assign-op>`, so a genuine multi-assign
+// (`a, b = 1, 2`) and every non-assignment argument keep their old shape.
+private assign_argument ::= variable assign_op NLS? expression {pin=2}
 
 // Named argument: requires both name and COLON to match before committing.
 // The name may be a keyword (`for: STDIN`, `in: 1`, `of: 2` — real call sites;

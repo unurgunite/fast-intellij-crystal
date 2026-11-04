@@ -424,6 +424,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //            | OUT (IDENTIFIER | instance_var_access)
   //            | named_argument
   //            | and_assign_argument
+  //            | assign_argument
   //            | bracket_type_label
   //            | macro_control
   //            | expression
@@ -438,6 +439,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = argument_4(builder_, level_ + 1);
     if (!result_) result_ = named_argument(builder_, level_ + 1);
     if (!result_) result_ = and_assign_argument(builder_, level_ + 1);
+    if (!result_) result_ = assign_argument(builder_, level_ + 1);
     if (!result_) result_ = bracket_type_label(builder_, level_ + 1);
     if (!result_) result_ = macro_control(builder_, level_ + 1);
     if (!result_) result_ = expression(builder_, level_ + 1);
@@ -1262,6 +1264,28 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   private static boolean asm_sections_3_3_0_4_0_4_0_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "asm_sections_3_3_0_4_0_4_0_3")) return false;
     asm_option_list(builder_, level_ + 1);
+    return true;
+  }
+
+  /* ********************************************************** */
+  // variable assign_op NLS? expression
+  static boolean assign_argument(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "assign_argument")) return false;
+    boolean result_, pinned_;
+    Marker marker_ = enter_section_(builder_, level_, _NONE_);
+    result_ = variable(builder_, level_ + 1);
+    result_ = result_ && assign_op(builder_, level_ + 1);
+    pinned_ = result_; // pin = 2
+    result_ = result_ && report_error_(builder_, assign_argument_2(builder_, level_ + 1));
+    result_ = pinned_ && expression(builder_, level_ + 1) && result_;
+    exit_section_(builder_, level_, marker_, result_, pinned_, null);
+    return result_ || pinned_;
+  }
+
+  // NLS?
+  private static boolean assign_argument_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "assign_argument_2")) return false;
+    NLS(builder_, level_ + 1);
     return true;
   }
 
