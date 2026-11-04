@@ -197,7 +197,7 @@ tasks.register<Test>("sweepTree") {
     val dt = defaultTest.get()
     testClassesDirs = dt.testClassesDirs
     classpath = dt.classpath
-    jvmArgs(dt.allJvmArgs + "-Dgrammar.kit.gpub.max.level=6000")
+    jvmArgs(dt.allJvmArgs)
     filter.includeTestsMatching("*CrystalTreeSweepTest.testSweepTree")
     systemProperty("graph.root", System.getProperty("graph.root") ?: "")
     testLogging { showStandardStreams = true }

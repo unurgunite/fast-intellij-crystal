@@ -17,17 +17,21 @@ import java.io.File
  * arguments with its own, so the tree you asked for is silently replaced by the
  * stdlib default and the numbers become incomparable.
  *
- * Known limitation: a handful of files report no errors here while reporting one
- * when parsed through `test`. The fixture keeps parser state across
- * `configureByText` calls, so the sweep currently under-reports by a few files.
- * Treat absolute counts as approximate; A/B comparisons are unaffected because
- * the bias applies equally to both sides.
+ * The task must not raise `grammar.kit.gpub.max.level`: with it the generated
+ * parser produced different `PsiErrorElement`s for some files (84/86 vs 80/82
+ * erroring/errors), so absolute counts were not comparable with `test`.
  *
  * Output: `<root>/../check_tree.txt`, rows of `relPath<TAB>line<TAB>error`.
  */
 class CrystalTreeSweepTest : BasePlatformTestCase() {
     fun testSweepTree() {
-        val root = File(System.getProperty("graph.root").orEmpty().ifEmpty { StdlibTestPaths.STDLIB })
+        val rootProp =
+            System
+                .getProperty("graph.root")
+                .orEmpty()
+                .ifEmpty { System.getenv("GRAPH_ROOT").orEmpty() }
+                .ifEmpty { StdlibTestPaths.STDLIB }
+        val root = File(rootProp)
         val sources =
             root
                 .walkTopDown()
@@ -35,6 +39,13 @@ class CrystalTreeSweepTest : BasePlatformTestCase() {
                 .sorted()
                 .toList()
 
+        System.err.println(
+            "SWEEPJVM " +
+                java.lang.management.ManagementFactory
+                    .getRuntimeMXBean()
+                    .inputArguments
+                    .joinToString(" ") { it.removePrefix("-D").substringBefore("=") },
+        )
         val rows = StringBuilder()
         var erroring = 0
         var errors = 0
@@ -58,6 +69,15 @@ class CrystalTreeSweepTest : BasePlatformTestCase() {
             }
         }
 
+        java.io
+            .File(System.getenv("ARGS_OUT") ?: "/tmp/args_none.txt")
+            .writeText(
+                java.lang.management.ManagementFactory
+                    .getRuntimeMXBean()
+                    .inputArguments
+                    .sorted()
+                    .joinToString("\n"),
+            )
         File(root, "../check_tree.txt").writeText(rows.toString())
         System.err.println("SWEEP files=${sources.size} erroring=$erroring errors=$errors")
     }
