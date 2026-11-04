@@ -59,4 +59,20 @@ class CrystalAssignArgumentTest : ParsingTestCase("", "cr", CrystalParserDefinit
         assertParses("a.cr", "f(a == 1)\n")
         assertParses("a.cr", "f(a > 1 ? 1 : 2)\n")
     }
+
+    fun testTypedArgumentWithCompoundAssign() = assertParses("a.cr", "f(a : Int32 += 1)\n")
+
+    fun testTypedArgumentWithOrAssign() = assertParses("a.cr", "f(a : Int32 ||= false)\n")
+
+    fun testCompoundAssignStatementsStillParse() {
+        assertParses("a.cr", "a += 1\n")
+        assertParses("a.cr", "o.x += 1\n")
+        assertParses("a.cr", "h[k] += 1\n")
+    }
+
+    fun testOperatorArgumentsStillParse() {
+        assertParses("a.cr", "f(a <=> b)\n")
+        assertParses("a.cr", "f(a << 2)\n")
+        assertParses("a.cr", "f(a * 2)\n")
+    }
 }

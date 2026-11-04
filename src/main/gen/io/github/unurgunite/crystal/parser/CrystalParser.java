@@ -4802,7 +4802,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION | ASSIGN))
+  // &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+  //                                 | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+  //                                 | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+  //                                 | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+  //                                 | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+  //                                 | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+  //                                 | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN))
   static boolean decl_complex_scan(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "decl_complex_scan")) return false;
     boolean result_;
@@ -4812,7 +4818,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // (IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION | ASSIGN)
+  // (IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+  //                                 | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+  //                                 | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+  //                                 | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+  //                                 | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+  //                                 | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+  //                                 | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN)
   private static boolean decl_complex_scan_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "decl_complex_scan_0")) return false;
     boolean result_;
@@ -4853,7 +4865,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION | ASSIGN
+  // LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+  //                                 | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+  //                                 | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+  //                                 | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+  //                                 | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+  //                                 | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+  //                                 | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN
   private static boolean decl_complex_scan_0_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "decl_complex_scan_0_1")) return false;
     boolean result_;
@@ -4863,6 +4881,24 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = consumeToken(builder_, ARROW);
     if (!result_) result_ = consumeToken(builder_, QUESTION);
     if (!result_) result_ = consumeToken(builder_, ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, PLUS_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, MINUS_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, STAR_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, SLASH_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, OR_OR_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, AND_AND_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, CARET_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, PERCENT_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, AMPERSAND_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, PIPE_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, DOUBLE_STAR_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, DOUBLE_SLASH_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, LSHIFT_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, RSHIFT_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, WRAP_PLUS_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, WRAP_MINUS_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, WRAP_STAR_ASSIGN);
+    if (!result_) result_ = consumeToken(builder_, WRAP_DOUBLE_STAR_ASSIGN);
     return result_;
   }
 

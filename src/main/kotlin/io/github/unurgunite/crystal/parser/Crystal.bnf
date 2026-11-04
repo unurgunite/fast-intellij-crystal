@@ -1674,11 +1674,18 @@ private decl_paren_end ::= COMMA | RPAREN | NEWLINE | SEMICOLON
 // loop (index brackets `[16]`) but `[` is NOT a marker (`a[0]` index values
 // must stay expressions). DOT rides the loop (harmless: garbage like `a.b`
 // still fails at type_reference/terminator).
-// ASSIGN is a marker too: it proves a typed argument carries a default
-// (`f(a : Int32 = 1)`), so the scan commits on it and `decl_type_value`'s
-// assign tail can take over. Without it the scan rejected a plain `Int32 =`
-// and the whole call fell apart into ERROR_ELEMENTs.
-private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION | ASSIGN))
+// An assign operator is a marker too: it proves a typed argument carries a
+// default (`f(a : Int32 = 1)`, `f(a : Int32 += 1)`), so the scan commits on it
+// and `decl_type_value`'s assign tail can take over. ALL assign ops must be
+// listed, not just ASSIGN: `Int32 +=` otherwise failed the marker check and the
+// whole call fell apart into ERROR_ELEMENTs.
+private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+                                | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                                | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                                | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+                                | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+                                | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+                                | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN))
 
 // Bare (parenthesis-free) arguments — used for calls like: describe App5 do ... end
 // Arguments may continue on following lines after a comma (`printf "%s",\n  a` —
