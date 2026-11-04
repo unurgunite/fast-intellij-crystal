@@ -1539,6 +1539,7 @@ argument ::= STAR expression
            | OUT (IDENTIFIER | instance_var_access)
            | named_argument
            | and_assign_argument
+           | assign_argument
            | bracket_type_label
            | macro_control
            | expression
@@ -1564,6 +1565,14 @@ private macro_arg_splice ::= macro_control (NLS (argument | macro_control))+
 // `&&=`/`||=` as an argument value (`m(x &&= 5, 1)` — real call sites).
 // PEG order: before `expression` so the assign-op is not left dangling.
 private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS expression
+
+// `name = value` as an argument (`M.new(headers = ..., body = ...)` — spec
+// suites build fixtures this way). Without this arm `expression` reads the
+// argument list's COMMA as a multi-assign separator, so the list collapses
+// and the rest of the call becomes ERROR_ELEMENTs. Guarded by pin=2: the
+// alternative only commits on `name <assign-op>`, so a genuine multi-assign
+// (`a, b = 1, 2`) and every non-assignment argument keep their old shape.
+private assign_argument ::= variable assign_op NLS? expression {pin=2}
 
 // Named argument: requires both name and COLON to match before committing.
 // The name may be a keyword (`for: STDIN`, `in: 1`, `of: 2` — real call sites;
@@ -1630,7 +1639,11 @@ private named_tuple_type_value ::= LBRACE NLS type_reference (NLS COMMA NLS type
 // The trailing terminator guard rejects partial matches (`x: a * b`,
 // `x: cond ? a : b` fall through to expression). No pin anywhere inside:
 // both guards fail cleanly with no input consumed.
-private decl_type_value ::= decl_complex_scan type_reference &decl_paren_end
+// Typed argument WITH a default (`f(a : Int32 = 1)` — accepted by the
+// Crystal compiler, `crystal run` confirms). The bare form still ends at the
+// terminator; the optional assign tail only fires on a real assign-op after
+// the type, so type-only values keep their exact shape (goldens confirm).
+private decl_type_value ::= decl_complex_scan type_reference (&decl_paren_end | assign_op NLS? expression)
 // Lookahead terminator WITHOUT leading NLS: `&(NLS MARKER)` is a trap —
 // NLS possessively eats the very newline that IS the marker (`x : UInt8*\n)`
 // fails: NLS eats `\n`, RPAREN mismatches, no retry with empty NLS).
@@ -1661,7 +1674,18 @@ private decl_paren_end ::= COMMA | RPAREN | NEWLINE | SEMICOLON
 // loop (index brackets `[16]`) but `[` is NOT a marker (`a[0]` index values
 // must stay expressions). DOT rides the loop (harmless: garbage like `a.b`
 // still fails at type_reference/terminator).
-private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
+// An assign operator is a marker too: it proves a typed argument carries a
+// default (`f(a : Int32 = 1)`, `f(a : Int32 += 1)`), so the scan commits on it
+// and `decl_type_value`'s assign tail can take over. ALL assign ops must be
+// listed, not just ASSIGN: `Int32 +=` otherwise failed the marker check and the
+// whole call fell apart into ERROR_ELEMENTs.
+private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+                                | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                                | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                                | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+                                | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+                                | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+                                | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN))
 
 // Bare (parenthesis-free) arguments — used for calls like: describe App5 do ... end
 // Arguments may continue on following lines after a comma (`printf "%s",\n  a` —
