@@ -174,7 +174,7 @@ fun Test.stdlibTool(
     val dt = defaultTest.get()
     testClassesDirs = dt.testClassesDirs
     classpath = dt.classpath
-    jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g" + "-Dgrammar.kit.gpub.max.level=6000")
+    jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g")
     filter.includeTestsMatching("*$className.$name")
     // Same sandbox setup as the `test` task: the IntelliJ test framework
     // resolves the plugin-under-test from the prepared sandbox. Without this
