@@ -163,7 +163,10 @@ tasks {
 
 val defaultTest = tasks.named<Test>("test")
 
-fun Test.stdlibTool(name: String) {
+fun Test.stdlibTool(
+    name: String,
+    className: String = "StdlibGraphToolTest",
+) {
     group = "stdlib"
     // Same no-cache rule as the main suite: results depend on the installed
     // toolchain (stdlib contents), which the build cache cannot see.
@@ -172,7 +175,7 @@ fun Test.stdlibTool(name: String) {
     testClassesDirs = dt.testClassesDirs
     classpath = dt.classpath
     jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g" + "-Dgrammar.kit.gpub.max.level=6000")
-    filter.includeTestsMatching("*StdlibGraphToolTest.$name")
+    filter.includeTestsMatching("*$className.$name")
     // Same sandbox setup as the `test` task: the IntelliJ test framework
     // resolves the plugin-under-test from the prepared sandbox. Without this
     // the stdlib tasks run un-instrumented classes against an empty sandbox
@@ -185,6 +188,19 @@ tasks.register<Test>("stdlibStructure") { stdlibTool("testBuildStructureJson") }
 tasks.register<Test>("stdlibCheckFile") {
     stdlibTool("testCheckSingleFile")
     systemProperty("graph.file", System.getProperty("graph.file") ?: "")
+}
+
+// Whole-tree parser sweep: the regression metric for grammar edits.
+tasks.register<Test>("sweepTree") {
+    group = "verification"
+    outputs.cacheIf { false }
+    val dt = defaultTest.get()
+    testClassesDirs = dt.testClassesDirs
+    classpath = dt.classpath
+    jvmArgs(dt.allJvmArgs + "-Dgrammar.kit.gpub.max.level=6000")
+    filter.includeTestsMatching("*CrystalTreeSweepTest.testSweepTree")
+    systemProperty("graph.root", System.getProperty("graph.root") ?: "")
+    testLogging { showStandardStreams = true }
 }
 
 kotlin {
