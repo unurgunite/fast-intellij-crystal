@@ -203,17 +203,6 @@ jobs:
       - name: Verify plugin
         run: ./gradlew verifyPlugin
 
-      - name: TEMP dump DAP API
-        if: always()
-        run: |
-          set -x
-          found=$(find ~/.gradle -name 'intellij.platform.dap.jar' -path '*idea-2026.3*' 2>/dev/null | head -1)
-          echo "FOUND=$found"
-          [ -z "$found" ] && find / -name 'intellij.platform.dap.jar' 2>/dev/null | head -5
-          [ -z "$found" ] && exit 0
-          mkdir -p /tmp/dap && cd /tmp/dap && unzip -o -q "$found" 'com/intellij/platform/dap/*'
-          javap -p -cp . com.intellij.platform.dap.DapBreakpointsDescription
-
       - name: Build
         run: ./gradlew buildPlugin
 

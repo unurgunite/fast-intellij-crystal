@@ -77,6 +77,11 @@ intellijPlatform {
                 types.set(listOf(IntelliJPlatformType.IntellijIdeaUltimate, IntelliJPlatformType.RubyMine))
                 channels.set(listOf(ProductRelease.Channel.RELEASE))
                 sinceBuild.set("261")
+                // Verified range is 261.x-262.x (sinceBuild 261). The 263 line
+                // is only available as EAP, and 263.7307.200 already renamed
+                // DapBreakpointsDescription's ctor (added functionBreakpointType),
+                // so it reports expected drift rather than a release blocker.
+                untilBuild.set("262.*")
             }
         }
     }
