@@ -207,7 +207,7 @@ jobs:
         if: always()
         run: |
           set -x
-          found=$(find ~ -name 'intellij.platform.dap.jar' -path '*263*' 2>/dev/null | head -1)
+          found=$(find ~/.gradle -name 'intellij.platform.dap.jar' -path '*idea-2026.3*' 2>/dev/null | head -1)
           echo "FOUND=$found"
           [ -z "$found" ] && find / -name 'intellij.platform.dap.jar' 2>/dev/null | head -5
           [ -z "$found" ] && exit 0
