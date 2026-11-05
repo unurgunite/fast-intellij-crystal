@@ -29,6 +29,7 @@ internal object CrystalDotCallOverloads {
                     info.receiverName,
                     argsElement.project,
                     argsElement.containingFile,
+                    argsElement,
                 )
             }
 
