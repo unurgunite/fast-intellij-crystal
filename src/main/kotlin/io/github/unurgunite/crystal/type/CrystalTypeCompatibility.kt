@@ -29,8 +29,12 @@ object CrystalTypeCompatibility {
             "Regex",
         )
 
-    /** Prefix of a `Enumerable(T)` parameter type (module, not invariant). */
-    private const val ENUMERABLE_PREFIX = "Enumerable("
+    /**
+     * Modules that are not invariant containers: an `Array` and a `Tuple` both
+     * satisfy `Enumerable(T)` and `Indexable(T)`, so element types must not be
+     * compared by the generic invariance rule.
+     */
+    private val NON_INVARIANT_MODULES = setOf("Enumerable", "Indexable")
 
     /** The `self` type: unresolvable here, so never a definite mismatch. */
     private const val SELF_TYPE = "self"
@@ -152,17 +156,17 @@ object CrystalTypeCompatibility {
     /**
      * Parameters that constrain nothing about the argument:
      * `_` is a type wildcard (`def add_parameter(key : String, value : _)`),
-     * and `Enumerable`/`Enumerable(T)` is a module, not an invariant
-     * container — Array, Tuple, Hash, Set and user collections all satisfy it,
-     * so comparing element types by the generic invariance rule above reports
+     * and `Enumerable`/`Indexable` are modules, not invariant containers —
+     * Array, Tuple, Set and user collections all satisfy them, so comparing
+     * element types by the generic invariance rule above reports
      * `Array(String)` against `Enumerable(Address | String)` as a mismatch
      * that Crystal accepts.
      */
     private fun acceptsAnyType(normalizedParam: String): Boolean {
         if (normalizedParam == "_") return true
         if (normalizedParam == SELF_TYPE) return true
-        if (normalizedParam == "Enumerable") return true
-        return normalizedParam.startsWith(ENUMERABLE_PREFIX)
+        if (normalizedParam in NON_INVARIANT_MODULES) return true
+        return NON_INVARIANT_MODULES.any { normalizedParam.startsWith("$it(") }
     }
 
     /**
