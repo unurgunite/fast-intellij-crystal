@@ -35,23 +35,19 @@ internal object CrystalUnusedVarReads {
             .minByOrNull { it.offset }
 
     /**
-     * Upper bound of the read window: the next assignment's end offset — or, when
-     * that assignment sits in a conditional branch (may not execute), the next
-     * UNCONDITIONAL assignment's end (reads after the block still see our value).
+     * Upper bound of the read window: the end of the construct holding the next
+     * assignment — but when that assignment sits in a conditional branch or a block
+     * (may not execute), the next UNCONDITIONAL assignment's end instead, so reads
+     * after the branch still see our value.
      */
     fun readWindowEnd(
         assignments: List<AssignmentInfo>,
         assignment: AssignmentInfo,
         nextAssign: AssignmentInfo?,
     ): Int {
-        val nextAssignEndOffset =
-            nextAssign
-                ?.identifierElement
-                ?.parent
-                ?.textRange
-                ?.endOffset ?: Int.MAX_VALUE
-        if (nextAssign == null || !isInConditionalBranch(nextAssign.identifierElement.parent)) {
-            return nextAssignEndOffset
+        val nextAssignStatement = nextAssign?.identifierElement?.parent
+        if (nextAssignStatement == null || !isInConditionalBranch(nextAssignStatement)) {
+            return nextAssignStatement?.textRange?.endOffset ?: Int.MAX_VALUE
         }
         return assignments
             .filter { it.name == assignment.name && it.offset > assignment.offset && !it.isCompound }
@@ -61,6 +57,24 @@ internal object CrystalUnusedVarReads {
             ?.textRange
             ?.endOffset ?: Int.MAX_VALUE
     }
+
+    /**
+     * The next assignment is conditional or inside a block, and no unconditional
+     * assignment follows: nothing can bound the value, so the window stays open.
+     */
+    fun windowStaysOpen(
+        assignments: List<AssignmentInfo>,
+        assignment: AssignmentInfo,
+        nextAssign: AssignmentInfo?,
+    ): Boolean =
+        nextAssign != null &&
+            isInConditionalBranch(nextAssign.identifierElement.parent) &&
+            assignments.none {
+                it.name == assignment.name &&
+                    it.offset > assignment.offset &&
+                    !it.isCompound &&
+                    !isInConditionalBranch(it.identifierElement.parent)
+            }
 
     /**
      * Checks if [element] is inside a conditional construct that may prevent execution

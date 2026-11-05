@@ -286,4 +286,34 @@ class CrystalUnusedVarScopeTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // A block body may run zero times, so the outer value survives inside it and the
+    // block's own write is the only dead one.
+    fun testBlockRebindingReportsOnlyTheBlockWrite() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              value = compute
+              [1].each do |x|
+                <weak_warning descr="Value assigned to 'value' is never used">value</weak_warning> = x
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testProcRebindingWithoutLaterReadIsDead() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer
+              callback = -> { compute }
+              callback.call
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

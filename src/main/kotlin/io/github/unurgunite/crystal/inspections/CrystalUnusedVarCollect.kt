@@ -142,8 +142,7 @@ internal object CrystalUnusedVarCollect {
             .mapNotNull { holder -> parameterNames(holder)?.let { ShadowRange(it, holder.textRange) } }
     }
 
-    /** Parameter names declared by a block, proc or method, or null when it has none. */
-    private fun parameterNames(holder: PsiElement): Set<String>? {
+    internal fun parameterNames(holder: PsiElement): Set<String>? {
         val list =
             when (holder) {
                 is CrystalMethodDefinition -> holder.parameterList?.parameterList
