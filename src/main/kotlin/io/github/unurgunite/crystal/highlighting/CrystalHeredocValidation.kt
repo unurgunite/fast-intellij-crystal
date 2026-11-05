@@ -125,6 +125,7 @@ internal object CrystalHeredocValidation {
     ): Int? {
         val contentBuilder = collectHeredocContent(parent, delimiter)
 
+        if (!ownsHeredoc(parent, delimiter)) return null
         if (contentBuilder.isEmpty()) return null
 
         var minIndent: Int? = null
@@ -137,6 +138,25 @@ internal object CrystalHeredocValidation {
             }
         }
         return minIndent
+    }
+
+    /**
+     * True when [parent] really owns [delimiter]'s heredoc, i.e. it holds both the
+     * HEREDOC_START token and a matching HEREDOC_END as direct children.
+     *
+     * When the heredoc is not parsed as a literal (e.g. inside a brace literal,
+     * which the grammar cannot attach yet), the end token's parent is the whole
+     * enclosing block, sandbox (DUMMY_BLOCK) or file. Scanning that parent mixes
+     * unrelated lines into the indent calculation and reports a bogus "indented
+     * too deeply".
+     */
+    private fun ownsHeredoc(
+        parent: PsiElement,
+        delimiter: String,
+    ): Boolean {
+        val children = parent.node.getChildren(null)
+        return children.any { it.elementType == CrystalTypes.HEREDOC_START } &&
+            children.any { it.elementType == CrystalTypes.HEREDOC_END && it.text.trim() == delimiter }
     }
 
     /** Concatenated HEREDOC_CONTENT up to the matching end delimiter. */

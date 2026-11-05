@@ -33,4 +33,10 @@ public class CrystalTupleLiteralImpl extends ASTWrapperPsiElement implements Cry
     return notNullChild(PsiTreeUtil.getChildOfType(this, CrystalExpressionList.class));
   }
 
+  @Override
+  @Nullable
+  public CrystalHeredocDeferredBody getHeredocDeferredBody() {
+    return PsiTreeUtil.getChildOfType(this, CrystalHeredocDeferredBody.class);
+  }
+
 }

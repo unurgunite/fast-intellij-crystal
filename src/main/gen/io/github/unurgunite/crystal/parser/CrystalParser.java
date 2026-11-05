@@ -6460,7 +6460,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference]
+  // LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body?
   public static boolean hash_literal(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "hash_literal")) return false;
     if (!nextTokenIs(builder_, LBRACE)) return false;
@@ -6472,6 +6472,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && consumeToken(builder_, RBRACE);
     result_ = result_ && hash_literal_5(builder_, level_ + 1);
+    result_ = result_ && hash_literal_6(builder_, level_ + 1);
     exit_section_(builder_, marker_, HASH_LITERAL, result_);
     return result_;
   }
@@ -6501,6 +6502,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = result_ && type_reference(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
+  }
+
+  // heredoc_deferred_body?
+  private static boolean hash_literal_6(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "hash_literal_6")) return false;
+    heredoc_deferred_body(builder_, level_ + 1);
+    return true;
   }
 
   /* ********************************************************** */
@@ -13641,7 +13649,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // LBRACE NLS expression_list NLS RBRACE
+  // LBRACE NLS expression_list NLS RBRACE heredoc_deferred_body?
   public static boolean tuple_literal(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "tuple_literal")) return false;
     if (!nextTokenIs(builder_, LBRACE)) return false;
@@ -13652,8 +13660,16 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = result_ && expression_list(builder_, level_ + 1);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && consumeToken(builder_, RBRACE);
+    result_ = result_ && tuple_literal_5(builder_, level_ + 1);
     exit_section_(builder_, marker_, TUPLE_LITERAL, result_);
     return result_;
+  }
+
+  // heredoc_deferred_body?
+  private static boolean tuple_literal_5(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "tuple_literal_5")) return false;
+    heredoc_deferred_body(builder_, level_ + 1);
+    return true;
   }
 
   /* ********************************************************** */

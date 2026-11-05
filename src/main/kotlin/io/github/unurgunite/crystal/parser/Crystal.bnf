@@ -2021,7 +2021,7 @@ array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 // to the choice point, so keywords/operators still fall through to tokens.
 macro_array_tail ::= LBRACKET NLS &MACRO_CONTROL_BEGIN (!RBRACKET (yield_bare_multiarg | yield_paren_expression | macro_control | macro_interpolation | expression | macro_control_token | COMMA | NEWLINE))+ NLS RBRACKET [OF type_reference array_of_tail?]
 
-hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference]
+hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body?
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens.
@@ -2029,7 +2029,7 @@ hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUB
 // covered by the `{% begin %}`-macro_control_in_expression path — no dedicated
 // tuple alternative (an inline flat alternative makes GrammarKit emit a
 // duplicate getExpressionList() overload pair that breaks javac — verified).
-tuple_literal ::= LBRACE NLS expression_list NLS RBRACE
+tuple_literal ::= LBRACE NLS expression_list NLS RBRACE heredoc_deferred_body?
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens, so
