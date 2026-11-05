@@ -39,13 +39,6 @@ class CrystalTreeSweepTest : BasePlatformTestCase() {
                 .sorted()
                 .toList()
 
-        System.err.println(
-            "SWEEPJVM " +
-                java.lang.management.ManagementFactory
-                    .getRuntimeMXBean()
-                    .inputArguments
-                    .joinToString(" ") { it.removePrefix("-D").substringBefore("=") },
-        )
         val rows = StringBuilder()
         var erroring = 0
         var errors = 0

@@ -74,6 +74,12 @@ import com.intellij.psi.TokenType;
   }
   private final java.util.ArrayDeque<PercentFrame> percentStack = new java.util.ArrayDeque<>();
 
+  // `)`/`]`/`,`/`}` at the end of a heredoc opener line are code, not part of
+  // the heredoc marker text (`h = {<<-PRE, x}`, `foo(<<-TXT)`).
+  private boolean isHeredocLineCloser(char c) {
+    return c == ')' || c == ']' || c == '}' || c == ',';
+  }
+
   // Opens a nested percent literal from inside INTERPOLATION: saves the outer
   // frame, installs the inner literal, enters PERCENT_LITERAL. Mirrors the
   // YYINITIAL `%`-family rules (same token types / interpolation flags).
@@ -947,18 +953,11 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
 }
 
 <HEREDOC_START_LINE> {
-  // Consume the rest of the line after <<-ID (could have more code on same line)
+  // Nothing but `<<-ID` belongs to the marker: the rest of the opener line is
+  // ordinary code (`f(<<-TXT, x)`, `h = {<<-PRE, x}`), so hand it back to
+  // YYINITIAL and let the NEWLINE rule there enter HEREDOC_BODY.
+  .                    { yypushback(yylength()); heredocBodyNext = true; yybegin(YYINITIAL); }
   {NEWLINE}            { yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); }
-  // The heredoc may be the last argument (`foo(<<-TXT)`, `File.write f, <<-TXT)`):
-  // the closing bracket belongs to the call, not the opener line. Emit up to it
-  // and return to YYINITIAL; the NEWLINE rule above then enters HEREDOC_BODY.
-  .* [)\],}]           {
-                         yypushback(1);
-                         int n = yylength();
-                         if (n == 0) { heredocBodyNext = true; yybegin(YYINITIAL); }
-                         else { heredocBodyNext = true; yybegin(YYINITIAL); return track(CrystalTypes.HEREDOC_START); }
-                       }
-  .+                   { return track(CrystalTypes.HEREDOC_START); }
 }
 
 <HEREDOC_BODY> {
