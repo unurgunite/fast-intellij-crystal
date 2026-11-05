@@ -1,6 +1,7 @@
 package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
@@ -58,11 +59,13 @@ object CrystalMethodLookup {
         typeName: String,
         project: Project,
         currentFile: PsiFile? = null,
+        callSite: PsiElement? = null,
     ): List<CrystalMethodDefinition> {
         // Resolved chain first (namespace-aware): short-name index hits mix
         // same-named classes (`Job` = Mosquito::Job + Benchmark::IPS::Job),
         // so candidates are filtered by qualified enclosing per chain link.
-        val chain = CrystalTypeHierarchy.resolveChain(typeName, project, currentFile)
+        // `callSite` lets a short name resolve inside the caller's namespace.
+        val chain = CrystalTypeHierarchy.resolveChain(typeName, project, currentFile, callSite)
         if (chain.isNotEmpty()) {
             val scoped = scopedInitializers(chain, project)
             if (scoped.isNotEmpty()) return scoped

@@ -167,10 +167,11 @@ object CrystalTypeHierarchy {
         name: String,
         project: Project,
         currentFile: PsiFile? = null,
+        callSite: PsiElement? = null,
     ): List<TypeLookupResult> {
         val chain = mutableListOf<TypeLookupResult>()
         val seen = mutableSetOf<String>()
-        var current = findTypeByName(name, project, currentFile)
+        var current = findTypeForCall(name, project, currentFile, callSite)
         while (current != null) {
             // The link itself always belongs to the chain; step() only decides
             // whether the walk continues upward (a parentless type ends here
@@ -405,6 +406,55 @@ internal object CrystalQualifiedLookup {
         val kind = CrystalTypeHierarchy.kindOf(owned) ?: return null
         return CrystalTypeHierarchy.TypeLookupResult(owned, kind)
     }
+}
+
+/**
+ * Resolution from a call site: a short name is first tried against the call's
+ * own namespace (`Result` inside `module Catalyst` -> `Catalyst::Result`, or a
+ * type nested deeper there) before falling back to the index-wide pick.
+ * Same-named types from other shards otherwise win arbitrarily and make every
+ * named argument of the real constructor look unknown.
+ */
+private fun findTypeForCall(
+    name: String,
+    project: Project,
+    currentFile: PsiFile?,
+    callSite: PsiElement?,
+): CrystalTypeHierarchy.TypeLookupResult? {
+    if (callSite != null && !name.contains("::")) {
+        val hits =
+            StubIndex.getElements(
+                CrystalClassIndex.KEY,
+                name,
+                project,
+                GlobalSearchScope.allScope(project),
+                CrystalNamedElement::class.java,
+            )
+        namespacePrefixes(callSite)
+            .firstNotNullOfOrNull { prefix ->
+                hits.firstOrNull {
+                    val namespace = CrystalParentResolve.enclosingNamespaceOf(it)
+                    namespace != null && (namespace == prefix || namespace.startsWith("$prefix::"))
+                }
+            }?.let { element ->
+                CrystalTypeHierarchy.kindOf(element)?.let { return CrystalTypeHierarchy.TypeLookupResult(element, it) }
+            }
+    }
+    return CrystalTypeHierarchy.findTypeByName(name, project, currentFile)
+}
+
+/**
+ * Enclosing namespace paths of [element], innermost first: a call inside
+ * `module A; module B; class C` yields `A::B::C`, `A::B`, `A`. Used to try a
+ * short type name inside the caller's own namespaces before the index-wide
+ * pick. Kept outside [CrystalTypeHierarchy] to stay within the function budget.
+ */
+private fun namespacePrefixes(element: PsiElement): List<String> {
+    val qualified =
+        io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+            .buildQualifiedName(element) ?: return emptyList()
+    val parts = qualified.split("::")
+    return (parts.size downTo 1).map { parts.take(it).joinToString("::") }
 }
 
 /**

@@ -383,7 +383,12 @@ private object CrystalNewConstructorCheck {
         checkArgumentCount: (List<CrystalMethodDefinition>) -> Unit,
     ): Boolean {
         val initMethods =
-            CrystalMethodLookup.getInitializeMethods(className, contextElement.project, contextElement.containingFile)
+            CrystalMethodLookup.getInitializeMethods(
+                className,
+                contextElement.project,
+                contextElement.containingFile,
+                contextElement,
+            )
         if (initMethods.isEmpty()) return false
         if (initMethods.size == 1 && isEmptyFallback(initMethods.first()) && hasParamDeclarations(className, contextElement)) {
             return false
