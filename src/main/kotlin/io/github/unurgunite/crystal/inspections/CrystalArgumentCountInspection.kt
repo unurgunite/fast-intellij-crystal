@@ -424,12 +424,27 @@ private object CrystalNewConstructorCheck {
         holder: ProblemsHolder,
     ): Boolean {
         val file = contextElement.containingFile ?: return false
-        val paramEntries =
+        val paramSets =
             io.github.unurgunite.crystal.type.CrystalParamLookup
-                .paramsForProject(className, contextElement.project, file)
-        if (paramEntries.isEmpty()) return false
-        checkParamArity(paramEntries, arguments, methodNameElement, holder)
+                .paramSetsForProject(className, contextElement.project, file)
+        if (paramSets.isEmpty()) return false
+        // One reopening may accept the call while another does not: report only
+        // when no reopening's generated constructor accepts it.
+        if (paramSets.any { acceptsParamSet(it, arguments) }) return true
+        checkParamArity(paramSets.first(), arguments, methodNameElement, holder)
         return true
+    }
+
+    /** True when [params] describes a constructor callable with [arguments]. */
+    private fun acceptsParamSet(
+        params: List<io.github.unurgunite.crystal.type.CrystalParamLookup.ParamEntry>,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+    ): Boolean {
+        val required = params.count { !it.hasDefault }
+        if (CrystalOverloadEvaluator.effectivePositionalCount(arguments) < required) return false
+        val known = params.map { it.name }.toSet()
+        return CrystalOverloadEvaluator.collectNamedArgNames(arguments).all { it in known } &&
+            CrystalOverloadEvaluator.effectivePositionalCount(arguments) + known.size >= required
     }
 
     /**
