@@ -214,7 +214,8 @@ object CrystalTypeCompatibility {
         val argInner = extractGenericTypeArgs(argType)
         if (paramInner.size != argInner.size) return false
         return paramInner.zip(argInner).all { (p, a) ->
-            isUnboundTypeVariable(p) || isUnboundTypeVariable(a) || isCompatible(a, p, isUnsuffixedNumericLiteral)
+            isUnboundTypeVariable(p) || isUnboundTypeVariable(a) || a.trim() == "self" ||
+                isCompatible(a, p, isUnsuffixedNumericLiteral)
         }
     }
 
@@ -284,7 +285,7 @@ object CrystalTypeCompatibility {
      * or "Hash(String, Int32)" → ["String", "Int32"].
      * Handles nested parens by tracking depth.
      */
-    private fun extractGenericTypeArgs(type: String): List<String> {
+    internal fun extractGenericTypeArgs(type: String): List<String> {
         val openIdx = type.indexOf('(')
         val closeIdx = type.lastIndexOf(')')
         if (openIdx < 0 || closeIdx < 0 || closeIdx <= openIdx) return emptyList()
@@ -359,9 +360,19 @@ internal object BareGenericCheck {
         normalizedParam: String,
         isUnsuffixedNumericLiteral: Boolean,
     ): Boolean {
-        // `self` (`Array#reverse!` returns it) is not tracked by the resolver,
-        // so it is never a definite mismatch.
-        if (argType.trim() == "self") return true
+        // `self` (`Array#reverse!`, `Hash#values` return it) is not tracked by
+        // the resolver, so it is never a definite mismatch — neither as the
+        // whole argument nor as a generic element. An element-`self` argument
+        // (`Array(self)` from `Enumerable#reduce`, `Hash(String, self)` from
+        // `Hash#reduce`) has no known shape at all.
+        val trimmedArg = argType.trim()
+        if (trimmedArg == "self" || (
+                trimmedArg.contains("(") &&
+                    CrystalTypeCompatibility.extractGenericTypeArgs(trimmedArg).any { it.trim() == "self" }
+            )
+        ) {
+            return true
+        }
         expandKnownAlias(argType)?.let {
             return CrystalTypeCompatibility.isCompatible(it, normalizedParam, isUnsuffixedNumericLiteral)
         }
