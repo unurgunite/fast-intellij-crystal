@@ -216,4 +216,20 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Int32", "String"))
         assertFalse(compat("Hash(String, String)", "Array(String)"))
     }
+
+    fun testSelfInsideGenericArgumentIsLenient() {
+        // `self` as a generic element, not a whole argument: the resolver does
+        // not track it, so it is never a definite mismatch.
+        assertTrue(compat("Array(self)", "Array(ACON::Command) | Array(String)"))
+        assertTrue(compat("Array(self)", "AVD::Constraint"))
+        assertTrue(compat("Hash(Int32, self)", "Hash"))
+        assertTrue(compat("Hash(String, self)", "JSON::PullParser | Int"))
+        assertTrue(compat("Array(self)", "String"))
+        assertTrue(compat("Hash(String, self)", "Hash(String, Int32)"))
+    }
+
+    fun testSelfInsideGenericDoesNotHideRealMismatch() {
+        assertFalse(compat("Array(Int32)", "Array(String)"))
+        assertFalse(compat("Hash(String, Int32)", "Hash(String, Bool)"))
+    }
 }
