@@ -3,14 +3,18 @@ package io.github.unurgunite.crystal.type
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.stubs.StubIndex
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
+import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 
 /**
  * `param` macro declarations as virtual constructor parameters.
@@ -66,12 +70,64 @@ internal object CrystalParamLookup {
         currentFile: PsiFile,
     ): List<ParamEntry> {
         paramsFor(typeName, currentFile).takeIf { it.isNotEmpty() }?.let { return it }
-        val definition =
-            CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile)?.element
-                ?: return emptyList()
-        val definitionFile = definition.containingFile ?: return emptyList()
-        if (definitionFile.virtualFile == currentFile.virtualFile) return emptyList()
-        return paramsFor(typeName, definitionFile)
+        // A Crystal type may be reopened: `class Job` with `param count : Int32`
+        // in one file and `param attempt : Int64 = 1` in another. Resolving a
+        // single declaration reported the other closure's params as unknown
+        // and its own as required, so every reopening is merged.
+        val files =
+            reopenedDefinitionFiles(typeName, project).ifEmpty {
+                val definition =
+                    CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile)?.element
+                        ?: return emptyList()
+                listOfNotNull(definition.containingFile)
+            }
+        return files
+            .filter { it.virtualFile != currentFile.virtualFile }
+            .flatMap { paramsFor(typeName, it) }
+    }
+
+    /**
+     * The same lookup split per reopening: each reopening declares its own
+     * generated `initialize`, so params of different reopenings are separate
+     * overloads and must not be merged into one mandatory-param list.
+     */
+    fun paramSetsForProject(
+        typeName: String,
+        project: Project,
+        currentFile: PsiFile,
+    ): List<List<ParamEntry>> {
+        val local = paramsFor(typeName, currentFile)
+        if (local.isNotEmpty()) return listOf(local)
+        val files =
+            reopenedDefinitionFiles(typeName, project).ifEmpty {
+                val definition =
+                    CrystalTypeHierarchy.findTypeByName(typeName, project, currentFile)?.element
+                        ?: return emptyList()
+                listOfNotNull(definition.containingFile)
+            }
+        return files.mapNotNull { paramsFor(typeName, it).takeIf { set -> set.isNotEmpty() } }
+    }
+
+    /**
+     * Every file that opens a type with this short name. Reopenings are
+     * separate PSI elements in the same `CrystalClassIndex` bucket.
+     */
+    private fun reopenedDefinitionFiles(
+        typeName: String,
+        project: Project,
+    ): List<PsiFile> {
+        val short = typeName.substringAfterLast("::")
+        val files = LinkedHashSet<PsiFile>()
+        for (element in StubIndex.getElements(
+            CrystalClassIndex.KEY,
+            short,
+            project,
+            GlobalSearchScope.allScope(project),
+            CrystalNamedElement::class.java,
+        )) {
+            element.containingFile?.let { files.add(it) }
+        }
+        return files.toList()
     }
 
     /** All `param` calls of [file] grouped by enclosing type name. */
