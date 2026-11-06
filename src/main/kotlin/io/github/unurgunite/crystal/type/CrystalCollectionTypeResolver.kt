@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.psi.CrystalRegexExpression
 import io.github.unurgunite.crystal.psi.CrystalSizeofExpression
 import io.github.unurgunite.crystal.psi.CrystalSymbolStringExpression
 import io.github.unurgunite.crystal.psi.CrystalTupleLiteral
+import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.ResolvedType
 import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver.resolveType
 
@@ -43,7 +44,7 @@ object CrystalCollectionTypeResolver {
         if (typeRefs.isNotEmpty()) return ResolvedType("Array(${firstUnionMember(typeRefs.first().text)})")
 
         // Infer from elements
-        val elements = expr.expressionList?.expressionList ?: emptyList()
+        val elements = expr.expressionList?.expressionList.orEmpty()
         if (elements.isEmpty()) return null
 
         val elementTypes = elements.mapNotNull { resolveType(it) }
@@ -66,10 +67,10 @@ object CrystalCollectionTypeResolver {
             return ResolvedType("Hash($keyType, $valueType)")
         }
 
-        val entries = expr.hashEntryList?.hashEntryList ?: emptyList()
+        val entries = expr.hashEntryList?.hashEntryList.orEmpty()
         if (entries.isEmpty()) return null
 
-        val keyTypes = entries.mapNotNull { resolveKeyType(it.expressionList.getOrNull(0)) }
+        val keyTypes = entries.mapNotNull { resolveKeyType(it, it.expressionList.getOrNull(0)) }
         val valueTypes = entries.mapNotNull { it.expressionList.getOrNull(1)?.let { e -> resolveType(e) } }
         if (keyTypes.size != entries.size || valueTypes.size != entries.size) return null
 
@@ -84,16 +85,24 @@ object CrystalCollectionTypeResolver {
         }
     }
 
-    /** Hash key type: bare identifiers are symbols, anything else resolves normally. */
-    private fun resolveKeyType(keyExpr: PsiElement?): ResolvedType? {
+    /**
+     * Hash key type: in the `key: value` sugar a bare identifier IS a symbol,
+     * but in `key => value` it is an ordinary expression — `{key => ">"}`
+     * (redis streaming_spec) hashes a String, not a Symbol.
+     */
+    private fun resolveKeyType(
+        entry: PsiElement,
+        keyExpr: PsiElement?,
+    ): ResolvedType? {
         if (keyExpr == null) return null
+        val isFatArrow = entry.node.findChildByType(CrystalTypes.DOUBLE_ARROW) != null
         val keyText = keyExpr.text.trim()
-        if (keyText.matches(Regex("^[a-zA-Z_]\\w*[?!]?$"))) return ResolvedType("Symbol")
+        if (!isFatArrow && keyText.matches(Regex("^[a-zA-Z_]\\w*[?!]?$"))) return ResolvedType("Symbol")
         return resolveType(keyExpr)
     }
 
     private fun resolveTupleLiteral(expr: CrystalTupleLiteral): ResolvedType? {
-        val elements = expr.expressionList?.expressionList ?: return null
+        val elements = expr.expressionList.expressionList
         if (elements.isEmpty()) return null
 
         val types = elements.mapNotNull { resolveType(it) }
@@ -103,13 +112,10 @@ object CrystalCollectionTypeResolver {
         return ResolvedType("Tuple($typeList)")
     }
 
-    /** First union member of an annotation, with generic arguments stripped. */
+    /** First union member of an annotation, generics kept (depth-aware split). */
     private fun firstUnionMember(annotation: String): String =
-        annotation
-            .trim()
-            .split("|")
-            .first()
-            .trim()
-            .replace(Regex("""\(.*\)"""), "")
-            .trim()
+        io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
+            .splitTypeNames(annotation.trim())
+            .firstOrNull()
+            ?.trim() ?: annotation.trim()
 }

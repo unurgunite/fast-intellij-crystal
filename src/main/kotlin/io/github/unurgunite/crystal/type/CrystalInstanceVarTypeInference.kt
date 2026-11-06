@@ -171,7 +171,7 @@ private fun propertyDeclEntry(prop: CrystalPropertyDeclaration): Pair<String, Li
     val declName = propertyDeclName(prop) ?: return null
     val bare = declName.removePrefix("@@").removePrefix("@")
     if (bare.isEmpty() || bare == declName) return null
-    val typeText = prop.typeReference?.text ?: return null
+    val typeText = prop.typeReference.text ?: return null
     return "${qualifiedEnclosing(prop)}#$bare" to splitTypeNames(typeText)
 }
 

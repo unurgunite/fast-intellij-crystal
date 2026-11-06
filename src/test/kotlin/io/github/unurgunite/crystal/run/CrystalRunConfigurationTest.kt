@@ -17,12 +17,15 @@ class CrystalRunConfigurationTest : BasePlatformTestCase() {
     fun testFactoryDefaultCommands() {
         val type = CrystalRunConfigurationType()
         val byId = type.configurationFactories.associateBy { it.id }
-        assertEquals(CrystalCommand.RUN, (byId["Crystal Run"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command)
-        assertEquals(
-            CrystalCommand.BUILD,
-            (byId["Crystal Build"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command,
-        )
-        assertEquals(CrystalCommand.SPEC, (byId["Crystal Spec"]!!.createTemplateConfiguration(project) as CrystalRunConfiguration).command)
+        val run =
+            byId.getValue("Crystal Run").createTemplateConfiguration(project) as CrystalRunConfiguration
+        assertEquals(CrystalCommand.RUN, run.command)
+        val build =
+            byId.getValue("Crystal Build").createTemplateConfiguration(project) as CrystalRunConfiguration
+        assertEquals(CrystalCommand.BUILD, build.command)
+        val spec =
+            byId.getValue("Crystal Spec").createTemplateConfiguration(project) as CrystalRunConfiguration
+        assertEquals(CrystalCommand.SPEC, spec.command)
     }
 
     fun testOptionDefaults() {
@@ -32,7 +35,7 @@ class CrystalRunConfigurationTest : BasePlatformTestCase() {
         assertEquals("", config.environmentVariables)
         assertEquals("crystal", config.crystalPath)
         assertEquals(0, config.specLine)
-        assertEquals(project.basePath ?: "", config.workingDirectory)
+        assertEquals(project.basePath.orEmpty(), config.workingDirectory)
     }
 
     fun testOptionSettersRoundTrip() {

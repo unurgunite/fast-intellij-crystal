@@ -42,13 +42,12 @@ internal object CrystalRecordArgumentCheck {
         // If any argument has an unresolvable splat/double-splat, skip the check entirely
         if (CrystalOverloadEvaluator.hasUnresolvedSplat(arguments)) return
 
-        val effectivePositionalCount = CrystalOverloadEvaluator.effectivePositionalCount(arguments)
-        val namedArgNames = CrystalOverloadEvaluator.collectNamedArgNames(arguments)
-        val effectiveArgCount = effectivePositionalCount + namedArgNames.size
+        val shape = CallShape.of(arguments)
+        val namedArgNames = shape.namedArgNames
 
         if (checkUnknownNamedArgs(recordParams, arguments, namedArgNames, holder)) return
-        if (checkMissingArgs(recordParams, namedArgNames, effectivePositionalCount, methodNameElement, holder)) return
-        checkExcessArgs(recordParams, arguments, namedArgNames, effectivePositionalCount, effectiveArgCount, holder)
+        if (checkMissingArgs(recordParams, namedArgNames, shape.positionalCount, methodNameElement, holder)) return
+        checkExcessArgs(recordParams, arguments, shape, holder)
     }
 
     /** Unknown named args reported per argument. True when handled (caller stops). */
@@ -100,22 +99,36 @@ internal object CrystalRecordArgumentCheck {
     private fun checkExcessArgs(
         recordParams: List<ParamInfo>,
         arguments: List<ArgumentInfo>,
-        namedArgNames: Set<String>,
-        effectivePositionalCount: Int,
-        effectiveArgCount: Int,
+        shape: CallShape,
         holder: ProblemsHolder,
     ) {
         val paramNames = recordParams.map { it.name }.toSet()
-        val maxPositional = recordParams.size - namedArgNames.intersect(paramNames).size
-        if (effectivePositionalCount <= maxPositional) return
-        for (i in (arguments.size - (effectivePositionalCount - maxPositional)) until arguments.size) {
+        val maxPositional = recordParams.size - shape.namedArgNames.intersect(paramNames).size
+        if (shape.positionalCount <= maxPositional) return
+        for (i in (arguments.size - (shape.positionalCount - maxPositional)) until arguments.size) {
             val argExpr = arguments[i].element
             val target = CrystalCallArguments.highlightTarget(argExpr)
             holder.registerProblem(
                 target,
-                "Too many arguments: expected at most ${recordParams.size}, got $effectiveArgCount",
+                "Too many arguments: expected at most ${recordParams.size}, got ${shape.argCount}",
                 ProblemHighlightType.GENERIC_ERROR,
             )
+        }
+    }
+
+/** Arity facts about one call site, derived once per check. */
+    private class CallShape(
+        val positionalCount: Int,
+        val namedArgNames: Set<String>,
+    ) {
+        val argCount: Int get() = positionalCount + namedArgNames.size
+
+        companion object {
+            fun of(arguments: List<ArgumentInfo>): CallShape =
+                CallShape(
+                    CrystalOverloadEvaluator.effectivePositionalCount(arguments),
+                    CrystalOverloadEvaluator.collectNamedArgNames(arguments),
+                )
         }
     }
 }

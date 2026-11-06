@@ -12,7 +12,7 @@ public class CrystalVisitor extends PsiElementVisitor {
   }
 
   public void visitAliasDefinition(@NotNull CrystalAliasDefinition o) {
-    visitPsiElement(o);
+    visitNamedElement(o);
   }
 
   public void visitAnnotationDefinition(@NotNull CrystalAnnotationDefinition o) {
@@ -196,6 +196,10 @@ public class CrystalVisitor extends PsiElementVisitor {
   }
 
   public void visitHashLiteral(@NotNull CrystalHashLiteral o) {
+    visitPsiElement(o);
+  }
+
+  public void visitHeredocDeferredBody(@NotNull CrystalHeredocDeferredBody o) {
     visitPsiElement(o);
   }
 

@@ -1,6 +1,6 @@
 package io.github.unurgunite.crystal.psi.stdlib
 
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
@@ -53,12 +53,12 @@ internal object CrystalStdlibFileResolve {
         val file =
             VfsUtilCore
                 .findRelativeFile(relPath, root) ?: return null
-        return runReadAction<SymbolLoc?> {
+        return ReadAction.compute<SymbolLoc?, Throwable> {
             val psi =
                 PsiManager
                     .getInstance(project)
-                    .findFile(file) ?: return@runReadAction null
-            val off = findOffsetInPsi(psi, className, memberName) ?: return@runReadAction null
+                    .findFile(file) ?: return@compute null
+            val off = findOffsetInPsi(psi, className, memberName) ?: return@compute null
             SymbolLoc(relPath, off)
         }
     }
@@ -133,15 +133,15 @@ internal object CrystalStdlibFileResolve {
         val file =
             VfsUtilCore
                 .findRelativeFile(loc.relPath, root) ?: return null
-        return runReadAction<PsiElement?> {
+        return ReadAction.compute<PsiElement?, Throwable> {
             val psi =
                 PsiManager
                     .getInstance(project)
-                    .findFile(file) ?: return@runReadAction null
-            val leaf = psi.findElementAt(loc.offset) ?: return@runReadAction null
+                    .findFile(file) ?: return@compute null
+            val leaf = psi.findElementAt(loc.offset) ?: return@compute null
             if (leaf !is PsiNameIdentifierOwner) {
                 val p = leaf.parent
-                if (p is PsiNameIdentifierOwner) return@runReadAction p
+                if (p is PsiNameIdentifierOwner) return@compute p
             }
             leaf
         }

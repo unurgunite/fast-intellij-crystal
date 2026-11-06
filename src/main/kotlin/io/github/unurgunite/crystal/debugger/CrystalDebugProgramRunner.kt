@@ -52,12 +52,18 @@ class CrystalDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
                 launchArgs.arguments,
             )
 
-        val session =
+        // NOTE: XDebuggerManager.startSession is deprecated — the session
+        // builder is the supported entry-point (Marketplace verification).
+        // Same behavior (unnamed session, shown tab): the builder defaults
+        // match what startSession did internally.
+        val started =
             XDebuggerManager
                 .getInstance(environment.project)
-                .startSession(environment, starter)
+                .newSessionBuilder(starter)
+                .environment(environment)
+                .startSession()
 
-        return session.runContentDescriptor
+        return started.runContentDescriptor
     }
 
     private fun ensureProviderRegistered(environment: ExecutionEnvironment) {

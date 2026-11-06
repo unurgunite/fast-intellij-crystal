@@ -32,10 +32,13 @@ class CrystalRunLineMarkerProvider : RunLineMarkerContributor() {
             }
         }
 
+        // Non-scheduled ctor (Icon, actions, tooltip): the (Icon, Function,
+        // AnAction...) overload is scheduled for removal (Marketplace
+        // verification). Vararg passes the precomputed actions array through.
         return Info(
             AllIcons.RunConfigurations.TestState.Run,
+            actions,
             tooltipProvider,
-            *actions,
         )
     }
 

@@ -31,8 +31,8 @@ internal object CrystalAssignmentIndex {
             CachedValuesManager.getCachedValue(file) {
                 CachedValueProvider.Result(indexFile(file), PsiModificationTracker.MODIFICATION_COUNT)
             }
-        val plain = byName[name] ?: emptyList()
-        val ivar = byName["@$name"] ?: emptyList()
+        val plain = byName[name].orEmpty()
+        val ivar = byName["@$name"].orEmpty()
         if (plain.isEmpty()) return ivar
         if (ivar.isEmpty()) return plain
         return (plain + ivar).sortedBy { it.textOffset }

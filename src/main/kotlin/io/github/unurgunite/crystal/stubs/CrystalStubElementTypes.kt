@@ -9,6 +9,7 @@ import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.stubs.StubInputStream
 import com.intellij.psi.stubs.StubOutputStream
 import io.github.unurgunite.crystal.CrystalLanguage
+import io.github.unurgunite.crystal.psi.CrystalAliasDefinition
 import io.github.unurgunite.crystal.psi.CrystalClassDefinition
 import io.github.unurgunite.crystal.psi.CrystalConstantAssignment
 import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
@@ -17,6 +18,7 @@ import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.impl.CrystalAliasDefinitionImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalClassDefinitionImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalConstantAssignmentImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalEnumDefinitionImpl
@@ -353,4 +355,45 @@ private fun extractEnclosingNamespace(element: PsiElement): String? {
     }
     // If there are multiple CONSTANTS (e.g. Foo::Bar), the first is the enclosing namespace
     return if (constants.size >= 2) constants.first() else null
+}
+
+/**
+ * `alias Name = Target` declarations. Stub-based so the alias index can answer
+ * "what does this name expand to?" without touching the AST.
+ */
+class CrystalAliasDefinitionElementType(
+    debugName: String,
+) : IStubElementType<CrystalAliasDefinitionStub, CrystalAliasDefinition>(debugName, CrystalLanguage) {
+    override fun getExternalId(): String = "crystal.ALIAS_DEFINITION"
+
+    override fun serialize(
+        stub: CrystalAliasDefinitionStub,
+        dataStream: StubOutputStream,
+    ) {
+        dataStream.writeName(stub.name)
+    }
+
+    override fun deserialize(
+        dataStream: StubInputStream,
+        parentStub: StubElement<*>?,
+    ): CrystalAliasDefinitionStub {
+        val name = dataStream.readNameString()
+        return CrystalAliasDefinitionStub(parentStub, this, name)
+    }
+
+    override fun createStub(
+        psi: CrystalAliasDefinition,
+        parentStub: StubElement<out PsiElement>?,
+    ): CrystalAliasDefinitionStub = CrystalAliasDefinitionStub(parentStub, this, psi.name)
+
+    override fun createPsi(stub: CrystalAliasDefinitionStub): CrystalAliasDefinition = CrystalAliasDefinitionImpl(stub, this)
+
+    override fun indexStub(
+        stub: CrystalAliasDefinitionStub,
+        sink: IndexSink,
+    ) {
+        stub.name?.let { sink.occurrence(CrystalAliasIndex.KEY, it) }
+    }
+
+    override fun shouldCreateStub(node: ASTNode?): Boolean = true
 }

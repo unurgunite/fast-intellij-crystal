@@ -10,6 +10,9 @@ public interface CrystalHashLiteral extends PsiElement {
   @Nullable
   CrystalHashEntryList getHashEntryList();
 
+  @Nullable
+  CrystalHeredocDeferredBody getHeredocDeferredBody();
+
   @NotNull
   List<CrystalTypeReference> getTypeReferenceList();
 

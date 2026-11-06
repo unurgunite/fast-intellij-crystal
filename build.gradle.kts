@@ -61,21 +61,27 @@ intellijPlatform {
     }
 
     pluginVerification {
-        // NOTE: the plugin name must NOT contain the word "Plugin" — the IDE
-        // rejects such descriptors at load time ("Invalid plugin descriptor").
-        // "Fast Crystal" keeps the differentiator without the banned word.
         ides {
-            // Verify only against RELEASED IDEs in the supported range (sinceBuild
-            // 261 -> 261.x, 262.x): the default recommended() set also pulls EAP
-            // builds (263-EAP), whose platform APIs may legitimately differ from
-            // the release the plugin compiles against (intellijIdea 2026.1.3) —
-            // e.g. the DapBreakpointsDescription ctor, unresolved on 263-EAP
-            // while 261/262 verify Compatible. EAP drift is not a release
-            // blocker; a real incompatibility with a released IDE still fails.
+            // Verify against RELEASED IDEs in the supported range (sinceBuild
+            // 261 -> 261.x, 262.x), IU Ultimate AND RubyMine: the SM
+            // test-runner hierarchy resolves transitively on IDEA but NOT on
+            // RubyMine, so an IU-only matrix stayed green while Marketplace
+            // flagged 14 binary-compatibility problems on RM-262. The default
+            // recommended() set also pulls EAP builds (263-EAP), whose
+            // platform APIs may legitimately differ from the release the
+            // plugin compiles against (intellijIdea 2026.1.3) — e.g. the
+            // DapBreakpointsDescription ctor, unresolved on 263-EAP while
+            // 261/262 verify Compatible. EAP drift is not a release blocker;
+            // a real incompatibility with a released IDE still fails.
             select {
-                types.set(listOf(IntelliJPlatformType.IntellijIdeaUltimate))
+                types.set(listOf(IntelliJPlatformType.IntellijIdeaUltimate, IntelliJPlatformType.RubyMine))
                 channels.set(listOf(ProductRelease.Channel.RELEASE))
                 sinceBuild.set("261")
+                // Verified range is 261.x-262.x (sinceBuild 261). The 263 line
+                // is only available as EAP, and 263.7307.200 already renamed
+                // DapBreakpointsDescription's ctor (added functionBreakpointType),
+                // so it reports expected drift rather than a release blocker.
+                untilBuild.set("262.*")
             }
         }
     }
@@ -162,7 +168,10 @@ tasks {
 
 val defaultTest = tasks.named<Test>("test")
 
-fun Test.stdlibTool(name: String) {
+fun Test.stdlibTool(
+    name: String,
+    className: String = "StdlibGraphToolTest",
+) {
     group = "stdlib"
     // Same no-cache rule as the main suite: results depend on the installed
     // toolchain (stdlib contents), which the build cache cannot see.
@@ -170,8 +179,8 @@ fun Test.stdlibTool(name: String) {
     val dt = defaultTest.get()
     testClassesDirs = dt.testClassesDirs
     classpath = dt.classpath
-    jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g" + "-Dgrammar.kit.gpub.max.level=6000")
-    filter.includeTestsMatching("*StdlibGraphToolTest.$name")
+    jvmArgs(dt.allJvmArgs.filterNot { it.startsWith("-Xmx") } + "-Xmx4g")
+    filter.includeTestsMatching("*$className.$name")
     // Same sandbox setup as the `test` task: the IntelliJ test framework
     // resolves the plugin-under-test from the prepared sandbox. Without this
     // the stdlib tasks run un-instrumented classes against an empty sandbox
@@ -184,6 +193,19 @@ tasks.register<Test>("stdlibStructure") { stdlibTool("testBuildStructureJson") }
 tasks.register<Test>("stdlibCheckFile") {
     stdlibTool("testCheckSingleFile")
     systemProperty("graph.file", System.getProperty("graph.file") ?: "")
+}
+
+// Whole-tree parser sweep: the regression metric for grammar edits.
+tasks.register<Test>("sweepTree") {
+    group = "verification"
+    outputs.cacheIf { false }
+    val dt = defaultTest.get()
+    testClassesDirs = dt.testClassesDirs
+    classpath = dt.classpath
+    jvmArgs(dt.allJvmArgs)
+    filter.includeTestsMatching("*CrystalTreeSweepTest.testSweepTree")
+    systemProperty("graph.root", System.getProperty("graph.root") ?: "")
+    testLogging { showStandardStreams = true }
 }
 
 kotlin {

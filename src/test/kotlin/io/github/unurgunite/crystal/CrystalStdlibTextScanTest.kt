@@ -179,11 +179,11 @@ class CrystalStdlibTextScanTest {
         val defText = "lib C\n  fun sleep(x : Int32) : Int32\nend\ndef sleep(x)\nend\n"
         val funFirst = scan(text = defText)
         // Offset points at the method name, past the `def ` prefix.
-        assertEquals(defText.indexOf("def sleep") + 4, funFirst["sleep"]!!.offset)
+        assertEquals(defText.indexOf("def sleep") + 4, funFirst.getValue("sleep").offset)
         val revText = "def sleep(x)\nend\nlib C\n  fun sleep(x : Int32) : Int32\nend\n"
         val defFirst = scan(text = revText)
         // `fun` never overwrites: the earlier `def` offset survives.
-        assertEquals(revText.indexOf("def sleep") + 4, defFirst["sleep"]!!.offset)
+        assertEquals(revText.indexOf("def sleep") + 4, defFirst.getValue("sleep").offset)
         assertNotNull(defFirst["C#sleep"])
         assertNotNull(funFirst["C#sleep"])
     }

@@ -38,9 +38,14 @@ object CrystalLiteralTypeInference {
     /** String, char and symbol literals (quote-prefixed shapes). */
     private fun inferQuotedLiteralType(text: String): String? =
         when {
-            text.startsWith("\"") -> "String"
+            // Full-match only: `"4567".to_i` starts with a quote but is a
+            // call, not a literal — startsWith stole its type as String.
+            text.matches(Regex("\"(?:[^\"\\\\]|\\\\.)*\"")) -> "String"
+
             text.startsWith("'") && text.endsWith("'") && text.length >= MIN_QUOTED_CHAR_LENGTH -> "Char"
-            text.startsWith(":") && !text.startsWith("::") -> "Symbol"
+
+            text.matches(Regex(":[a-zA-Z_]\\w*[?!]?")) -> "Symbol"
+
             else -> null
         }
 

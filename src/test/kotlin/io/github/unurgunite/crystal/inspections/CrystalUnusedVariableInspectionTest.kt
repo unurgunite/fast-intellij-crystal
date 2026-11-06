@@ -492,4 +492,79 @@ class CrystalUnusedVariableInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    fun testAssignedInLoopReadAfterLoop() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(rows)
+              config = nil
+              rows.each do |row|
+                config = row.config
+              end
+              Ameba.run(config)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testAssignedAndReadInsideBlock() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(items)
+              items.each do |item|
+                name = item.name
+                puts name
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testReassignedInLoopAndReadInsideSameBlock() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(items)
+              state = :start
+              items.each do |item|
+                state = :running
+                handle state
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testGenuinelyDeadReassignmentStillWarns() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo
+              <weak_warning descr="Value assigned to 'x' is never used">x</weak_warning> = 1
+              x = 2
+              puts x
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testValueAssignedInBlockReadAfterBlock() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(list)
+              value = nil
+              list.each { |x| value = x * 2 }
+              puts value
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

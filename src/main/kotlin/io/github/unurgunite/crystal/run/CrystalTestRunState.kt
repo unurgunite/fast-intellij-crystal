@@ -37,7 +37,8 @@ class CrystalTestRunState(
         executor: Executor,
         runner: ProgramRunner<*>,
     ): ExecutionResult {
-        junitOutputFile = Files.createTempFile("crystal_junit", ".xml").toFile()
+        val junitFile = Files.createTempFile("crystal_junit", ".xml").toFile()
+        junitOutputFile = junitFile
         val processHandler = startProcess()
 
         // Clear cache to ensure fresh indexing after file modifications
@@ -55,7 +56,7 @@ class CrystalTestRunState(
                 emptyMap()
             }
 
-        val properties = CrystalTestConsoleProperties(configuration, executor, testLocations, junitOutputFile!!)
+        val properties = CrystalTestConsoleProperties(configuration, executor, testLocations, junitFile)
         val console =
             SMTestRunnerConnectionUtil.createAndAttachConsole(
                 "CrystalSpec",

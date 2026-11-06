@@ -127,12 +127,11 @@ class CrystalDotCallReference(
         if (qualifiedName == null || info.classNames.size != 1) {
             return matchingByName.firstOrNull()
         }
-        return matchingByName
-            .filter { method ->
-                val enclosing = CrystalPsiUtils.getEnclosingType(method)
-                enclosing != null && CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName &&
-                    (!info.isGlobal || !isLocalToCallSite(enclosing, element))
-            }.firstOrNull()
+        return matchingByName.firstOrNull { method ->
+            val enclosing = CrystalPsiUtils.getEnclosingType(method)
+            enclosing != null && CrystalPsiUtils.buildQualifiedName(enclosing) == qualifiedName &&
+                (!info.isGlobal || !isLocalToCallSite(enclosing, element))
+        }
     }
 
     /**

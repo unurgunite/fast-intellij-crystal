@@ -1,6 +1,10 @@
 package io.github.unurgunite.crystal.type
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.tree.IElementType
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
@@ -13,18 +17,120 @@ import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
 internal object CrystalDotCallScan {
     /**
      * Detects if a `CrystalCallArgs`/`CrystalBareArgumentList` is part of a DOT-call pattern.
-     * Returns null when the parent is already a call expression (handled elsewhere).
+     * Returns null when the parent is already a call expression (handled elsewhere),
+     * or when the shape is a binary-operator tail (`Time.utc - 1.second` parses
+     * as DOT_CALL `Time.utc` + detached `- 1.second`: `-` is an operator, not a
+     * method name — checking it as a 1-arg call of a 0-param method is a false
+     * "Too many arguments").
      */
     fun detectDotCall(argsElement: PsiElement): DotCallInfo? {
+        // Operator RHS masquerading as args (`@@last_call = Time.utc - 1.second`
+        // parses as DOT_CALL_ACCESS `.utc` + holder `- 1.second`): the holder
+        // starts with a binary-operator token, so it is the operator's RHS,
+        // never a call argument list. Skip before name/receiver matching.
+        if (startsWithOperator(argsElement)) return null
+        return detectNamedDotCall(argsElement)
+    }
+
+    /**
+     * Receiver + method name of a paren-less dot call (`Foo::Bar.new`,
+     * `IO::Memory.new`, `x.empty?`). Such calls have no args holder, so they
+     * never reach [detectDotCall]; the arity checks then skip them entirely
+     * even though the receiver IS resolvable. Returns null when the call has
+     * a `CALL_ARGS` child (that shape is handled elsewhere) or when no
+     * receiver precedes the DOT.
+     */
+    fun detectParenlessDotCall(dotCall: CrystalDotCallAccess): DotCallInfo? {
+        // The holder's `DOT` and name are LEAVES, not child nodes, so walk the
+        // leaf chain instead of `children`. Only the truly argument-less form
+        // belongs here: `Widget.new(...)` keeps CALL_ARGS inside the holder and
+        // the bare form `Widget.new 1, 2` carries a BARE_ARGUMENT_LIST.
+        val nameNode = findChildLeaf(dotCall, CrystalTypes.DOT)?.nextSibling
+        val isArgumentsCarrier =
+            dotCall.node.findChildByType(CrystalTypes.CALL_ARGS) != null ||
+                dotCall.node.findChildByType(CrystalTypes.BARE_ARGUMENT_LIST) != null
+        if (nameNode == null || nameNode.node.elementType !in DOT_NAME_TYPES || isArgumentsCarrier) return null
+        // No method-name sibling exists here (the name is INSIDE the holder),
+        // so resolve the receiver from the holder's left neighbour.
+        val receiverName = receiverTypeName(CrystalPsiUtils.prevMeaningfulSibling(dotCall) ?: return null)
+        return receiverName?.let { DotCallInfo(it, nameNode.text, nameNode) }
+    }
+
+    /** First direct leaf child of [parent] with [type], or null. */
+    private fun findChildLeaf(
+        parent: PsiElement,
+        type: IElementType,
+    ): PsiElement? {
+        var child: PsiElement? = PsiTreeUtil.firstChild(parent)
+        while (child != null) {
+            if (child.node.elementType == type) return child
+            child = child.nextSibling
+        }
+        return null
+    }
+
+    /** Name token kinds a paren-less dot call can carry. */
+    private val DOT_NAME_TYPES =
+        setOf(CrystalTypes.IDENTIFIER, CrystalTypes.CONSTANT, CrystalTypes.CLASS_VAR, CrystalTypes.INSTANCE_VAR)
+
+    /** Name + receiver match once the operator-RHS shape is ruled out. */
+    private fun detectNamedDotCall(argsElement: PsiElement): DotCallInfo? {
         val methodNameNode = findDetachedMethodName(argsElement) ?: return null
+        if (isOperatorTail(argsElement, methodNameNode)) return null
         val receiver = findDotCallReceiver(methodNameNode) ?: return null
-        val receiverName = receiver.text ?: return null
+        val receiverName = receiverTypeName(receiver) ?: return null
         return DotCallInfo(receiverName, methodNameNode.text, methodNameNode)
     }
 
     /**
+     * Receiver name without generic arguments and without `?`/`*`: type lookups
+     * take the bare class name (`Hash(String, Int32)` -> `Hash`), since no
+     * `Hash(String, Int32)` definition exists to resolve methods against.
+     */
+    internal fun receiverTypeName(receiver: PsiElement): String? {
+        // A qualified receiver is a chain of NAMESPACE_ACCESS nodes where each
+        // node owns only its own segment (`::D` for `A::B::C::D`), so the dot
+        // call would resolve against `::D` alone. Rebuild the whole path first.
+        if (receiver is io.github.unurgunite.crystal.psi.CrystalNamespaceAccess) {
+            val path =
+                io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
+                    .buildNamespacePath(receiver)
+            if (path.isNotEmpty()) {
+                return path
+                    .substringBefore('(')
+                    .removeSuffix("?")
+                    .ifEmpty { null }
+            }
+        }
+        val text = receiver.text ?: return null
+        val bare =
+            text
+                .substringBefore('(')
+                .trim()
+                .removeSuffix("?")
+                .removePrefix("*")
+                .trim()
+        return bare.ifEmpty { null }
+    }
+
+    /**
+     * True when [methodNameNode] is a binary operator whose operand list is the
+     * detached [argsElement] (`- 1.second`, `+ x`, `* 2`): the args holder is
+     * the operator's RHS, not a call argument list. Operator calls are
+     * resolved through the receiver type, never through arity checks.
+     * File-level helper keeps detectDotCall under detekt's complexity budget.
+     */
+    private fun isOperatorTail(
+        argsElement: PsiElement,
+        methodNameNode: PsiElement,
+    ): Boolean = isOperatorToken(methodNameNode) && followsOperator(argsElement, methodNameNode)
+
+    /**
      * Method-name sibling before a detached args holder, or null when the holder
      * sits inside a regular call expression or no name precedes it.
+     * Binary operators (`-` in `Time.utc - 1.second`) also qualify: the
+     * operator is the "method name" and the holder is its RHS — the operator
+     * guard in detectDotCall filters that shape downstream.
      */
     fun findDetachedMethodName(argsElement: PsiElement): PsiElement? {
         // Skip if inside a method_call_expression (already handled)
@@ -35,7 +141,11 @@ internal object CrystalDotCallScan {
 
         val methodNameNode = CrystalPsiUtils.prevMeaningfulSibling(argsElement) ?: return null
         val methodType = methodNameNode.node?.elementType
-        if (methodType != CrystalTypes.IDENTIFIER && methodType != CrystalTypes.CONSTANT) return null
+        if (methodType != CrystalTypes.IDENTIFIER && methodType != CrystalTypes.CONSTANT &&
+            !isOperatorToken(methodNameNode)
+        ) {
+            return null
+        }
         return methodNameNode
     }
 
@@ -45,4 +155,52 @@ internal object CrystalDotCallScan {
         if (dot.node?.elementType != CrystalTypes.DOT) return null
         return CrystalPsiUtils.receiverBeforeDot(methodNameNode, dot)
     }
+
+    /**
+     * True when [argsElement]'s first meaningful child is a binary-operator
+     * token: the holder is an operator RHS (`- 1.second`), not arguments.
+     * Looks one level down through bare wrappers (BARE_ARGUMENT_LIST /
+     * BARE_ARGUMENT), which carry the operator as their own first child.
+     */
+    private fun startsWithOperator(argsElement: PsiElement): Boolean {
+        var current: PsiElement? = argsElement
+        while (current != null) {
+            var child = current.firstChild
+            while (child is PsiWhiteSpace) child = child.nextSibling
+            if (child == null) return false
+            if (isOperatorToken(child)) return true
+            if (isIndexBracket(child)) return true
+            if (child.firstChild == null) return false
+            current = child
+        }
+        return false
+    }
+
+    /**
+     * True for an index-access bracket: a holder starting with `[`
+     * (`client.login["ok"]` parses the `["ok"]` into the call's holder) is
+     * element access on the call result, never a call argument list.
+     */
+    private fun isIndexBracket(child: PsiElement): Boolean = child.node?.elementType == CrystalTypes.LBRACKET
+}
+
+/** Binary-operator token types (never method names). */
+private fun isOperatorToken(methodNameNode: PsiElement): Boolean {
+    val type = methodNameNode.node?.elementType ?: return false
+    return type == CrystalTypes.MINUS || type == CrystalTypes.PLUS ||
+        type == CrystalTypes.STAR || type == CrystalTypes.SLASH ||
+        type == CrystalTypes.PERCENT
+}
+
+/** True when [argsElement]'s sibling chain starts at [methodNameNode] (its RHS). */
+private fun followsOperator(
+    argsElement: PsiElement,
+    methodNameNode: PsiElement,
+): Boolean {
+    // The holder must be the operator's RHS (bare list starting at/after it).
+    var sibling: PsiElement? = argsElement
+    while (sibling != null && sibling !== methodNameNode) {
+        sibling = sibling.prevSibling
+    }
+    return sibling === methodNameNode
 }

@@ -62,8 +62,6 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
         private val NUMBER_KEYS = arrayOf(NUMBER)
         private val STRING_KEYS = arrayOf(STRING)
         private val COMMENT_KEYS = arrayOf(COMMENT)
-        private val IDENTIFIER_KEYS = arrayOf(IDENTIFIER)
-        private val CONSTANT_KEYS = arrayOf(CONSTANT)
         private val INSTANCE_VAR_KEYS = arrayOf(INSTANCE_VAR)
         private val CLASS_VAR_KEYS = arrayOf(CLASS_VAR)
         private val GLOBAL_VAR_KEYS = arrayOf(GLOBAL_VAR)

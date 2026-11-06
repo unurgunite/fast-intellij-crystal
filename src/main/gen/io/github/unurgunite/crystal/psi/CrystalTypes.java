@@ -11,7 +11,7 @@ import io.github.unurgunite.crystal.psi.impl.*;
 public interface CrystalTypes {
 
   IElementType ABSTRACT_METHOD_DEFINITION = new CrystalElementType("ABSTRACT_METHOD_DEFINITION");
-  IElementType ALIAS_DEFINITION = new CrystalElementType("ALIAS_DEFINITION");
+  IElementType ALIAS_DEFINITION = CrystalStubElementTypeFactory.create("ALIAS_DEFINITION");
   IElementType ANNOTATION_DEFINITION = new CrystalElementType("ANNOTATION_DEFINITION");
   IElementType ANNOTATION_USAGE = new CrystalElementType("ANNOTATION_USAGE");
   IElementType ARGUMENT = new CrystalElementType("ARGUMENT");
@@ -58,6 +58,7 @@ public interface CrystalTypes {
   IElementType HASH_ENTRY = new CrystalElementType("HASH_ENTRY");
   IElementType HASH_ENTRY_LIST = new CrystalElementType("HASH_ENTRY_LIST");
   IElementType HASH_LITERAL = new CrystalElementType("HASH_LITERAL");
+  IElementType HEREDOC_DEFERRED_BODY = new CrystalElementType("HEREDOC_DEFERRED_BODY");
   IElementType HEREDOC_LITERAL = new CrystalElementType("HEREDOC_LITERAL");
   IElementType IF_STATEMENT = new CrystalElementType("IF_STATEMENT");
   IElementType IMPLICIT_OBJECT_CALL = new CrystalElementType("IMPLICIT_OBJECT_CALL");
@@ -451,6 +452,9 @@ public interface CrystalTypes {
       }
       else if (type == HASH_LITERAL) {
         return new CrystalHashLiteralImpl(node);
+      }
+      else if (type == HEREDOC_DEFERRED_BODY) {
+        return new CrystalHeredocDeferredBodyImpl(node);
       }
       else if (type == HEREDOC_LITERAL) {
         return new CrystalHeredocLiteralImpl(node);

@@ -62,7 +62,7 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
         if (element is PsiDirectory) {
             val dir = element.virtualFile
             configuration.filePath = dir.path
-            configuration.workingDirectory = context.project.basePath ?: ""
+            configuration.workingDirectory = context.project.basePath.orEmpty()
             configuration.command = CrystalCommand.SPEC
             configuration.specLine = 0
             configuration.name = "spec: ${dir.name}"
@@ -74,7 +74,7 @@ class CrystalRunConfigurationProducer : LazyRunConfigurationProducer<CrystalRunC
         if (file.extension != "cr") return false
 
         configuration.filePath = file.path
-        configuration.workingDirectory = context.project.basePath ?: ""
+        configuration.workingDirectory = context.project.basePath.orEmpty()
 
         // Detect if it's a spec file
         if (file.path.contains("/spec/") || file.name.endsWith("_spec.cr")) {

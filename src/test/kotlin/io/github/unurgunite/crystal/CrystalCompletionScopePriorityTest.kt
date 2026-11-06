@@ -272,7 +272,7 @@ class CrystalCompletionScopePriorityTest : BasePlatformTestCase() {
             """.trimIndent(),
         )
         val lookups = myFixture.complete(CompletionType.BASIC)
-        val names = lookups?.map { it.lookupString } ?: emptyList()
+        val names = lookups?.map { it.lookupString }.orEmpty()
         assertFalse("Should NOT suggest class names for @ prefix: $names", names.contains("Apfel"))
     }
 

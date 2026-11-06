@@ -116,6 +116,9 @@ public interface CrystalHashEntry extends PsiElement {
   List<CrystalTupleLiteral> getTupleLiteralList();
 
   @NotNull
+  List<CrystalTypeArguments> getTypeArgumentsList();
+
+  @NotNull
   List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList();
 
   @NotNull

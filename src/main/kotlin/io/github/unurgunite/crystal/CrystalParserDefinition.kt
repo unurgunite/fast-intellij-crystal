@@ -29,7 +29,7 @@ class CrystalParserDefinition : ParserDefinition {
                 // `UpToDateStubIndexMismatch: Stub count (7) doesn't match
                 // stubbed node length (12)` (e.g. io/delimited.cr, 2026-09).
                 // Version 3 forces a full stdlib reindex with the current parser.
-                override fun getStubVersion(): Int = 3
+                override fun getStubVersion(): Int = 4
             }
     }
 

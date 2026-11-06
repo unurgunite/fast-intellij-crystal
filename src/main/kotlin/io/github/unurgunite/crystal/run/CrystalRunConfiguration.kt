@@ -23,13 +23,13 @@ class CrystalRunConfiguration(
     var command: CrystalCommand = CrystalCommand.RUN,
 ) : RunConfigurationBase<CrystalRunConfigurationOptions>(project, factory, name) {
     var filePath: String
-        get() = options.filePath ?: ""
+        get() = options.filePath.orEmpty()
         set(value) {
             options.filePath = value
         }
 
     var arguments: String
-        get() = options.arguments ?: ""
+        get() = options.arguments.orEmpty()
         set(value) {
             options.arguments = value
         }
@@ -37,13 +37,13 @@ class CrystalRunConfiguration(
     var workingDirectory: String
         // Stored default is "" (never null), so treat blank as unset to let the
         // project base path fallback actually work.
-        get() = options.workingDirectory?.ifBlank { null } ?: project.basePath ?: ""
+        get() = options.workingDirectory?.ifBlank { null } ?: project.basePath.orEmpty()
         set(value) {
             options.workingDirectory = value
         }
 
     var environmentVariables: String
-        get() = options.environmentVariables ?: ""
+        get() = options.environmentVariables.orEmpty()
         set(value) {
             options.environmentVariables = value
         }

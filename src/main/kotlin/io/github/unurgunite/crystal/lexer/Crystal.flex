@@ -43,7 +43,15 @@ import com.intellij.psi.TokenType;
     macroBodyAtLineStart = false;
     macroBodyBuffer.setLength(0);
     macroHeredocPending = false;
+    inLineComment = false;
   }
+
+  // Inside a `#` comment: the apostrophe rule below runs on raw text, so the
+  // `'...'` guard must be applied here too (prose like `the parameter's type`
+  // would otherwise drop the apostrophes and glob the next arg list). Comments
+  // never feed the parser, so the flag may stay stale across re-lexes. Set on
+  // the comment rules, cleared by NEWLINE and resetState().
+  private boolean inLineComment = false;
 
   private int interpolationDepth = 0;
   private int percentDepth = 0;
@@ -65,6 +73,12 @@ import com.intellij.psi.TokenType;
     boolean noEscape;
   }
   private final java.util.ArrayDeque<PercentFrame> percentStack = new java.util.ArrayDeque<>();
+
+  // `)`/`]`/`,`/`}` at the end of a heredoc opener line are code, not part of
+  // the heredoc marker text (`h = {<<-PRE, x}`, `foo(<<-TXT)`).
+  private boolean isHeredocLineCloser(char c) {
+    return c == ')' || c == ']' || c == '}' || c == ',';
+  }
 
   // Opens a nested percent literal from inside INTERPOLATION: saves the outer
   // frame, installs the inner literal, enters PERCENT_LITERAL. Mirrors the
@@ -152,6 +166,10 @@ import com.intellij.psi.TokenType;
   private String heredocId = "";
   private boolean heredocIndented = false;
   private boolean heredocRaw = false;
+  // A heredoc opener was already lexed on the current line; the body starts
+  // after the line's newline. Set when the opener's line carries more code
+  // (`foo(<<-TXT)`) and we fall back to YYINITIAL for that tail.
+  private boolean heredocBodyNext = false;
 
   // State stack for nested string interpolation
   private final java.util.ArrayDeque<Integer> stateStack = new java.util.ArrayDeque<>();
@@ -311,9 +329,12 @@ CHAR_LITERAL = "'" ( [^'\\] | {CHAR_ESCAPE} ) "'"
 
 // Symbol (simple forms only — :"string" handled separately for interpolation support).
 // Crystal symbol names may carry a method-suffix operator: `:foo?`, `:foo!`, `:foo=`,
-// `:[]`, `:[]=`, `:()`. The trailing `?`/`!`/`=` and bracket forms are common in stdlib
-// (e.g. `delegate :pos=, :closed?`, `getter :foo?`).
+// `:[]`, `:[]=`, `:()`. Bare operator symbols (`:<<`, `:+`, `:==` — redis
+// `delegate :insert, :<<, :[]`) are legal too.
+// JFlex longest-match keeps `:<<` disjoint from COLON+LSHIFT; glued-only
+// (no space after `:`) so ternaries (`a ? :b : c`) are unaffected.
 SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
+SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" | "<<" | ">>" | "<" | "<=" | ">" | ">=" | "<=>" | "===" | "==" | "=~" | "&" | "|" | "^" | "~" | "[]" | "[]?" | "[]=" )
 
 %state STRING INTERPOLATION REGEX BACKTICK PERCENT_LITERAL HEREDOC_BODY HEREDOC_START_LINE MACRO_BODY MACRO_INTERPOLATION MACRO_CONTROL MACRO_HEREDOC_BODY
 
@@ -323,8 +344,8 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   // Whitespace and comments
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   "\\" (\r\n | \r | \n) { return track(TokenType.WHITE_SPACE); }
-  {NEWLINE}            { afterDef = false; if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
-  {LINE_COMMENT}       { return track(CrystalTypes.LINE_COMMENT); }
+  {NEWLINE}            { afterDef = false; inLineComment = false; if (heredocBodyNext) { heredocBodyNext = false; yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); } if (macroHeaderSeen && macroParenDepth == 0) { macroHeaderSeen = false; macroBodyDepth = 0; macroBodyAtLineStart = true; yybegin(MACRO_BODY); } return track(CrystalTypes.NEWLINE); }
+  {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
 
   // Keywords (longest match first for keywords with ? suffix)
   "abstract"           { return track(CrystalTypes.ABSTRACT); }
@@ -414,12 +435,18 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   // Invalid single-quote string (more than one character between quotes)
   // This rule must come before CHAR_LITERAL because JFlex longest-match wins.
   // It matches 'xx...x' with 2+ characters inside, producing a single BAD_CHARACTER token.
-  "'" [^'\\] [^'\r\n] [^'\r\n]* "'" { return track(TokenType.BAD_CHARACTER); }
+  // Inside a comment an apostrophe is prose (`the parameter's type`), never a
+  // char literal — leaving it to the comment rule keeps the comment one token.
+  "'" [^'\\] [^'\r\n] [^'\r\n]* "'" { if (inLineComment) { yypushback(yylength()); } else { return track(TokenType.BAD_CHARACTER); } }
+  // A lone `'` (unpaired quote) needs no separate rule: BAD_CHARACTER is the
+  // catch-all already, and the pair rule above pushes a comment's quotes back
+  // onto it.
 
   // Literals
   {CHAR_LITERAL}       { return track(CrystalTypes.CHAR_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
 
   // Numbers (float before int since float is more specific with dot).
   // The float rule needs a digit after the dot, so `d[1..]` lexes INTEGER `1`
@@ -573,7 +600,10 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 
   // Regex literal (only in operator position — not after identifiers, constants, literals, ) or ])
   // PLUS bare postfix-callee regex (`doc.gsub /re/` — see isBareRegexSlash()).
-  "/"                    { if (isRegexAllowed() || isBareRegexSlash()) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
+  // After DOT the `/` is always the division operator (`trunc./(100)` —
+  // mosquito executor.cr), never a regex: isRegexAllowed() returns true
+  // after DOT (not a value token), so DOT needs its own guard first.
+  "/"                    { if (lastSignificantToken != CrystalTypes.DOT && (isRegexAllowed() || isBareRegexSlash())) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
                            return track(CrystalTypes.SLASH); }
 
   // Multi-character operators (longest first)
@@ -801,8 +831,8 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   // `#` starts a comment, but `#{` starts a nested interpolation (handled by
   // the `"#{"` rule above via longest-match). The negative lookahead keeps
   // `# comment` working while `#{...}` re-lexes as interpolation.
-  "#" [^{\r\n] [^\r\n]* { return track(CrystalTypes.LINE_COMMENT); }
-  "#"                  { return track(CrystalTypes.LINE_COMMENT); }
+  "#" [^{\r\n] [^\r\n]* { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
+  "#"                  { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
   // Control-flow / jump / value keywords (`"#{if a\n b\n end}"`,
   // `{{ if ... else ... end }}` — macros.cr `record` `copy_with`):
   // without these `if` lexes as IDENTIFIER and the `end` dangles.
@@ -844,6 +874,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "asm"                { return track(CrystalTypes.ASM); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   {IDENTIFIER}         { return track(CrystalTypes.IDENTIFIER); }
   {CONSTANT}           { return track(CrystalTypes.CONSTANT); }
   {INSTANCE_VAR}       { return track(CrystalTypes.INSTANCE_VAR); }
@@ -877,7 +908,9 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   ">>"                 { return track(CrystalTypes.RSHIFT); }
   "//"                 { return track(CrystalTypes.DOUBLE_SLASH); }
   "*"                  { return track(CrystalTypes.STAR); }
-  "/"                  { if (isRegexAllowed() || isBareRegexSlash()) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
+  // After DOT the `/` is division (`./(100)`), never a regex — same guard
+  // as the YYINITIAL rule above (mosquito executor.cr).
+  "/"                  { if (lastSignificantToken != CrystalTypes.DOT && (isRegexAllowed() || isBareRegexSlash())) { pushState(REGEX); return track(CrystalTypes.REGEX_BEGIN); }
                          return track(CrystalTypes.SLASH); }
   "%"                  { return track(CrystalTypes.PERCENT); }
   "<"                  { return track(CrystalTypes.LT); }
@@ -920,9 +953,11 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 }
 
 <HEREDOC_START_LINE> {
-  // Consume the rest of the line after <<-ID (could have more code on same line)
+  // Nothing but `<<-ID` belongs to the marker: the rest of the opener line is
+  // ordinary code (`f(<<-TXT, x)`, `h = {<<-PRE, x}`), so hand it back to
+  // YYINITIAL and let the NEWLINE rule there enter HEREDOC_BODY.
+  .                    { yypushback(yylength()); heredocBodyNext = true; yybegin(YYINITIAL); }
   {NEWLINE}            { yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); }
-  .+                   { return track(CrystalTypes.HEREDOC_START); }
 }
 
 <HEREDOC_BODY> {
@@ -1123,6 +1158,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
   "uninitialized"      { return track(CrystalTypes.UNINITIALIZED); }
   "asm"                { return track(CrystalTypes.ASM); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   "is_a?"              { return track(CrystalTypes.IS_A); }
   "nil?"               { return track(CrystalTypes.NIL_QUESTION); }
@@ -1264,6 +1300,9 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
 
   <MACRO_CONTROL> {
   "%}"                 { popState(); return track(CrystalTypes.MACRO_CONTROL_END); }
+  // `#` comments inside `{% %}` (multi-line macro code — athena view.cr):
+  // plain line comments; the parser skips them as whitespace.
+  {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
   "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }
   // Escaped `\{{` inside `{% %}` stays body TEXT (BACKSLASH + pushback —
   // the delimiter re-lexes as code but the parser pairs BACKSLASH +
@@ -1309,6 +1348,7 @@ SYMBOL = ":" ( {IDENTIFIER} | {CONSTANT} ) ( [?!=] | "[]" | "()" )?
                        }
   {WHITE_SPACE}        { return track(TokenType.WHITE_SPACE); }
   {SYMBOL}             { return track(CrystalTypes.SYMBOL_LITERAL); }
+  {SYMBOL_OP}          { return track(CrystalTypes.SYMBOL_LITERAL); }
   ":\"" / [^]          { pushState(STRING); return track(CrystalTypes.SYMBOL_COLON); }
   "verbatim"           { return track(CrystalTypes.VERBATIM); }
   "if"                 { return track(CrystalTypes.IF); }

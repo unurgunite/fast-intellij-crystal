@@ -52,7 +52,7 @@ internal fun computeCompletionPrefix(
             .subSequence(0, offset)
             .toString()
     val match = "([@]@?[A-Za-z0-9_]*)$".toRegex().find(text)
-    return match?.groupValues?.get(1) ?: ""
+    return match?.groupValues?.get(1).orEmpty()
 }
 
 /**
@@ -213,10 +213,8 @@ class CrystalCompletionContributor : CompletionContributor() {
         }
 
         internal fun isInClassBodyNotMethod(position: com.intellij.psi.PsiElement): Boolean {
-            val classBody =
-                com.intellij.psi.util.PsiTreeUtil
-                    .getParentOfType(position, CrystalClassBody::class.java)
-                    ?: return false
+            com.intellij.psi.util.PsiTreeUtil
+                .getParentOfType(position, CrystalClassBody::class.java) ?: return false
             val methodBody =
                 com.intellij.psi.util.PsiTreeUtil
                     .getParentOfType(position, CrystalMethodBody::class.java)

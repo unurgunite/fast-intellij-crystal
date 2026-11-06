@@ -254,3 +254,23 @@ abstract class CrystalStubbedConstantAssignmentImpl :
         return this
     }
 }
+
+abstract class CrystalStubbedAliasDefinitionImpl :
+    StubBasedPsiElementBase<io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub>,
+    CrystalNamedElement {
+    constructor(node: ASTNode) : super(node)
+    constructor(stub: io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub, nodeType: IStubElementType<*, *>) :
+        super(stub, nodeType)
+
+    // `alias AHK = Target`: the FIRST CONSTANT (the target's head is a sibling).
+    override fun getNameIdentifier(): PsiElement? = node.findChildByType(CrystalTypes.CONSTANT)?.psi
+
+    override fun getName(): String? = stub?.name ?: nameIdentifier?.text
+
+    override fun getTextOffset(): Int = nameIdentifier?.textOffset ?: node.startOffset
+
+    override fun setName(name: String): PsiElement {
+        setNameOnIdentifier(nameIdentifier, name)
+        return this
+    }
+}

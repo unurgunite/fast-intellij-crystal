@@ -17,6 +17,9 @@ public interface CrystalRecordDefinition extends PsiElement {
   List<CrystalRecordField> getRecordFieldList();
 
   @Nullable
+  CrystalSuperclassClause getSuperclassClause();
+
+  @Nullable
   CrystalTypeParameters getTypeParameters();
 
 }
