@@ -499,6 +499,10 @@ private fun ownsDotCall(
     method: CrystalMethodDefinition,
     callSite: PsiElement,
 ): Boolean {
-    if (enclosing == receiverName) return true
+    // The owner comes from the stub parent chain as a SHORT name while the
+    // receiver may be fully qualified (`Athena::Spec::Methods`), so compare the
+    // last segment too — otherwise a qualified receiver drops its own matches.
+    val shortReceiver = receiverName.substringAfterLast("::")
+    if (enclosing == receiverName || enclosing == shortReceiver) return true
     return enclosing == null && method.containingFile?.virtualFile == callSite.containingFile?.virtualFile
 }
