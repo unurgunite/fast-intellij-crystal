@@ -504,5 +504,8 @@ private fun ownsDotCall(
     // last segment too — otherwise a qualified receiver drops its own matches.
     val shortReceiver = receiverName.substringAfterLast("::")
     if (enclosing == receiverName || enclosing == shortReceiver) return true
-    return enclosing == null && method.containingFile?.virtualFile == callSite.containingFile?.virtualFile
+    // A top-level (`enclosing == null`) def only answers unqualified calls in its own file.
+    return enclosing == null &&
+        !receiverName.contains("::") &&
+        method.containingFile?.virtualFile == callSite.containingFile?.virtualFile
 }

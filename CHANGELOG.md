@@ -10,6 +10,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 - **Scheduled-for-removal and deprecated API usages**: run-marker `Info` constructor, `prepareEditorForWrite`, blocking `runReadAction`, legacy `MarkdownParser` entry-point, debugger session APIs, override-only `navigate` delegation.
 - **Local verification matrix covers RubyMine**: `verifyPlugin` now checks IU Ultimate + RubyMine release builds, so RubyMine-only breakage can no longer stay green locally.
 - **CI keeps verifier reports on every run**: the per-IDE verification reports (same content as the Marketplace verification-results page) are uploaded as an artifact, so a Marketplace failure maps locally without re-running the verifier.
+- **Top-level helper no longer shadows a qualified receiver's method**: a `private def assert_compiles(code, *, line)` wrapper in a spec file was matched against `ASPEC::Methods.assert_compiles code, line: line, preamble: "..."`, reporting `preamble`/`postamble` as unknown named arguments (24 + 15 problems). An ownerless def now only answers unqualified calls in its own file.
 
 ## [1.2.0] — 2026-10-14
 
