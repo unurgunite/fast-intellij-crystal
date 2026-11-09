@@ -10,6 +10,7 @@ import io.github.unurgunite.crystal.psi.CrystalHashLiteral
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalTupleLiteral
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 
 /**
@@ -47,7 +48,7 @@ internal fun isBlockBraceGroup(
         }
 
         is CrystalTupleLiteral -> {
-            element.expressionList.expressionList.let { it.size <= 1 && it.all(::holdsCallShape) }
+            element.expressionList.expressionList.let { it.size <= 1 && it.all(::holdsBlockBody) }
         }
 
         else -> {
@@ -56,6 +57,39 @@ internal fun isBlockBraceGroup(
     }
 
 private val WHITESPACE = "\\s".toRegex()
+
+/**
+ * True when a brace-group element is a block body, not a tuple value: a call
+ * (`{ delete(1) }`) or a lone expression that cannot be a one-element tuple
+ * literal (`{ wait_for_available }`, `Log.notice { message }`). A bare literal
+ * or constant (`{1}`, `{Foo::BAR}`) stays a real tuple value.
+ */
+private fun holdsBlockBody(expr: PsiElement): Boolean {
+    if (holdsCallShape(expr)) return true
+    val inner = CrystalPsiUtils.firstSignificantChild(expr) ?: return false
+    return !isValueOnly(inner)
+}
+
+/** Literals and constant references — the only things a `{...}` value can hold. */
+private fun isValueOnly(expr: PsiElement): Boolean =
+    when (expr) {
+        is CrystalVariableReference -> false
+        is CrystalTupleLiteral, is CrystalHashLiteral -> true
+        else -> expr.node?.elementType in VALUE_ELEMENTS
+    }
+
+private val VALUE_ELEMENTS =
+    setOf(
+        CrystalTypes.INTEGER_LITERAL,
+        CrystalTypes.FLOAT_LITERAL,
+        CrystalTypes.STRING_LITERAL,
+        CrystalTypes.CHAR_LITERAL,
+        CrystalTypes.SYMBOL_LITERAL,
+        CrystalTypes.TRUE,
+        CrystalTypes.FALSE,
+        CrystalTypes.NIL,
+        CrystalTypes.CONSTANT,
+    )
 
 /** True when [expr] is (or directly wraps) a brace group literal. */
 private fun holdsBraceNode(expr: PsiElement): Boolean =
