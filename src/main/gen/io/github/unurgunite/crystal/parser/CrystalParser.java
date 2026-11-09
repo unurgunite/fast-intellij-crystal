@@ -3787,20 +3787,32 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR) expression_start_lookahead
+  // (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT) expression_start_lookahead
+  //                                | DOUBLE_STAR binary_op_operand_lookahead
   static boolean binary_op_lookahead(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "binary_op_lookahead")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = binary_op_lookahead_0(builder_, level_ + 1);
+    if (!result_) result_ = binary_op_lookahead_1(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT) expression_start_lookahead
+  private static boolean binary_op_lookahead_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = binary_op_lookahead_0_0(builder_, level_ + 1);
     result_ = result_ && expression_start_lookahead(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
-  // PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR
-  private static boolean binary_op_lookahead_0(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_0")) return false;
+  // PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT
+  private static boolean binary_op_lookahead_0_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_0_0")) return false;
     boolean result_;
     result_ = consumeToken(builder_, PLUS);
     if (!result_) result_ = consumeToken(builder_, MINUS);
@@ -3808,7 +3820,53 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = consumeToken(builder_, SLASH);
     if (!result_) result_ = consumeToken(builder_, DOUBLE_SLASH);
     if (!result_) result_ = consumeToken(builder_, PERCENT);
-    if (!result_) result_ = consumeToken(builder_, DOUBLE_STAR);
+    return result_;
+  }
+
+  // DOUBLE_STAR binary_op_operand_lookahead
+  private static boolean binary_op_lookahead_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_1")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = consumeToken(builder_, DOUBLE_STAR);
+    result_ = result_ && binary_op_operand_lookahead(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  /* ********************************************************** */
+  // expression_start_lookahead !(COMMA | RPAREN | RBRACKET | RBRACE | NEWLINE | SEMICOLON | LBRACE)
+  static boolean binary_op_operand_lookahead(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_operand_lookahead")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = expression_start_lookahead(builder_, level_ + 1);
+    result_ = result_ && binary_op_operand_lookahead_1(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // !(COMMA | RPAREN | RBRACKET | RBRACE | NEWLINE | SEMICOLON | LBRACE)
+  private static boolean binary_op_operand_lookahead_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_operand_lookahead_1")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NOT_);
+    result_ = !binary_op_operand_lookahead_1_0(builder_, level_ + 1);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
+  // COMMA | RPAREN | RBRACKET | RBRACE | NEWLINE | SEMICOLON | LBRACE
+  private static boolean binary_op_operand_lookahead_1_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_operand_lookahead_1_0")) return false;
+    boolean result_;
+    result_ = consumeToken(builder_, COMMA);
+    if (!result_) result_ = consumeToken(builder_, RPAREN);
+    if (!result_) result_ = consumeToken(builder_, RBRACKET);
+    if (!result_) result_ = consumeToken(builder_, RBRACE);
+    if (!result_) result_ = consumeToken(builder_, NEWLINE);
+    if (!result_) result_ = consumeToken(builder_, SEMICOLON);
+    if (!result_) result_ = consumeToken(builder_, LBRACE);
     return result_;
   }
 
