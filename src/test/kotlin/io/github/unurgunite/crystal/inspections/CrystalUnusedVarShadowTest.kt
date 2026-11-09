@@ -141,4 +141,50 @@ class CrystalUnusedVarShadowTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    /** A block parameter that is reassigned inside the block becomes the outer variable. */
+    fun testReassignedBlockParameterKeepsReads() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer(lines, max)
+              [1].each do |line|
+                line = trim(line, max)
+                puts line
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A block parameter refined through a chain must not report the refinements as dead. */
+    fun testBlockParameterReassignedTwiceKeepsReads() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def outer(paths)
+              paths.each do |glob|
+                glob = Path[glob]
+                glob = glob.dirname
+                Dir.glob(glob.to_s)
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** `Foo.bar = 1` writes a member, it does not bind a local named `bar`. */
+    fun testMemberWriteThroughConstantIsNotALocal() {
+        myFixture.configureByText(
+            "spec.cr",
+            """
+            def setup
+              AHTTP.UploadedFile.max_file_size = limit
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

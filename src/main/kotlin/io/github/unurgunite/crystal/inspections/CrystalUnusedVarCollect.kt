@@ -139,7 +139,20 @@ internal object CrystalUnusedVarCollect {
         holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalProcLiteral::class.java))
         return holders
             .filter { it !== scope }
-            .mapNotNull { holder -> parameterNames(holder)?.let { ShadowRange(it, holder.textRange) } }
+            .mapNotNull { holder ->
+                val names = parameterNames(holder) ?: return@mapNotNull null
+                // A block does not open a scope, so assigning to a same-named variable
+                // inside it writes the outer one: from that assignment on the parameter
+                // no longer shadows the name. A nested `def` is a separate scope, so
+                // only blocks are cut short.
+                val rebind =
+                    (holder as? CrystalBlock)
+                        ?.let { PsiTreeUtil.findChildrenOfType(it, CrystalAssignment::class.java) }
+                        ?.filter { it.node.findChildByType(CrystalTypes.IDENTIFIER)?.text in names }
+                        ?.minByOrNull { it.textRange.startOffset }
+                val end = rebind?.textRange?.startOffset ?: holder.textRange.endOffset
+                ShadowRange(names, TextRange(holder.textRange.startOffset, end))
+            }
     }
 
     internal fun parameterNames(holder: PsiElement): Set<String>? {
@@ -220,8 +233,13 @@ internal object CrystalUnusedVarCollect {
         if (assignment.instanceVarAccessList.isNotEmpty()) return null
         if (assignment.classVarAccessList.isNotEmpty()) return null
 
-        // Find the IDENTIFIER token (local variable name)
-        val identifierNode = assignment.node.findChildByType(CrystalTypes.IDENTIFIER) ?: return null
+        // Find the IDENTIFIER token (local variable name). It must open the node: in
+        // `Foo.bar = 1` or `Foo::Bar.baz = 1` the first IDENTIFIER is the member
+        // being written, not a local variable.
+        // It must open the node: in `Foo.bar = 1` or `Foo::Bar.baz = 1` the first
+        // IDENTIFIER is the member being written, not a local variable.
+        val identifierNode = assignment.node.findChildByType(CrystalTypes.IDENTIFIER)
+        if (identifierNode == null || identifierNode.treePrev != null) return null
         val name = identifierNode.text
 
         // Skip global vars (shouldn't happen since grammar handles them, but safety)
