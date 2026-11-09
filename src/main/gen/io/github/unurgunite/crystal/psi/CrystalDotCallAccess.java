@@ -11,6 +11,9 @@ public interface CrystalDotCallAccess extends PsiElement {
   CrystalBareArgumentList getBareArgumentList();
 
   @Nullable
+  CrystalBlock getBlock();
+
+  @Nullable
   CrystalCallArgs getCallArgs();
 
   @Nullable

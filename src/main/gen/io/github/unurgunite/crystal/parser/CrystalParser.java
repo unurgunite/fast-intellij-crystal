@@ -5137,7 +5137,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                   // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
   //                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
   //                   // handled by postfix_op/index_assign_suffix — untouched).
-  //                   | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+  //                   | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] [block]
   //                   // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
   //                   // executor.cr): dot-form operator with paren args. Same PSI
   //                   // class (alternative, not a separate rule — a separate rule
@@ -5272,7 +5272,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+  // DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] [block]
   private static boolean dot_call_access_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "dot_call_access_3")) return false;
     boolean result_;
@@ -5281,6 +5281,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = result_ && dot_call_access_3_1(builder_, level_ + 1);
     result_ = result_ && dot_call_access_3_2(builder_, level_ + 1);
     result_ = result_ && dot_call_access_3_3(builder_, level_ + 1);
+    result_ = result_ && dot_call_access_3_4(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
@@ -5404,6 +5405,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   private static boolean dot_call_access_3_3_0_1_4(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "dot_call_access_3_3_0_1_4")) return false;
     consumeToken(builder_, QUESTION);
+    return true;
+  }
+
+  // [block]
+  private static boolean dot_call_access_3_4(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "dot_call_access_3_4")) return false;
+    block(builder_, level_ + 1);
     return true;
   }
 
