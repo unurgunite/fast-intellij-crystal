@@ -34,6 +34,12 @@ public class CrystalDotCallAccessImpl extends CrystalDotCallAccessMixin implemen
 
   @Override
   @Nullable
+  public CrystalBlock getBlock() {
+    return PsiTreeUtil.getChildOfType(this, CrystalBlock.class);
+  }
+
+  @Override
+  @Nullable
   public CrystalCallArgs getCallArgs() {
     return PsiTreeUtil.getChildOfType(this, CrystalCallArgs.class);
   }

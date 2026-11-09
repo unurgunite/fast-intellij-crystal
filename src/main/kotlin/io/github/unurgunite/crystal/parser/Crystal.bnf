@@ -1177,7 +1177,7 @@ dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS 
                   // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
                   // handled by postfix_op/index_assign_suffix — untouched).
-                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]]
+                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] [block]
                   // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
                   // executor.cr): dot-form operator with paren args. Same PSI
                   // class (alternative, not a separate rule — a separate rule
