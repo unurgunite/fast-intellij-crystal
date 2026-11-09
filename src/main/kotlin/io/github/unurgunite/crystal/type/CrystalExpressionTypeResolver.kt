@@ -37,8 +37,9 @@ object CrystalExpressionTypeResolver {
     /**
      * Result of type resolution.
      * @param typeName The resolved type name (e.g. "Int32", "String")
-     * @param isUnsuffixedNumericLiteral True if this is a numeric literal without explicit suffix,
-     *        meaning Crystal will autocast it to any compatible numeric type.
+     * @param isUnsuffixedNumericLiteral True for a numeric literal whose value is known at
+     *        compile time (suffixed or not), so Crystal autocasts it to any numeric type
+     *        that holds the value — `3i32` fits `Float32`, `300i32` does not fit `Int8`.
      */
     data class ResolvedType(
         val typeName: String,
@@ -190,28 +191,30 @@ object CrystalExpressionTypeResolver {
         )
 
     private fun resolveIntegerLiteral(text: String): ResolvedType {
+        val lit = { name: String -> ResolvedType(name, isUnsuffixedNumericLiteral = true) }
         val lower = text.lowercase().replace("_", "")
         return when {
-            lower.endsWith("i8") -> ResolvedType("Int8")
-            lower.endsWith("i16") -> ResolvedType("Int16")
-            lower.endsWith("i32") -> ResolvedType("Int32")
-            lower.endsWith("i64") -> ResolvedType("Int64")
-            lower.endsWith("i128") -> ResolvedType("Int128")
-            lower.endsWith("u8") -> ResolvedType("UInt8")
-            lower.endsWith("u16") -> ResolvedType("UInt16")
-            lower.endsWith("u32") -> ResolvedType("UInt32")
-            lower.endsWith("u64") -> ResolvedType("UInt64")
-            lower.endsWith("u128") -> ResolvedType("UInt128")
-            else -> ResolvedType("Int32", isUnsuffixedNumericLiteral = true)
+            lower.endsWith("i8") -> lit("Int8")
+            lower.endsWith("i16") -> lit("Int16")
+            lower.endsWith("i32") -> lit("Int32")
+            lower.endsWith("i64") -> lit("Int64")
+            lower.endsWith("i128") -> lit("Int128")
+            lower.endsWith("u8") -> lit("UInt8")
+            lower.endsWith("u16") -> lit("UInt16")
+            lower.endsWith("u32") -> lit("UInt32")
+            lower.endsWith("u64") -> lit("UInt64")
+            lower.endsWith("u128") -> lit("UInt128")
+            else -> lit("Int32")
         }
     }
 
     private fun resolveFloatLiteral(text: String): ResolvedType {
+        val lit = { name: String -> ResolvedType(name, isUnsuffixedNumericLiteral = true) }
         val lower = text.lowercase().replace("_", "")
         return when {
-            lower.endsWith("f32") -> ResolvedType("Float32")
-            lower.endsWith("f64") -> ResolvedType("Float64")
-            else -> ResolvedType("Float64", isUnsuffixedNumericLiteral = true)
+            lower.endsWith("f32") -> lit("Float32")
+            lower.endsWith("f64") -> lit("Float64")
+            else -> lit("Float64")
         }
     }
 }

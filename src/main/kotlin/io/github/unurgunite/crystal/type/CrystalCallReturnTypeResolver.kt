@@ -282,7 +282,7 @@ internal fun resolveScopedOrFallback(
             return ResolvedType(it)
         }
     }
-    if (receiverClass == null && receiver != null) return null
+    if (receiver != null) return null
     CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
         return ResolvedType(it)
     }

@@ -155,6 +155,12 @@ object CrystalControlFlowTypeResolver {
                 resolveArithmeticType(nonWhitespace[0].psi, nonWhitespace[2].psi)
             }
 
+            // `1..2` / `1...2` are Range literals, not arithmetic on the start
+            // value: descending to the first operand would type them Int32.
+            CrystalTypes.DOTDOT, CrystalTypes.DOTDOTDOT -> {
+                resolveRangeType(nonWhitespace[0].psi, nonWhitespace[2].psi)
+            }
+
             else -> {
                 null
             }
@@ -183,6 +189,19 @@ object CrystalControlFlowTypeResolver {
         val parts = listOfNotNull(leftType, rightType).distinct()
         return ResolvedType(parts.joinToString(" | "))
     }
+}
+
+/**
+ * `Range(B, E)` for a `1..2` / `1...2` literal; the end type is nilable because
+ * `1..` is legal. File-level: the resolver object is at detekt's function budget.
+ */
+private fun resolveRangeType(
+    left: PsiElement,
+    right: PsiElement,
+): ResolvedType? {
+    val begin = resolveType(left)?.typeName ?: return null
+    val end = resolveType(right)?.typeName ?: return null
+    return ResolvedType("Range($begin, $end?)")
 }
 
 /**
