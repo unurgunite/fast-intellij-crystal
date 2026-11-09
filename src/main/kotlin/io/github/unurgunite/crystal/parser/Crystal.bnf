@@ -1471,7 +1471,20 @@ method_call_expression ::= type_path call_args [block]
 // Covers all expression-starting tokens: identifiers, constants, literals, vars, group/array/hash
 // literals, percent literals, heredocs, commands, regex, and macro interpolation.
 // Tradeoff: bare calls with splat like "add *args" need parentheses: "add(*args)".
-private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR) expression_start_lookahead
+// DOUBLE_STAR is split off: `target **args, name: v` is a double-splat call
+// argument followed by a named argument (valid Crystal, verified with the
+// compiler), not a power expression. A `:` right after the operand proves the
+// named-argument form (`a ** b: 1` is not legal Crystal), so that shape must
+// NOT be treated as a binary operator here.
+private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT) expression_start_lookahead
+                               | DOUBLE_STAR binary_op_operand_lookahead
+
+// Operand of a `**` that could make it a power operator. `foo **a` alone and
+// `foo **a, b` are both double-splat calls: a comma, a closer or a line end
+// after the operand means the `**` belongs to the argument list, not to a
+// binary expression. Only an operand that CONTINUES an expression (`a ** b + c`,
+// `a ** b.c`) keeps `**` as power.
+private binary_op_operand_lookahead ::= expression_start_lookahead !(COMMA | RPAREN | RBRACKET | RBRACE | NEWLINE | SEMICOLON | LBRACE)
 
 // First token of any bare argument/expression (shared by binary_op_lookahead and
 // the nested-bare guard below).
