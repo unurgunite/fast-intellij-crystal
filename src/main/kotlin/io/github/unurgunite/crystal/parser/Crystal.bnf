@@ -1728,6 +1728,10 @@ bare_argument ::= named_bare_argument
                  // above stops before the dot. Terminator-guarded so it cannot
                  // steal a `CONSTANT::...` callee tail.
                  | namespace_access (namespace_access)* dot_call_access &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN | SEMICOLON)
+                 // Leading-`::` value that is an INDEX on a constant
+                 // (`File.open ::Path[dir, file], "w" do |r|` — the bare tower
+                 // stops before `[`): same terminator guard as the arms above.
+                 | namespace_access (namespace_access)* LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION] &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN | SEMICOLON)
                  // Nilable type as a bare argument (`should eq String?`,
                  // `.get Bool?`, `foo A::B?`): the bare tower has no `?`
                  // tail, so `B` parses and the `?` is left dangling. The
