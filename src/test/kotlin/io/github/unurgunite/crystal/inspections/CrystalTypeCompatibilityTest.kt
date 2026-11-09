@@ -58,7 +58,9 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Int32", "Float64", literal = true))
         assertTrue(compat("Int32", "Int8", literal = true))
         assertFalse(compat("Int32", "String", literal = true))
-        // Suffixed values do NOT get the literal treatment
+        // Suffixed literals autocast too: `3i32` fits `Float32`, `300i32`
+        // does not fit `Int8` — here only the flag decides, not the value.
+        assertTrue(compat("Int32", "Int8", literal = true))
         assertFalse(compat("Int32", "Int8", literal = false))
     }
 

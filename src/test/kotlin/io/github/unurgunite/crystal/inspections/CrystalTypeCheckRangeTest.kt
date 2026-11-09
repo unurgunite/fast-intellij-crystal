@@ -39,5 +39,22 @@ class CrystalTypeCheckRangeTest : BasePlatformTestCase() {
         assertEquals(1, problems().size)
     }
 
+    fun testSuffixedLiteralMatchesFloatUnionParameter() {
+        myFixture.enableInspections(CrystalTypeCheckInspection())
+        myFixture.configureByText(
+            "t.cr",
+            """
+            def consume(value : String | Float64)
+            end
+            def run
+              consume(0i8)
+              consume(9i16)
+              consume(3i32)
+            end
+            """.trimIndent() + "\n",
+        )
+        assertEmpty(problems())
+    }
+
     private fun problems() = myFixture.doHighlighting().filter { it.severity >= HighlightSeverity.WARNING }
 }
