@@ -5,6 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.unurgunite.crystal.psi.CrystalAssignment
 import io.github.unurgunite.crystal.psi.CrystalExpression
+import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.extractParameterName
@@ -68,7 +69,7 @@ object CrystalTypeInference {
                 val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
                 if (declared.isNotEmpty()) return declared
             }
-            val paramType = inferFromParameter(variableName, context)
+            val paramType = CrystalTypeScope.parameterTypes(variableName, context)
             if (paramType != null) return paramType
             return inferFromAssignmentList(variableName, context, project, depth)
         } finally {
@@ -77,33 +78,6 @@ object CrystalTypeInference {
     }
 
     private val crossBridgeDepth = ThreadLocal.withInitial { 0 }
-
-    /**
-     * Check if the variable is a parameter with a type annotation.
-     * e.g. def foo(x : Apfel) → type of x is "Apfel"; `x : Int32 | Nil` → ["Int32", "Nil"].
-     */
-    private fun inferFromParameter(
-        name: String,
-        context: PsiElement,
-    ): List<String>? {
-        // Find enclosing method
-        val method =
-            PsiTreeUtil.getParentOfType(context, CrystalMethodDefinition::class.java)
-                ?: return null
-
-        val paramList = method.parameterList ?: return null
-        for (param in paramList.parameterList) {
-            val paramName = extractParameterName(param)
-            if (paramName == name) {
-                // Has type annotation?
-                val typeRef = param.typeReference
-                if (typeRef != null) {
-                    return splitTypeNames(typeRef.text)
-                }
-            }
-        }
-        return null
-    }
 
     /**
      * Search for assignments to this variable in the current scope.
@@ -142,10 +116,18 @@ object CrystalTypeInference {
         depth: Int,
     ): List<String> {
         val targetText = CrystalAssignmentTarget.targetText(assignment) ?: return emptyList()
-        if (targetText != name && targetText != "@$name") return emptyList()
-        if (assignment.textOffset > context.textOffset) return emptyList()
         val expr = CrystalAssignmentTarget.rhs(assignment) ?: return emptyList()
-        return inferTypeFromExpressionList(expr, project, depth)
+        // Locals do not leak across def/macro boundaries: `command = ...` in one
+        // method must not type the same-named local of another. Ivars belong to
+        // the type, so they are exempt.
+        val leaks =
+            !targetText.startsWith("@") &&
+                CrystalTypeScope.enclosing(assignment) != CrystalTypeScope.enclosing(context)
+        val relevant =
+            (targetText == name || targetText == "@$name") &&
+                assignment.textOffset <= context.textOffset &&
+                !leaks
+        return if (relevant) inferTypeFromExpressionList(expr, project, depth) else emptyList()
     }
 
     /**

@@ -460,4 +460,23 @@ puts a
                 .lookupReturnType("to_s", project),
         )
     }
+
+    fun testSameNamedLocalInAnotherMethodIsNotUsed() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Runner
+              def first
+                value = 42
+              end
+              def second
+                puts value
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("value", file.text.indexOf("puts"))
+        assertNull(CrystalTypeInference.inferType("value", file.findElementAt(useOffset)!!, project))
+    }
 }
