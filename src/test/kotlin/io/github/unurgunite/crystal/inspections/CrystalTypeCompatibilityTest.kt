@@ -234,4 +234,35 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertFalse(compat("Array(Int32)", "Array(String)"))
         assertFalse(compat("Hash(String, Int32)", "Hash(String, Bool)"))
     }
+
+    // A nilable argument only has to fit through its non-Nil member: the `?`
+    // must not stay glued to the base and turn a fine call into a mismatch.
+    fun testNilableArgumentFitsNonNullableParameter() {
+        assertTrue(compat("{String, String}?", "{String, String}"))
+        assertTrue(compat("Tuple(String, String)?", "Tuple(String, String)"))
+        assertTrue(compat("String?", "String"))
+    }
+
+    fun testNilableArgumentStillRejectsRealMismatch() {
+        assertFalse(compat("Int32?", "String"))
+        assertFalse(compat("Tuple(String, Bool)?", "Tuple(String, String)"))
+    }
+
+    // An overload parameter written as a parenthesised union is just a union.
+    fun testParenthesisedUnionParameterMatchesMember() {
+        assertTrue(compat("String", "(Char | String)"))
+        assertTrue(compat("Char", "(Char | String)"))
+        assertTrue(compat("Array(Int32)", "(Array(Int32))"))
+    }
+
+    fun testParenthesisedUnionStillRejectsNonMember() {
+        assertFalse(compat("Bool", "(Char | String)"))
+    }
+
+    // Parens only wrap when they close at the very end: a generic's own parens
+    // must not be stripped into a bogus union.
+    fun testGenericParensAreNotTreatedAsWrappingUnion() {
+        assertTrue(compat("Array(Int32)", "Array(Int32)"))
+        assertFalse(compat("Array(String)", "Array(Int32)"))
+    }
 }
