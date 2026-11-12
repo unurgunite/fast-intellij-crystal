@@ -13,14 +13,14 @@ class CrystalQuoteHandlerTest : BasePlatformTestCase() {
         val highlighter = (myFixture.editor as EditorEx).highlighter
         val iterator = highlighter.createIterator(offset)
         assertNotNull(iterator)
-        return iterator!!
+        return iterator
     }
 
     fun testOpeningDoubleQuote() {
         // Iterator positioned at the opening quote of a string
         val file = myFixture.configureByText("test.cr", "x = \"hello\"\n")
         val offset = file.text.indexOf('"')
-        val iterator = (myFixture.editor as EditorEx).highlighter.createIterator(offset)!!
+        val iterator = (myFixture.editor as EditorEx).highlighter.createIterator(offset)
         assertTrue(handler.isOpeningQuote(iterator, offset))
     }
 

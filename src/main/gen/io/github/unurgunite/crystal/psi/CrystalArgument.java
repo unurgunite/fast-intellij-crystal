@@ -11,6 +11,12 @@ public interface CrystalArgument extends PsiElement {
   List<CrystalArgument> getArgumentList();
 
   @Nullable
+  CrystalArrayLiteral getArrayLiteral();
+
+  @Nullable
+  CrystalBareArgumentList getBareArgumentList();
+
+  @Nullable
   CrystalClassVarAccess getClassVarAccess();
 
   @Nullable
@@ -20,6 +26,9 @@ public interface CrystalArgument extends PsiElement {
   CrystalFreshVar getFreshVar();
 
   @Nullable
+  CrystalHashLiteral getHashLiteral();
+
+  @Nullable
   CrystalInstanceVarAccess getInstanceVarAccess();
 
   @NotNull
@@ -27,6 +36,9 @@ public interface CrystalArgument extends PsiElement {
 
   @Nullable
   CrystalMacroInterpolation getMacroInterpolation();
+
+  @Nullable
+  CrystalTupleLiteral getTupleLiteral();
 
   @NotNull
   List<CrystalTypeReference> getTypeReferenceList();

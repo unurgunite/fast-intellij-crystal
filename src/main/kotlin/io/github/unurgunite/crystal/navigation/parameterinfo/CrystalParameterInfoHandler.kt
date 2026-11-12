@@ -50,12 +50,6 @@ class CrystalParameterInfoHandler : ParameterInfoHandler<PsiElement, Any> {
         private const val PARAMETER_SEPARATOR_LENGTH = 2
     }
 
-    /**
-     * True when [gap] is whitespace without a newline (possibly empty): the cursor
-     * sits right after an identifier with no arguments typed yet.
-     */
-    private fun isBlankSingleLineGap(gap: String): Boolean = gap.isBlank() && !gap.contains('\n')
-
     override fun findElementForParameterInfo(context: CreateParameterInfoContext): PsiElement? {
         val argsHolder = findArgsHolder(context.file, context.offset) ?: return null
         val methodName = CrystalParameterInfoMethodName.findMethodNameForArgs(argsHolder) ?: return null
@@ -208,7 +202,7 @@ class CrystalParameterInfoHandler : ParameterInfoHandler<PsiElement, Any> {
      */
     private fun parameterTextsOf(method: Any): List<String>? =
         when (method) {
-            is CrystalMethodDefinition -> (method.parameterList?.parameterList ?: emptyList()).map { it.text.trim() }
+            is CrystalMethodDefinition -> (method.parameterList?.parameterList.orEmpty()).map { it.text.trim() }
             is RecordParameterInfo -> method.params.map { it.text }
             else -> null
         }

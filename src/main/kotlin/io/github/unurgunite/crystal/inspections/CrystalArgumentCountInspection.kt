@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
 import io.github.unurgunite.crystal.psi.CrystalBareCommandSpaceFirst
 import io.github.unurgunite.crystal.psi.CrystalBareMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalCallArgs
+import io.github.unurgunite.crystal.psi.CrystalDotCallAccess
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
@@ -46,6 +47,7 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodCallExpression -> {
                         checkCall(element, holder)
@@ -69,6 +71,14 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
                             checkDotCall(element, dotCallInfo, holder)
                         }
                     }
+
+                    is CrystalDotCallAccess -> {
+                        val dotCallInfo = CrystalDotCallScan.detectParenlessDotCall(element)
+                        if (dotCallInfo != null) {
+                            // A paren-less call carries no argument list.
+                            checkDotCallShape(element, dotCallInfo, emptyList(), holder)
+                        }
+                    }
                 }
             }
         }
@@ -77,41 +87,63 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         callExpr: PsiElement,
         holder: ProblemsHolder,
     ) {
-        // Skip if the method name resolves to a local variable or parameter.
-        // This prevents false positives when a bare call like "count + 87" is parsed
-        // as method_call_expression(count, +87) due to binary_op_lookahead not catching
-        // operators followed by literals. The parameter shadows any same-named method.
-        val resolvedRef = callExpr.reference?.resolve()
-        if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return
-
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
+        if (isSkippedBareCall(callExpr, methodName)) return
         val arguments = CrystalCallArguments.extractArguments(callExpr)
-        val methodNameElement = findMethodNameElement(callExpr) ?: return
+        val methodNameElement = findMethodNameElement(callExpr)
+        // A DSL entry inside a macro configuration block (`properties do
+        // line_number 1 end`) is expanded by that macro; its name must not be
+        // matched against an unrelated same-named method from the stdlib.
+        if (methodNameElement == null || CrystalMacroSetters.isMacroBlockEntry(callExpr)) return
 
-        if (methodName == "new") {
-            val className = CrystalCallArguments.findClassNameBeforeNew(callExpr)
-            if (checkNewConstructorCall(className, arguments, methodNameElement, callExpr, holder)) return
-        }
-
-        val methods = CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
+        val methods =
+            if (methodName == "new") {
+                val className = CrystalCallArguments.findClassNameBeforeNew(callExpr)
+                if (checkNewConstructorCall(className, arguments, methodNameElement, callExpr, holder)) return
+                // Anything else must still be owned by the receiver: a name-only
+                // `new` lookup also returns stdlib reopenings such as
+                // `def Nil.new(pull : JSON::PullParser)`, whose required `pull`
+                // used to be demanded from every unrelated `X.new`.
+                className?.let { CrystalNewConstructorCheck.candidatesFor(it, callExpr.project) }.orEmpty()
+            } else {
+                CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
+            }
         if (methods.isEmpty()) return
 
         checkArgumentCount(methods, arguments, methodNameElement, holder)
     }
 
+    /**
+     * Paren-less dot call (`Foo::Bar.new`, `x.empty?`): no args holder exists,
+     * so the call carries zero arguments. Without this the receiver was never
+     * checked at all — a missing-required-argument call went unreported.
+     */
     private fun checkDotCall(
         argsElement: PsiElement,
         info: DotCallInfo,
         holder: ProblemsHolder,
     ) {
+        checkDotCallShape(argsElement, info, CrystalCallArguments.extractArgumentsFromArgsElement(argsElement), holder)
+    }
+
+    private fun checkDotCallShape(
+        contextElement: PsiElement,
+        info: DotCallInfo,
+        arguments: List<ArgumentInfo>,
+        holder: ProblemsHolder,
+    ) {
+        // Spec matchers accept anything — never arity/type-check them.
+        if (io.github.unurgunite.crystal.type.CrystalLocalScope
+                .isSpecMatcherCall(info.methodName)
+        ) {
+            return
+        }
         // Skip DOT-calls on local variables/parameters — we can't reliably determine
         // the receiver's type, so we only check calls on Constants (class methods).
         val firstChar = info.receiverName.firstOrNull() ?: return
         if (!firstChar.isUpperCase()) return
 
-        val arguments = CrystalCallArguments.extractArgumentsFromArgsElement(argsElement)
-
-        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
+        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, contextElement.project)
 
         // Filter to methods defined inside a class/module matching the receiver name.
         // This prevents false positives like ::Bytes.new(...) matching unrelated new overloads.
@@ -119,11 +151,19 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         methods =
             methods.filter { method ->
                 val enclosing = CrystalMethodLookup.getEnclosingClassName(method)
-                enclosing == null || enclosing == info.receiverName
+                // `new` has no top-level form in Crystal: an ownerless candidate is
+                // always a `def Type.new` reopening resolving to the wrong receiver.
+                if (info.methodName ==
+                    "new"
+                ) {
+                    enclosing == info.receiverName
+                } else {
+                    ownsDotCall(enclosing, info.receiverName, method, contextElement)
+                }
             }
 
         if (info.methodName == "new") {
-            if (checkNewConstructorCall(info.receiverName, arguments, info.methodNameElement, argsElement, holder)) return
+            if (checkNewConstructorCall(info.receiverName, arguments, info.methodNameElement, contextElement, holder)) return
         }
 
         if (methods.isEmpty()) return
@@ -132,8 +172,12 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     }
 
     /**
-     * Record/`initialize` constructor check. Returns true when handled
-     * (record params or `initialize` found), false to fall through to regular methods.
+     * Record/`initialize`/`param` constructor check. Returns true when handled
+     * (record params, `initialize` or macro `param` declarations found),
+     * false to fall through to regular methods.
+     *
+     * Priority: record > literal initialize > macro `param` (file-level
+     * helpers keep this class under detekt's TooManyFunctions budget).
      */
     private fun checkNewConstructorCall(
         className: String?,
@@ -143,22 +187,12 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         holder: ProblemsHolder,
     ): Boolean {
         if (className == null) return false
-        // Check record definition first — if `record Config, ...` exists in the
-        // current file, its parameters take priority over any `class Config`
-        // defined elsewhere (which might have a different `initialize`).
-        val recordParams = CrystalRecordArgumentCheck.findRecordParameters(className, contextElement)
-        if (recordParams != null) {
-            CrystalRecordArgumentCheck.checkRecordArguments(recordParams, arguments, methodNameElement, holder)
-            return true
+        if (CrystalNewConstructorCheck.checkRecord(className, arguments, methodNameElement, contextElement, holder)) return true
+        val checkCount: (List<CrystalMethodDefinition>) -> Unit = { methods ->
+            checkArgumentCount(methods, arguments, methodNameElement, holder)
         }
-        // No record found — try regular class initialize
-        val initMethod =
-            CrystalMethodLookup.getInitializeMethod(className, contextElement.project, contextElement.containingFile)
-        if (initMethod != null) {
-            checkArgumentCount(listOf(initMethod), arguments, methodNameElement, holder)
-            return true
-        }
-        return false
+        if (CrystalNewConstructorCheck.checkInitialize(className, contextElement, checkCount)) return true
+        return CrystalNewConstructorCheck.checkParam(className, arguments, methodNameElement, contextElement, holder)
     }
 
     private fun checkArgumentCount(
@@ -169,6 +203,10 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
     ) {
         // If any argument has an unresolvable splat/double-splat, skip the check entirely
         if (CrystalOverloadEvaluator.hasUnresolvedSplat(arguments)) return
+        // `severity :warning` / `queue_name :q`: macro-defined DSL setters share
+        // their name with a generated zero-param getter, so arity is unknowable.
+        val name = methodNameElement.text
+        if (name != "new" && CrystalMacroSetters.hasMacro(name, methodNameElement.project)) return
 
         // Expand resolved splats into effective argument counts
         val effectivePositionalCount = CrystalOverloadEvaluator.effectivePositionalCount(arguments)
@@ -241,8 +279,11 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
             )
             return
         }
-        for (i in match.excessStartIndex until arguments.size) {
-            val argExpr = arguments[i].element
+        // Block bodies are zero-count markers, never excess highlights: skip them
+        // when mapping the excess window back onto argument elements.
+        val valueArgs = arguments.filter { !it.isBlock }
+        for (i in match.excessStartIndex until valueArgs.size) {
+            val argExpr = valueArgs[i].element
             val target = CrystalCallArguments.highlightTarget(argExpr)
             holder.registerProblem(
                 target,
@@ -297,4 +338,178 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         }
         return lastNameElement
     }
+}
+
+/**
+ * Constructor dispatch for `.new`: record > literal `initialize` > macro
+ * `param`. File-level to keep the inspection class under detekt's
+ * TooManyFunctions budget.
+ */
+private object CrystalNewConstructorCheck {
+    /** `new` candidates owned by [className] (see [CrystalMethodLookup.getEnclosingClassName]). */
+    fun candidatesFor(
+        className: String,
+        project: com.intellij.openapi.project.Project,
+    ): List<CrystalMethodDefinition> =
+        CrystalOverloadEvaluator
+            .findCandidateMethods("new", project)
+            .filter { CrystalMethodLookup.getEnclosingClassName(it) == className }
+
+    /** Record-definition fast path (highest priority). */
+    fun checkRecord(
+        className: String,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        contextElement: PsiElement,
+        holder: ProblemsHolder,
+    ): Boolean {
+        // Check record definition first — if `record Config, ...` exists in the
+        // current file, its parameters take priority over any `class Config`
+        // defined elsewhere (which might have a different `initialize`).
+        val recordParams = CrystalRecordArgumentCheck.findRecordParameters(className, contextElement) ?: return false
+        CrystalRecordArgumentCheck.checkRecordArguments(recordParams, arguments, methodNameElement, holder)
+        return true
+    }
+
+    /**
+     * Literal `def initialize` path — unless it is an empty fallback
+     * (`def initialize; end`) inherited from a macro base (Mosquito's
+     * `QueuedJob` ships one for the zero-params case) while the class
+     * itself declares macro `param`s. The macro-generated constructor
+     * (`initialize(@attempt_id, ...)`) is invisible in source, so arity
+     * against the empty fallback reports every named arg as unknown —
+     * yield to the `param` path instead (overload semantics: the empty
+     * fallback stays valid for zero-arg calls, `param` covers the rest).
+     */
+    fun checkInitialize(
+        className: String,
+        contextElement: PsiElement,
+        checkArgumentCount: (List<CrystalMethodDefinition>) -> Unit,
+    ): Boolean {
+        val initMethods =
+            CrystalMethodLookup.getInitializeMethods(
+                className,
+                contextElement.project,
+                contextElement.containingFile,
+                contextElement,
+            )
+        if (initMethods.isEmpty()) return false
+        if (initMethods.size == 1 && isEmptyFallback(initMethods.first()) && hasParamDeclarations(className, contextElement)) {
+            return false
+        }
+        checkArgumentCount(initMethods)
+        return true
+    }
+
+    /** True when [method] takes no parameters at all (empty fallback shape). */
+    private fun isEmptyFallback(method: CrystalMethodDefinition): Boolean = method.parameterList?.parameterList.isNullOrEmpty()
+
+    /** True when [className] declares macro `param`s (project-wide lookup). */
+    private fun hasParamDeclarations(
+        className: String,
+        contextElement: PsiElement,
+    ): Boolean {
+        val file = contextElement.containingFile ?: return false
+        return io.github.unurgunite.crystal.type.CrystalParamLookup
+            .paramsForProject(className, contextElement.project, file)
+            .isNotEmpty()
+    }
+
+    /**
+     * Macro `param` declarations (Mosquito-style `param name : Type`) generate
+     * the constructor at compile time. Lowest priority: literal initialize
+     * and record win when present.
+     */
+    fun checkParam(
+        className: String,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        contextElement: PsiElement,
+        holder: ProblemsHolder,
+    ): Boolean {
+        val file = contextElement.containingFile ?: return false
+        val paramSets =
+            io.github.unurgunite.crystal.type.CrystalParamLookup
+                .paramSetsForProject(className, contextElement.project, file)
+        if (paramSets.isEmpty()) return false
+        // One reopening may accept the call while another does not: report only
+        // when no reopening's generated constructor accepts it.
+        if (paramSets.any { acceptsParamSet(it, arguments) }) return true
+        checkParamArity(paramSets.first(), arguments, methodNameElement, holder)
+        return true
+    }
+
+    /** True when [params] describes a constructor callable with [arguments]. */
+    private fun acceptsParamSet(
+        params: List<io.github.unurgunite.crystal.type.CrystalParamLookup.ParamEntry>,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+    ): Boolean {
+        val required = params.count { !it.hasDefault }
+        if (CrystalOverloadEvaluator.effectivePositionalCount(arguments) < required) return false
+        val known = params.map { it.name }.toSet()
+        return CrystalOverloadEvaluator.collectNamedArgNames(arguments).all { it in known } &&
+            CrystalOverloadEvaluator.effectivePositionalCount(arguments) + known.size >= required
+    }
+
+    /**
+     * Arity check against macro `param` declarations: same overload shape as
+     * record params (no splat), unknown named args reported per argument.
+     */
+    private fun checkParamArity(
+        paramEntries: List<io.github.unurgunite.crystal.type.CrystalParamLookup.ParamEntry>,
+        arguments: List<CrystalCallArguments.ArgumentInfo>,
+        methodNameElement: PsiElement,
+        holder: ProblemsHolder,
+    ) {
+        val params =
+            paramEntries.map {
+                CrystalOverloadEvaluator.ParamInfo(it.name, it.hasDefault)
+            }
+        CrystalRecordArgumentCheck.checkRecordArguments(params, arguments, methodNameElement, holder)
+    }
+}
+
+/**
+ * True when a bare call must not be arity-checked: the name resolves to a
+ * variable/parameter (shadows any method — binary-op ambiguity like
+ * `count + 87` parsed as a call), it is a spec matcher (accepts anything), or
+ * a definition macro (`define`, `delegate` — declare methods, not calls).
+ */
+internal fun isSkippedBareCall(
+    callExpr: PsiElement,
+    methodName: String,
+): Boolean {
+    // The parameter shadows any same-named method, and a binary-op parse like
+    // `count + 87` must not be reported as a call.
+    val resolvedRef = callExpr.reference?.resolve()
+    if (resolvedRef != null && resolvedRef !is CrystalMethodDefinition) return true
+    val scope = io.github.unurgunite.crystal.type.CrystalLocalScope
+    if (scope.isSpecMatcherCall(methodName)) return true
+    return scope.isDefinitionMacroCall(methodName)
+}
+
+/**
+ * A non-`new` candidate is an acceptable match when its owner matches the
+ * receiver, or when it has no owner but lives in the file being analyzed.
+ *
+ * Ownerless candidates come from module-level definitions in shards and the
+ * stdlib (`def eq(value)` in `Spec::Expectations`, top-level `def raise`),
+ * which are reachable from everywhere and so used to be matched against every
+ * call of the same name — 60-80 reported problems per name.
+ */
+private fun ownsDotCall(
+    enclosing: String?,
+    receiverName: String,
+    method: CrystalMethodDefinition,
+    callSite: PsiElement,
+): Boolean {
+    // The owner comes from the stub parent chain as a SHORT name while the
+    // receiver may be fully qualified (`Gate::Spec::Methods`), so compare the
+    // last segment too — otherwise a qualified receiver drops its own matches.
+    val shortReceiver = receiverName.substringAfterLast("::")
+    if (enclosing == receiverName || enclosing == shortReceiver) return true
+    // A top-level (`enclosing == null`) def only answers unqualified calls in its own file.
+    return enclosing == null &&
+        !receiverName.contains("::") &&
+        method.containingFile?.virtualFile == callSite.containingFile?.virtualFile
 }

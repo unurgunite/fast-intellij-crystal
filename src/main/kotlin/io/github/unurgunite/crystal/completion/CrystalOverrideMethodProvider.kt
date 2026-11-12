@@ -72,12 +72,6 @@ object CrystalOverrideMethodProvider {
             // Determine the indentation from the line where `def` starts
             val lineNumber = document.getLineNumber(caretOffset)
             val lineStart = document.getLineStartOffset(lineNumber)
-            val lineText =
-                document.getText(
-                    com.intellij.openapi.util
-                        .TextRange(lineStart, caretOffset),
-                )
-
             // Find indentation: everything before `def` on this line (which was already typed)
             // But we need the indentation of the def line — look at current line start
             val fullLineText =

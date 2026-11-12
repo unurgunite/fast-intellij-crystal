@@ -41,6 +41,9 @@ public interface CrystalStatement extends PsiElement {
   CrystalForStatement getForStatement();
 
   @Nullable
+  CrystalHeredocDeferredBody getHeredocDeferredBody();
+
+  @Nullable
   CrystalIfStatement getIfStatement();
 
   @Nullable

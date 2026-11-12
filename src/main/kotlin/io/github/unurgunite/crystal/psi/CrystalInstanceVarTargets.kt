@@ -23,33 +23,37 @@ internal object CrystalInstanceVarTargets {
         varName: String,
         bareName: String,
     ): Triple<MutableList<PsiElement>, MutableList<PsiElement>, MutableList<PsiElement>> {
+        val collected = Collected(varName, bareName)
+        collectTargets(classBody, collected)
+        return Triple(collected.propertyDecls, collected.macroDecls, collected.assignments)
+    }
+
+    /** Names being searched plus the three output buckets they fill. */
+    private class Collected(
+        val varName: String,
+        val bareName: String,
+    ) {
         val propertyDecls = mutableListOf<PsiElement>()
         val macroDecls = mutableListOf<PsiElement>()
         val assignments = mutableListOf<PsiElement>()
-        collectTargets(classBody, varName, bareName, propertyDecls, macroDecls, assignments)
-        return Triple(propertyDecls, macroDecls, assignments)
     }
 
     private fun collectTargets(
         element: PsiElement,
-        varName: String,
-        bareName: String,
-        propertyDecls: MutableList<PsiElement>,
-        macroDecls: MutableList<PsiElement>,
-        assignments: MutableList<PsiElement>,
+        collected: Collected,
     ) {
         var astChild = element.node.firstChildNode
         while (astChild != null) {
             val child = astChild.psi
 
-            collectPropertyDeclaration(child, varName, bareName, propertyDecls)
-            collectMacroDeclaration(child, bareName, macroDecls)
-            collectAssignmentCandidate(child, astChild, varName, assignments)
+            collectPropertyDeclaration(child, collected)
+            collectMacroDeclaration(child, collected)
+            collectAssignmentCandidate(child, astChild, collected)
 
             // Always recurse (but don't cross into nested class/struct/module definitions —
             // enum bodies share the enclosing scope, so they are not a boundary)
             if (!CrystalInstanceVarScope.isNestedScopeBoundary(child) && astChild.firstChildNode != null) {
-                collectTargets(child, varName, bareName, propertyDecls, macroDecls, assignments)
+                collectTargets(child, collected)
             }
 
             astChild = astChild.treeNext
@@ -63,9 +67,7 @@ internal object CrystalInstanceVarTargets {
      */
     private fun collectPropertyDeclaration(
         child: PsiElement,
-        varName: String,
-        bareName: String,
-        propertyDecls: MutableList<PsiElement>,
+        collected: Collected,
     ) {
         if (child !is CrystalPropertyDeclaration) return
         val declName =
@@ -74,8 +76,8 @@ internal object CrystalInstanceVarTargets {
                 ?: child.node.findChildByType(CrystalTypes.IDENTIFIER)?.text
                 ?: findVarAccessText(child, CrystalInstanceVarAccess::class.java)
                 ?: findVarAccessText(child, CrystalClassVarAccess::class.java)
-        if (declName == bareName || declName == varName) {
-            propertyDecls.add(child)
+        if (declName == collected.bareName || declName == collected.varName) {
+            collected.propertyDecls.add(child)
         }
     }
 
@@ -95,15 +97,14 @@ internal object CrystalInstanceVarTargets {
      */
     private fun collectMacroDeclaration(
         child: PsiElement,
-        bareName: String,
-        macroDecls: MutableList<PsiElement>,
+        collected: Collected,
     ) {
         if (!CrystalPsiUtils.isCallExpression(child)) return
         val callName = child.node.findChildByType(CrystalTypes.IDENTIFIER)?.text
         if (callName !in PROPERTY_MACROS) return
         val argText = getFirstArgumentTextGeneric(child)
-        if (argText == bareName) {
-            macroDecls.add(child)
+        if (argText == collected.bareName) {
+            collected.macroDecls.add(child)
         }
     }
 
@@ -114,11 +115,10 @@ internal object CrystalInstanceVarTargets {
     private fun collectAssignmentCandidate(
         child: PsiElement,
         astChild: ASTNode,
-        varName: String,
-        assignments: MutableList<PsiElement>,
+        collected: Collected,
     ) {
-        CrystalVarAssignments.collectLeafAssignment(child, astChild, varName, assignments)
-        CrystalVarAssignments.collectCompositeAssignment(child, varName, assignments)
+        CrystalVarAssignments.collectLeafAssignment(child, astChild, collected.varName, collected.assignments)
+        CrystalVarAssignments.collectCompositeAssignment(child, collected.varName, collected.assignments)
     }
 
     private fun getFirstArgumentTextGeneric(element: PsiElement): String? {

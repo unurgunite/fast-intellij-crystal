@@ -284,4 +284,365 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Block bodies are never arguments ====================
+
+    fun testBlockBodyIsNotAnArgument() {
+        // `at_exit { d.close }`: the `{}` block is not a positional argument —
+        // `at_exit` takes zero args plus a block (db.cr shape).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def at_exit(&block : ->)
+              block.call
+            end
+            at_exit { puts 1 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testBlockBodyWithDotCallIsNotAnArgument() {
+        // Same shape but the block body is a DOT-call (`d.close`), not a bare
+        // command: the tuple still holds a block body, never a value.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def at_exit(&block : ->)
+              block.call
+            end
+            d = open_db
+            at_exit { d.close }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testOperatorTailInAssignmentIsNotAnArgument() {
+        // `@@last_call = Time.utc - 1.second`: the `- 1.second` holder is the
+        // operator's RHS, never an argument of `utc` (mobileproxy/emulator).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            @@last_call = Time.utc - 1.second
+            deadline = Time.utc + 5.seconds
+            puts @@last_call
+            puts deadline
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testArgPlusBlockCountsArgOnly() {
+        // `foo(1) { bar }`: one positional plus a block — no excess reported.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(x : Int32)
+            end
+            foo(1) { puts 2 }
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testBinaryOperatorTailIsNotACall() {
+        // `Time.utc - 1.second` parses as DOT_CALL `Time.utc` + detached
+        // `- 1.second`: `-` is a binary operator, not a method name — no
+        // "Too many arguments" against a 0-param phantom.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            @@last_call = Time.utc - 1.second
+            deadline = Time.utc + timeout_s.seconds
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testKeywordOnlyParamAfterBareStar() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store
+              def initialize(initial_capacity = nil, *, capacity = 0)
+              end
+            end
+
+            Store.new(initial_capacity: 8)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNewWithBlockAndKeywordOnlyParam() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store
+              def initialize(*, size = 0)
+              end
+            end
+
+            Store.new(size: 3)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNewOnGenericClassWithKeywordArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Store(K, V)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Store(String, Int32).new(initial_capacity: 8)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMacroParamConstructorNamedArgs() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            abstract class QueuedJob
+              macro inherited
+                macro param(parameter)
+                end
+              end
+            end
+
+            class CamTestJob < QueuedJob
+              param attempt_id : Int64
+              param source : String
+            end
+
+            CamTestJob.new(attempt_id: 1_i64, source: "web")
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testIvarShorthandParamsWithDefaults() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "", @project_path = path)
+              end
+            end
+
+            class Source
+              def self.new(code : String, *args, normalize = true, **opts)
+                new(code, *args, **opts)
+              end
+            end
+
+            Source.new("a = 1\n", "source.cr", normalize: false)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A reopened class-level `def self.new` supplies `normalize:`. */
+    fun testClassLevelNewAcceptsNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "")
+              end
+
+              def self.new(code : String, *args, normalize = true)
+                new(code, *args)
+              end
+            end
+
+            Source.new("a", "b", normalize: false)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A class-level `new` does not make unrelated names valid. */
+    fun testClassLevelNewRejectsUnknownNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Source
+              def initialize(@code = "", @path = "")
+              end
+
+              def self.new(code : String, *args, normalize = true)
+                new(code, *args)
+              end
+            end
+
+            Source.new("a", "b", <error descr="Unknown named argument 'bogus'">bogus: false</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Generic receiver: `Hash(K, V)` resolves its class-level overloads. */
+    fun testGenericReceiverKeepsClassName() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Box(T)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Box(Int32).new(initial_capacity: 64)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** ...and a genuinely unknown name is still reported. */
+    fun testGenericReceiverRejectsUnknownNamedArg() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Box(T)
+              def initialize(*, initial_capacity = nil)
+              end
+            end
+
+            Box(Int32).new(<error descr="Unknown named argument 'bogus'">bogus: 64</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** A macro-defined DSL setter shares its name with a generated getter. */
+    fun testMacroSetterCallIsNotArityChecked() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Job
+              def self.queue_name : String
+                "default"
+              end
+
+              macro queue_name(name)
+                def self.queue_name : String
+                  "{{ name.id }}"
+                end
+              end
+            end
+
+            class Job
+              queue_name :demo_queue
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Without a same-named macro the excess argument is still reported. */
+    fun testExcessArgsStillReportedWithoutMacro() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Plain
+              def self.foo : Int32
+                1
+              end
+            end
+
+            Plain.foo(<error descr="Too many arguments: expected at most 0, got 1">1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Spec lifecycle hooks take a block; a 0-param namesake must not report. */
+    fun testSpecHookBlockIsNotArityChecked() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def before_each
+            end
+
+            before_each do
+              puts 1
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testAliasedQualifiedConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Shop::HTTP
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String, @has : Bool = false, @default : T? = nil)
+                end
+              end
+            end
+
+            alias HK = Shop::HTTP
+
+            HK::Controller::ParameterMetadata(String).new("a", false, nil)
+            HK::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    // A qualified `::`-chain is a type/namespace expression only when it is
+    // followed by `(`, `.` or `?`. A bare command whose FIRST ARGUMENT starts
+    // with `::` (`expect_raises ::Spec::Foo, "msg"`, `raise ::DB::Foo.new(msg)`)
+    // must keep its callee-argument shape, otherwise the argument list and the
+    // block are dropped from the tree.
+    fun testBareCommandWithLeadingColonColonArgument() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            class Plain
+              def foo : Nil
+              end
+            end
+
+            expect_raises ::Spec::AssertionFailed, "msg" do
+            end
+
+            Plain.new.foo
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        assertEquals(
+            0,
+            com.intellij.psi.util.PsiTreeUtil
+                .collectElementsOfType(file, com.intellij.psi.PsiErrorElement::class.java)
+                .size,
+        )
+        assertTrue(file.text.contains("\"msg\""))
+        assertTrue(file.text.contains("do"))
+    }
+
+    fun testNestedStructConstructorIsResolved() {
+        myFixture.configureByText(
+            "t.cr",
+            """
+            module Shop::HTTP
+              struct Controller::ParameterMetadata(T)
+                def initialize(@name : String)
+                end
+              end
+            end
+
+            Shop::HTTP::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

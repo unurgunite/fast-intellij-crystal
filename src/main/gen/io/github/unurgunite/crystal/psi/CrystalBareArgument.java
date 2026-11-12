@@ -32,9 +32,6 @@ public interface CrystalBareArgument extends PsiElement {
   List<CrystalBeginStatement> getBeginStatementList();
 
   @NotNull
-  List<CrystalBlock> getBlockList();
-
-  @NotNull
   List<CrystalBreakExpression> getBreakExpressionList();
 
   @NotNull
@@ -120,6 +117,9 @@ public interface CrystalBareArgument extends PsiElement {
 
   @NotNull
   List<CrystalTupleLiteral> getTupleLiteralList();
+
+  @NotNull
+  List<CrystalTypeArguments> getTypeArgumentsList();
 
   @NotNull
   List<CrystalTypeReceiverExpression> getTypeReceiverExpressionList();

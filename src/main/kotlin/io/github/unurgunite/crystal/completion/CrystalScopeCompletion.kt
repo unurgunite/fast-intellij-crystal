@@ -144,7 +144,7 @@ internal object CrystalScopeCompletion {
         result: CompletionResultSet,
     ) {
         if (method == null) return
-        for (param in method.parameterList?.parameterList ?: emptyList()) {
+        for (param in method.parameterList?.parameterList.orEmpty()) {
             val name = extractParameterName(param) ?: continue
             addParameterLookup(name, seen, result, CrystalCompletionContributor.PRIORITY_EXPLICIT_PARAMETER)
         }
@@ -213,14 +213,14 @@ internal object CrystalScopeCompletion {
         if (method == null) return
         val enclosingClassName = CrystalMethodLookup.getEnclosingClassName(method) ?: return
         val project = position.project
-        val searchScope = GlobalSearchScope.allScope(project)
-        addClassMethods(enclosingClassName, CrystalCompletionContributor.PRIORITY_OWN_CLASS_METHOD, searchScope, project, seen, result)
+        val classSink = ClassMethodSink(project, GlobalSearchScope.allScope(project), seen, result)
+        addClassMethods(enclosingClassName, CrystalCompletionContributor.PRIORITY_OWN_CLASS_METHOD, classSink)
 
         // Inherited: direct superclass
         val enclosingClass = PsiTreeUtil.getParentOfType(method, CrystalClassDefinition::class.java)
         val superClassName = enclosingClass?.superclassClause?.typeReference?.text
         if (superClassName != null && superClassName != enclosingClassName) {
-            addClassMethods(superClassName, CrystalCompletionContributor.PRIORITY_SUPERCLASS_METHOD, searchScope, project, seen, result)
+            addClassMethods(superClassName, CrystalCompletionContributor.PRIORITY_SUPERCLASS_METHOD, classSink)
         }
     }
 
@@ -230,28 +230,25 @@ internal object CrystalScopeCompletion {
     private fun addClassMethods(
         className: String,
         priority: Double,
-        scope: GlobalSearchScope,
-        project: Project,
-        seen: MutableSet<String>,
-        result: CompletionResultSet,
+        sink: ClassMethodSink,
     ) {
         StubIndex
             .getElements(
                 CrystalMethodByClassIndex.KEY,
                 className,
-                project,
-                scope,
+                sink.project,
+                sink.scope,
                 CrystalMethodDefinition::class.java,
             ).asSequence()
             .mapNotNull { it.name }
-            .filter { it != "initialize" && seen.add(it) }
+            .filter { it != "initialize" && sink.seen.add(it) }
             .forEach {
                 val lookup =
                     LookupElementBuilder
                         .create(it)
                         .withIcon(AllIcons.Nodes.Method)
                         .withTypeText("method", true)
-                result.addElement(PrioritizedLookupElement.withPriority(lookup, priority))
+                sink.result.addElement(PrioritizedLookupElement.withPriority(lookup, priority))
             }
     }
 
@@ -269,4 +266,12 @@ internal object CrystalScopeCompletion {
         // Top level — scan the file
         return element.containingFile
     }
+
+/** Where [addClassMethods] writes: search context, dedup set and completion output. */
+    private class ClassMethodSink(
+        val project: Project,
+        val scope: GlobalSearchScope,
+        val seen: MutableSet<String>,
+        val result: CompletionResultSet,
+    )
 }

@@ -20,10 +20,10 @@ class CrystalSettingsConfigurable(
     private val project: Project,
 ) : Configurable {
     private lateinit var crystalPathField: TextFieldWithBrowseButton
-    private var versionLabel: JLabel = JBLabel("")
-    private var stdlibStatusLabel: JLabel = JBLabel("")
-    private var stdlibVersionLabel: JLabel = JBLabel("")
-    private var stdlibPathLabel: JLabel = JBLabel("")
+    private val versionLabel: JLabel = JBLabel("")
+    private val stdlibStatusLabel: JLabel = JBLabel("")
+    private val stdlibVersionLabel: JLabel = JBLabel("")
+    private val stdlibPathLabel: JLabel = JBLabel("")
 
     override fun getDisplayName(): String = "Crystal"
 

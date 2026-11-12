@@ -188,14 +188,18 @@ bet = bohne 22
     fun testSelfReferentialAssignmentTerminates() {
         // `x = x.to_s`: inferring x re-enters inference on x via the resolver
         // bridge (resolveType → inferTypeList → assignment → resolveType).
-        // Must terminate (unknown → null), not StackOverflowError.
+        // Must terminate, not StackOverflowError. The DOT-call fragment now
+        // resolves through the method index (`to_s` → String for every
+        // receiver), so the cycle breaks legitimately at the method's own
+        // return type instead of collapsing to unknown.
         myFixture.configureByText("test.cr", "x = x.to_s")
         val type = CrystalTypeInference.inferType("x", myFixture.file, project)
-        assertNull(type)
+        assertEquals("String", type)
     }
 
     fun testMutuallyReferentialAssignmentsTerminate() {
-        // a ↔ b cycle across two assignments: same termination requirement.
+        // a ↔ b cycle across two assignments: same termination requirement —
+        // and the same legitimate break at `to_s` → String.
         myFixture.configureByText(
             "test.cr",
             """
@@ -205,6 +209,15 @@ puts a
             """.trimIndent(),
         )
         val type = CrystalTypeInference.inferType("a", myFixture.file, project)
+        assertEquals("String", type)
+    }
+
+    fun testBareCyclicAssignmentTerminatesUnknown() {
+        // A cycle with no method call to break it (`x = x`) still
+        // terminates via the recursion guard, yielding unknown (null) —
+        // this is the test that proves the guard itself is alive.
+        myFixture.configureByText("test.cr", "x = x")
+        val type = CrystalTypeInference.inferType("x", myFixture.file, project)
         assertNull(type)
     }
 
@@ -379,6 +392,38 @@ puts a
         assertEquals("String", CrystalTypeInference.inferType("name", file.findElementAt(callOffset)!!, project))
     }
 
+    fun testEnclosingClassNameFromStubDoesNotTouchAst() {
+        // Regression for UpToDateStubIndexMismatch (a console helper hash.cr):
+        // getEnclosingClassName runs on StubIndex hits whose stubs may
+        // disagree with a fresh parse. It must answer from the stub tree
+        // (no getParentOfType/getNode — those force reconciliation and throw
+        // AssertionError out of inspections). PSI fallback covers non-stub
+        // elements (in-memory fixture files have no stubs).
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Path
+              def expand(@name : String)
+                name = @name
+                name.starts_with?("~/")
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val defOffset = file.text.indexOf("def expand")
+        val method =
+            com.intellij.psi.util.PsiTreeUtil.getParentOfType(
+                file.findElementAt(defOffset),
+                io.github.unurgunite.crystal.psi.CrystalMethodDefinition::class.java,
+            )!!
+        assertEquals(
+            "Path",
+            io.github.unurgunite.crystal.type.CrystalMethodLookup
+                .getEnclosingClassName(method),
+        )
+    }
+
     fun testAssignmentIndexInvalidatesAfterEdit() {
         // The per-file assignment index is cached: after editing the RHS the
         // new type must be visible, not the stale cached one.
@@ -394,5 +439,44 @@ puts a
         val edited = myFixture.file
         val newOffset = edited.text.indexOf("x", edited.text.indexOf("puts"))
         assertEquals("String", CrystalTypeInference.inferType("x", edited.findElementAt(newOffset)!!, project))
+    }
+
+    fun testToStringAlwaysYieldsString() {
+        // `proxy_id.to_s` where `proxy_id : Int32`: `to_s` always yields
+        // String — inference must not return the receiver's own type.
+        // NOTE: inferType("proxy_id") correctly answers Int32 (the parameter
+        // type); the `to_s` short-circuit lives one level up, in
+        // inferReturnTypeOfMethodList / lookupReturnType.
+        val types =
+            io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference.inferReturnTypeOfMethodList(
+                "to_s",
+                null,
+                project,
+            )
+        assertEquals(listOf("String"), types)
+        assertEquals(
+            "String",
+            io.github.unurgunite.crystal.type.CrystalCallReturnTypeResolver
+                .lookupReturnType("to_s", project),
+        )
+    }
+
+    fun testSameNamedLocalInAnotherMethodIsNotUsed() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Runner
+              def first
+                value = 42
+              end
+              def second
+                puts value
+              end
+            end
+            """.trimIndent(),
+        )
+        val file = myFixture.file
+        val useOffset = file.text.indexOf("value", file.text.indexOf("puts"))
+        assertNull(CrystalTypeInference.inferType("value", file.findElementAt(useOffset)!!, project))
     }
 }

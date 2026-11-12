@@ -58,7 +58,9 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Int32", "Float64", literal = true))
         assertTrue(compat("Int32", "Int8", literal = true))
         assertFalse(compat("Int32", "String", literal = true))
-        // Suffixed values do NOT get the literal treatment
+        // Suffixed literals autocast too: `3i32` fits `Float32`, `300i32`
+        // does not fit `Int8` — here only the flag decides, not the value.
+        assertTrue(compat("Int32", "Int8", literal = true))
         assertFalse(compat("Int32", "Int8", literal = false))
     }
 
@@ -87,6 +89,49 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Array(Int8)", "Array(Int32)"))
     }
 
+    fun testUnboundTypeVariablesFitAnything() {
+        // `Hash#merge` infers `Hash(K, V)`: placeholders fit concrete args.
+        assertTrue(compat("Hash(K, V)", "Hash(String, String)"))
+        assertTrue(compat("Hash(String, String)", "Hash(K, V)"))
+        assertTrue(compat("Array(T)", "Array(Int32)"))
+        // Concrete mismatches still mismatch
+        assertFalse(compat("Hash(String, Bool)", "Hash(String, String)"))
+    }
+
+    fun testStdlibMergeUnionPlaceholdersFit() {
+        // stdlib `Hash#merge : Hash(K | L, V | W)`: all-placeholder unions
+        // fit concrete params. Naive split("|") cut this into `Hash(K` —
+        // depth-aware split keeps the member whole first.
+        assertTrue(compat("Hash(K | L, V | W)", "Hash(String, String)"))
+        assertFalse(compat("Hash(K | L, V | W)", "Array(Int32)"))
+    }
+
+    fun testBareGenericFitsParameterizedSameBase() {
+        // `Hash` (args unknown, e.g. unresolved `merge` inference) vs
+        // `Hash(String, String)`: same base, no definite mismatch.
+        // Different bases still mismatch.
+        assertTrue(compat("Hash", "Hash(String, String)"))
+        assertTrue(compat("Hash(String, String)", "Hash"))
+        assertTrue(compat("Array", "Array(Int32)"))
+        assertFalse(compat("Hash", "Array(Int32)"))
+        // Bare non-generics still escape as unknown (pre-existing leniency)
+        assertTrue(compat("Array", "String"))
+    }
+
+    fun testLeadingDoubleColonIsVoid() {
+        // `::Set(String)` == `Set(String)`: leading `::` is semantically void.
+        assertTrue(compat("::Set(String)", "Set(String)"))
+        assertTrue(compat("Set(String)", "::Set(String)"))
+        assertTrue(compat("::Hash(String, String)", "Hash(String, String)"))
+    }
+
+    fun testBytesAliasFitsSlice() {
+        // `Bytes` is `Slice(UInt8)`: slice reads fit Bytes params.
+        assertTrue(compat("Slice(UInt8)", "Bytes"))
+        assertTrue(compat("Bytes", "Slice(UInt8)"))
+        assertFalse(compat("Slice(String)", "Bytes"))
+    }
+
     fun testUnknownTypesEscape() {
         // Unknown param or arg types must not produce false positives
         assertTrue(compat("MyClass", "Int32"))
@@ -97,5 +142,127 @@ class CrystalTypeCompatibilityTest : TestCase() {
     fun testDescribeExpectedType() {
         assertEquals("Int32", CrystalTypeCompatibility.describeExpectedType("Int32"))
         assertEquals("Int32 | String", CrystalTypeCompatibility.describeExpectedType("Int32 | String"))
+    }
+
+    fun testJsonableCollectionsFitString() {
+        // `.to_json` always yields String: `hash.to_json` resolves as the
+        // `to_json` call (String), not the bare hash. Bare collections
+        // without `.to_json` still mismatch (see the literal tests in
+        // CrystalTypeCheckLiteralsTest).
+        assertTrue(compat("String", "String"))
+        assertFalse(compat("Hash(String, String)", "String"))
+        assertFalse(compat("Array(Int32)", "String"))
+        assertFalse(compat("Int32", "String"))
+    }
+
+    fun testUnionArgumentFitsWhenAnyMemberFits() {
+        // Overload-union arguments (`String | Hash(String, String)`) fit a
+        // concrete param when any member fits — the call may take any
+        // branch at runtime.
+        assertTrue(compat("String | Hash(String, String)", "Hash(String, String)"))
+        assertTrue(compat("Nil | String", "String"))
+        assertFalse(compat("Int32 | Bool", "String"))
+    }
+
+    fun testEnumerableParameterAcceptsCollections() {
+        // `Enumerable(T)` is a non-invariant module: any collection fits it.
+        assertTrue(compat("Array(String)", "Enumerable(String)"))
+        assertTrue(compat("Tuple(String)", "Enumerable(String)"))
+        assertTrue(compat("Array(Int32)", "Enumerable"))
+        // Element types are not compared by Array's invariance rule.
+        assertTrue(compat("Array(Int32)", "Enumerable(String)"))
+        // Nilable module param matches a collection too.
+        assertTrue(compat("Array(String)", "Enumerable?"))
+    }
+
+    fun testUnderscoreParameterAcceptsAnything() {
+        // `value : _` is a type wildcard.
+        assertTrue(compat("Array(String)", "_"))
+        assertTrue(compat("Bool", "_"))
+    }
+
+    fun testArrayInvarianceStillChecked() {
+        // Enumerable leniency must not leak into concrete invariant generics.
+        assertFalse(compat("Array(Int32)", "Array(String)"))
+        assertFalse(compat("Hash(String, String)", "Array(String)"))
+    }
+
+    fun testTupleSugarMatchesTupleType() {
+        assertTrue(compat("Tuple(Int32, Int32)", "{Int32, Int32}"))
+        assertTrue(compat("Tuple(Int32, Int32)", "::Tuple(Int32, Int32)"))
+    }
+
+    fun testTupleElementMismatchStillDetected() {
+        assertFalse(compat("Tuple(Int32, String)", "{String, String}"))
+    }
+
+    fun testSelfTypeIsLenientOnBothSides() {
+        assertTrue(compat("self", "Array(String)"))
+        assertTrue(compat("Array(String)", "self"))
+        assertTrue(compat("self", "Set(String)"))
+    }
+
+    fun testSelfTypeDoesNotHideRealMismatch() {
+        assertFalse(compat("Int32", "String"))
+    }
+
+    fun testIndexableParameterAcceptsTuple() {
+        // `Indexable(T)` is a module: Tuple, Array and StaticArray all satisfy it.
+        assertTrue(compat("Tuple(String)", "Indexable(String)"))
+        assertTrue(compat("Tuple(String, String)", "Indexable(String)"))
+        assertTrue(compat("Tuple(String)", "Indexable"))
+        assertTrue(compat("Tuple(String)", "Indexable(String)?"))
+    }
+
+    fun testIndexableLeniencyDoesNotHideRealMismatch() {
+        assertFalse(compat("Int32", "String"))
+        assertFalse(compat("Hash(String, String)", "Array(String)"))
+    }
+
+    fun testSelfInsideGenericArgumentIsLenient() {
+        // `self` as a generic element, not a whole argument: the resolver does
+        // not track it, so it is never a definite mismatch.
+        assertTrue(compat("Array(self)", "Array(ACON::Command) | Array(String)"))
+        assertTrue(compat("Array(self)", "AVD::Constraint"))
+        assertTrue(compat("Hash(Int32, self)", "Hash"))
+        assertTrue(compat("Hash(String, self)", "JSON::PullParser | Int"))
+        assertTrue(compat("Array(self)", "String"))
+        assertTrue(compat("Hash(String, self)", "Hash(String, Int32)"))
+    }
+
+    fun testSelfInsideGenericDoesNotHideRealMismatch() {
+        assertFalse(compat("Array(Int32)", "Array(String)"))
+        assertFalse(compat("Hash(String, Int32)", "Hash(String, Bool)"))
+    }
+
+    // A nilable argument only has to fit through its non-Nil member: the `?`
+    // must not stay glued to the base and turn a fine call into a mismatch.
+    fun testNilableArgumentFitsNonNullableParameter() {
+        assertTrue(compat("{String, String}?", "{String, String}"))
+        assertTrue(compat("Tuple(String, String)?", "Tuple(String, String)"))
+        assertTrue(compat("String?", "String"))
+    }
+
+    fun testNilableArgumentStillRejectsRealMismatch() {
+        assertFalse(compat("Int32?", "String"))
+        assertFalse(compat("Tuple(String, Bool)?", "Tuple(String, String)"))
+    }
+
+    // An overload parameter written as a parenthesised union is just a union.
+    fun testParenthesisedUnionParameterMatchesMember() {
+        assertTrue(compat("String", "(Char | String)"))
+        assertTrue(compat("Char", "(Char | String)"))
+        assertTrue(compat("Array(Int32)", "(Array(Int32))"))
+    }
+
+    fun testParenthesisedUnionStillRejectsNonMember() {
+        assertFalse(compat("Bool", "(Char | String)"))
+    }
+
+    // Parens only wrap when they close at the very end: a generic's own parens
+    // must not be stripped into a bogus union.
+    fun testGenericParensAreNotTreatedAsWrappingUnion() {
+        assertTrue(compat("Array(Int32)", "Array(Int32)"))
+        assertFalse(compat("Array(String)", "Array(Int32)"))
     }
 }

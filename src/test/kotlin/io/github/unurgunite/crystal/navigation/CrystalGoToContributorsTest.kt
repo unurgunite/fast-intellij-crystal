@@ -143,6 +143,25 @@ end
         assertTrue(item.canNavigateToSource())
     }
 
+    fun testNavigationItemNavigateOpensFile() {
+        // navigate() must open the symbol's file via FileEditorManager, not
+        // via the @OverrideOnly Navigatable.navigate delegation (Marketplace
+        // verification flags the direct call).
+        val file = myFixture.configureByText("test.cr", "class Foo\nend\n")
+        val def =
+            com.intellij.psi.util.PsiTreeUtil.findChildOfType(
+                file,
+                io.github.unurgunite.crystal.psi.CrystalClassDefinition::class.java,
+            )!!
+        val item = CrystalNavigationItem(CrystalSymbol("Foo", CrystalSymbolKind.CLASS, def))
+        item.navigate(false)
+        val openFiles =
+            com.intellij.openapi.fileEditor.FileEditorManager
+                .getInstance(project)
+                .openFiles
+        assertTrue(openFiles.any { it.name == "test.cr" })
+    }
+
     fun testSymbolKindsHaveLabels() {
         for (kind in CrystalSymbolKind.values()) {
             assertTrue(kind.label.isNotBlank())

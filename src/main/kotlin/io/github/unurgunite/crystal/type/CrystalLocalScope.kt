@@ -13,6 +13,45 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
  */
 internal object CrystalLocalScope {
     /**
+     * Spec-DSL matchers (`value.should be_true`, `x.should eq 1`): Crystal's
+     * `Spec` framework accepts any value with any matcher, so arity and
+     * type checks against random same-named overloads are pure noise.
+     * Both inspections skip these calls entirely.
+     */
+    private val SPEC_MATCHER_CALLS = setOf("should", "should_not")
+
+    /**
+     * Expectation helpers: `should eq(1)` parses `eq(...)` as the bare argument
+     * of a dot call, so `eq` reaches the bare-call path by itself. Its stdlib
+     * definition (`Spec::Expectations#eq(value)`) is a module method, so arity
+     * checking it against unrelated resolution results is pure noise.
+     */
+    private val SPEC_EXPECTATION_CALLS = setOf("eq", "expect_raises")
+
+    /**
+     * Spec lifecycle hooks take exactly one block and are defined by the
+     * `spec` shard (not resolvable here), so a same-named 0-param definition
+     * from elsewhere must not turn `before_each { }` into "Too many arguments".
+     */
+    private val SPEC_HOOK_CALLS = setOf("before_each", "after_each")
+
+    /** True when [methodName] is a spec expectation entry point or lifecycle hook. */
+    fun isSpecMatcherCall(methodName: String): Boolean =
+        methodName in SPEC_MATCHER_CALLS || methodName in SPEC_HOOK_CALLS || methodName in SPEC_EXPECTATION_CALLS
+
+    /**
+     * Definition macros (`define`, `delegate`, `getter`, ...) declare
+     * methods instead of calling them: matching their bare args against a
+     * same-named method overload is pure noise (redis `define sum, ...`
+     * against a 2-param `define` from another shard). Arity checks skip
+     * these; type checks never applied to bare definition sites anyway.
+     */
+    private val DEFINITION_MACROS = setOf("define", "delegate", "getter", "setter", "property", "record")
+
+    /** True when [methodName] is a definition macro, not a real call. */
+    fun isDefinitionMacroCall(methodName: String): Boolean = methodName in DEFINITION_MACROS
+
+    /**
      * Checks if the given name is a local variable or method parameter in the enclosing scope.
      */
     fun isLocalVariableOrParameter(
@@ -38,7 +77,7 @@ internal object CrystalLocalScope {
         method: CrystalMethodDefinition,
         name: String,
     ): Boolean {
-        val params = method.parameterList?.parameterList ?: emptyList()
+        val params = method.parameterList?.parameterList.orEmpty()
         for (param in params) {
             val paramName =
                 param.node.findChildByType(CrystalTypes.IDENTIFIER)?.text

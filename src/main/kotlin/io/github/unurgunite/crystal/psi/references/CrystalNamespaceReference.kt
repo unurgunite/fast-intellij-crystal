@@ -70,11 +70,10 @@ class CrystalNamespaceReference(
                     CrystalNamedElement::class.java,
                 )
             val filtered =
-                candidates
-                    .filter { candidate ->
-                        CrystalPsiUtils.buildQualifiedName(candidate) == fullName &&
-                            (!isGlobal || !isLocalCandidate(candidate))
-                    }.firstOrNull()
+                candidates.firstOrNull { candidate ->
+                    CrystalPsiUtils.buildQualifiedName(candidate) == fullName &&
+                        (!isGlobal || !isLocalCandidate(candidate))
+                }
             if (filtered != null) return filtered
         }
 

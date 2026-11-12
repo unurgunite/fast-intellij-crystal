@@ -9,7 +9,7 @@ import org.junit.Test
 
 /**
  * Nested percent literals inside string interpolation
- * (`%([#{x %([#{y}])}])` — the autoreg `app.cr` shape).
+ * (`%([#{x %([#{y}])}])` — the an editor `app.cr` shape).
  *
  * Before the fix the inner `%(` lexed as `PERCENT LPAREN` (INTERPOLATION had
  * no `%`-family rules) and the inner `#{` fell into `LINE_COMMENT`,

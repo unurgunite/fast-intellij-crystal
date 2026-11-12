@@ -177,6 +177,6 @@ class CrystalProjectGeneratorPeer : GeneratorPeerImpl<CrystalProjectSettings>() 
                     }
                 }
         }
-        return panel!!
+        return panel ?: panel { }
     }
 }

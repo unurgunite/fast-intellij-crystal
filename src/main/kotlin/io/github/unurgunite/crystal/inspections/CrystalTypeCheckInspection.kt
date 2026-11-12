@@ -48,6 +48,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
     ): PsiElementVisitor =
         object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
+                if (!isAnalyzableCrystalFile(element.containingFile)) return
                 when (element) {
                     is CrystalMethodCallExpression -> {
                         checkMethodCall(element, holder)
@@ -72,10 +73,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         holder: ProblemsHolder,
     ) {
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
-
-        // Skip if method name is actually a local variable/parameter (binary operator ambiguity)
-        // e.g. "text * times" parsed as bare call "text(*times)" but actually is binary "text * times"
-        if (CrystalLocalScope.isLocalVariableOrParameter(callExpr, methodName)) return
+        if (isSkippedMethodCall(callExpr, methodName)) return
 
         val arguments = CrystalCallArguments.extractArguments(callExpr)
         if (arguments.isEmpty()) return
@@ -86,10 +84,12 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         val methods = CrystalOverloadEvaluator.findCandidateMethods(methodName, callExpr.project)
         if (methods.isEmpty()) return
 
-        // Check each argument against all overloads
+        // Check each value argument against all overloads (block bodies carry
+        // no value type). NOTE: argIndex counts the block marker too, so
+        // overload arity math must use value-only indexing — see
+        // collectsExpectedType below.
         for ((argIndex, argInfo) in arguments.withIndex()) {
-            val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: continue
-            checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
+            checkValueArgument(argInfo, argIndex, methods, holder)
         }
     }
 
@@ -101,17 +101,30 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         info: DotCallInfo,
         holder: ProblemsHolder,
     ) {
+        // Spec matchers accept anything — never arity/type-check them.
+        if (CrystalLocalScope.isSpecMatcherCall(info.methodName)) return
         val arguments = CrystalCallArguments.extractArgumentsFromArgsElement(argsElement)
         if (arguments.isEmpty()) return
 
         val methods = resolveDotCallMethods(argsElement, info, arguments, holder)
         if (methods.isEmpty()) return
 
-        // Reuse the same type-checking logic
+        // Reuse the same type-checking logic (block bodies carry no value type).
         for ((argIndex, argInfo) in arguments.withIndex()) {
-            val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: continue
-            checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
+            checkValueArgument(argInfo, argIndex, methods, holder)
         }
+    }
+
+    /** One value argument against every overload; block markers skipped silently. */
+    private fun checkValueArgument(
+        argInfo: ArgumentInfo,
+        argIndex: Int,
+        methods: List<CrystalMethodDefinition>,
+        holder: ProblemsHolder,
+    ) {
+        if (argInfo.isBlock) return
+        val resolvedType = CrystalExpressionTypeResolver.resolveType(argInfo.expression) ?: return
+        checkArgumentAgainstOverloads(argInfo, argIndex, methods, resolvedType, holder)
     }
 
     /**
@@ -125,17 +138,7 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
         arguments: List<ArgumentInfo>,
         holder: ProblemsHolder,
     ): List<CrystalMethodDefinition> {
-        var methods = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
-
-        // Filter to methods defined inside a class/module matching the receiver name.
-        // This prevents false positives like ENV.fetch(...) matching Hash#fetch.
-        // Only apply for CONSTANT receivers (class/module names start with uppercase in Crystal).
-        if (info.receiverName.isNotEmpty() && info.receiverName[0].isUpperCase()) {
-            methods =
-                methods.filter { method ->
-                    CrystalMethodLookup.getEnclosingClassName(method) == info.receiverName
-                }
-        }
+        val methods = CrystalDotCallOverloads.resolve(info, argsElement)
 
         if (methods.isNotEmpty() || info.methodName != "new") return methods
 
@@ -227,21 +230,15 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
     ): CrystalParameter? {
         // Named argument: find parameter by name
         if (argName != null) {
-            for (param in params) {
-                val paramName = param.node.findChildByType(CrystalTypes.IDENTIFIER)?.text
-                if (paramName == argName) return param
-            }
-            return null
+            return params.firstOrNull { it.node.findChildByType(CrystalTypes.IDENTIFIER)?.text == argName }
         }
 
-        // Positional: find by index, skipping splat parameters for counting
+        // Positional: find by index. A bare `*` makes every later parameter
+        // keyword-only, so the positional walk stops there.
         var positionalIndex = 0
         for (param in params) {
-            if (isSplatParameter(param)) {
-                // Splat absorbs all remaining positional args
-                return param
-            }
-            if (positionalIndex == argIndex) return param
+            if (isKeywordOnlyBoundary(param)) return null
+            if (isSplatParameter(param) || positionalIndex == argIndex) return param
             positionalIndex++
         }
         return null
@@ -254,3 +251,29 @@ class CrystalTypeCheckInspection : LocalInspectionTool() {
             firstType == CrystalTypes.AMPERSAND
     }
 }
+
+/**
+ * True when a bare `*` (keyword-only marker) precedes [param] in its
+ * parameter list, so [param] cannot be filled positionally.
+ */
+private fun isKeywordOnlyBoundary(param: CrystalParameter): Boolean {
+    var sibling = param.prevSibling
+    while (sibling != null) {
+        if (sibling.node?.elementType == CrystalTypes.STAR) return true
+        if (sibling is CrystalParameter) return false
+        sibling = sibling.prevSibling
+    }
+    return false
+}
+
+/**
+ * True when a method call needs no checks: local variable/parameter
+ * shadowing (binary-op ambiguity) or a spec matcher (accepts anything).
+ * File-level: keeps the inspection class under TooManyFunctions.
+ */
+private fun isSkippedMethodCall(
+    callExpr: PsiElement,
+    methodName: String,
+): Boolean =
+    CrystalLocalScope.isLocalVariableOrParameter(callExpr, methodName) ||
+        CrystalLocalScope.isSpecMatcherCall(methodName)

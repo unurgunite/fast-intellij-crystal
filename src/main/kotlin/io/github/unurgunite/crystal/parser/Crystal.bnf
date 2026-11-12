@@ -11,7 +11,7 @@
   elementTypeHolderClass="io.github.unurgunite.crystal.psi.CrystalTypes"
   elementTypeClass="io.github.unurgunite.crystal.psi.CrystalElementType"
   tokenTypeClass="io.github.unurgunite.crystal.lexer.CrystalTokenType"
-  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
+  elementTypeFactory("class_definition|module_definition|struct_definition|enum_definition|method_definition|macro_definition|macro_definition_open|constant_assignment|alias_definition")="io.github.unurgunite.crystal.stubs.CrystalStubElementTypeFactory.create"
 
   tokens = [
     // Keywords
@@ -288,7 +288,9 @@ lib_definition ::= LIB CONSTANT lib_body END {pin=1}
 // definition's `end` (`record EndOfRequest` inside `module HTTP` consumed the
 // module's `end`, breaking all of http/common.cr past that point): with an empty
 // class_body, `class_body END` matches the outer `end` and PEG commits to it.
-record_definition ::= RECORD type_name [type_parameters] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
+// `record Foo(T) < Base, field : T do ... end` (shop parameter_bag.cr): the
+// superclass clause is legal on a record and sits before the field list.
+record_definition ::= RECORD type_name [type_parameters] [superclass_clause] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
 
 record_field ::= (IDENTIFIER | keyword_as_record_field) [COLON type_reference] [ASSIGN expression] | STAR
 
@@ -305,7 +307,12 @@ annotation_usage ::= AT LBRACKET type_path [LPAREN NLS argument_list NLS RPAREN]
 
 // C-style function-pointer aliases may list comma-separated parameter types with an optional
 // return arrow: `alias AllocFunc = Void*, UInt, UInt -> Void*`.
-alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {pin=1}
+alias_definition ::= ALIAS type_name ASSIGN type_reference (COMMA NLS type_reference)* [ARROW NLS type_reference] {
+  pin=1
+  stubClass="io.github.unurgunite.crystal.stubs.CrystalAliasDefinitionStub"
+  mixin="io.github.unurgunite.crystal.psi.impl.CrystalStubbedAliasDefinitionImpl"
+  implements="io.github.unurgunite.crystal.psi.CrystalNamedElement"
+}
 
 // ==================== Type Bodies ====================
 
@@ -534,8 +541,12 @@ private macro_escaped_content ::= macro_control_token | macro_control | macro_in
                              | LPAREN | RPAREN
                              | LBRACKET | RBRACKET
 
-macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS MACRO_INTERPOLATION_END
-                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS RBRACE
+// `expression` has no postfix modifier of its own (statements add one), so
+// `{{ foo(1) if type }}` failed to match this rule at all and the whole macro
+// body stopped at the newline before it. The suffix is optional and sits before
+// the closing delimiter, so plain interpolations keep their shape.
+macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS MACRO_INTERPOLATION_END
+                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS RBRACE
                       // Macro-splat parameter (`def initialize({{ x.map ...
                       // end.splat }})` — macros.cr `record`): ILLEGAL in real
                       // crystal (verified 1.21.0: `unexpected token "{{"`),
@@ -692,7 +703,20 @@ private param_name ::= IDENTIFIER | keyword_as_record_field
 // and leave COLON dangling with no backtrack. Fails fast on `out x : T`
 // (COLON absent → fall through to prefix+name alternatives). No pin: no commit.
 parameter ::= OUT COLON type_reference [ASSIGN expression]
+            // Bodyless self type (`def initialize(source, &@on_call : Crystal::Call, self ->)`
+            // — a visitor whose block receives the visitor itself). `self` is a
+            // param_name keyword and `->` is not, so the generic named arms
+            // commit on `self` and strand the arrow; the pair needs its own arm
+            // FIRST (PEG longest-first, no backtrack).
+            | SELF ARROW [type_union]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
+            // Named multi-input proc (`&block : Subscription, self ->` —
+            // redis connection.cr): block name + proc type with several
+            // inputs and optional (possibly absent) return type. BEFORE the
+            // plain named alternative (PEG longer-first): otherwise `&block :
+            // Subscription` commits as one parameter and the `, self ->`
+            // tail dangles with no backtrack.
+            | param_prefix* AMPERSAND IDENTIFIER COLON type_union (COMMA type_union)* ARROW [type_union]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name IDENTIFIER [COLON type_reference] [ASSIGN expression]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name [macro_interpolation] [COLON (splat_type | type_reference)] [ASSIGN expression]
             // Macro-splat parameter (`def initialize({{ x.map ... end.splat }})`
@@ -746,6 +770,9 @@ visibility_modifier ::= (PRIVATE | PROTECTED) (method_definition | macro_definit
 
 statement_list ::= statement_or_separator*
 
+// A heredoc whose body follows the statement it opens (`foo(<<-TXT)`): the
+// lexer emits the opener line normally and switches to the body after its
+// newline, so the body arrives as a separate top-level chunk.
 private statement_or_separator ::= NEWLINE | SEMICOLON | statement
 
 // `when` can never start a statement (reserved word — a `when` at statement
@@ -781,7 +808,7 @@ statement ::= !WHEN (if_statement
             | method_definition
             | macro_definition
             | macro_definition_open
-            | expression_statement)
+            | expression_statement) heredoc_deferred_body?
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
 
@@ -1045,9 +1072,12 @@ private unary_expression ::= (PLUS | MINUS | UNARY_PLUS | UNARY_MINUS | TILDE | 
 private postfix_expression ::= primary_expression postfix_op*
 
 private postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
-                     | NLS dot_call_access [block]
+                     // `dot_call_access` ends with its own [block]; a second
+                     // one here let every nesting level retry the whole body
+                     // twice, going exponential on six-deep do-blocks.
+                     | NLS dot_call_access
                      | namespace_access
-                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
+                     | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
                      | NLS DOT (INSTANCE_VAR | CLASS_VAR)
                      | NLS DOT IDENTIFIER assign_op expression
 
@@ -1160,7 +1190,14 @@ dot_call_access ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS 
                   // (j1/j13 minis). `!LBRACE` preserved (DescribeBlock guard);
                   // no QUESTION on the paren arm (`foo(x)?` is postfix `?`,
                   // handled by postfix_op/index_assign_suffix — untouched).
-                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] {
+                  | DOT !(INSTANCE_VAR | CLASS_VAR) (interpolated_method_segment | IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | BANG) [call_args | !LBRACE !DOT !(YIELD !LPAREN) bare_argument_list [QUESTION]] [block]
+                  // Operator DOT-call (`(seconds).*(100).trunc./(100)` — mosquito
+                  // executor.cr): dot-form operator with paren args. Same PSI
+                  // class (alternative, not a separate rule — a separate rule
+                  // would fork every CrystalDotCallAccess check). call_args
+                  // only (no bare-arg tail — `a.+ b` stays binary via the
+                  // expression tower).
+                  | DOT (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR | SPACESHIP | EQ | NEQ | LT | LTE | GT | GTE) [call_args] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalDotCallAccessMixin"
 }
 
@@ -1240,11 +1277,30 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
 
 private primary_expression ::= grouped_expression
                              | type_receiver_expression
+                             // Nilable class literal as a value (`option(name, Bool?)`
+                             // binding to `T.class` — a console helper input.cr):
+                             // CONSTANT + glued `?` only where an argument ends
+                             // (`)`/`,` follow). The guard keeps real ternaries
+                             // (`cond ? a : b` — expression follows `?`) on the
+                             // expression-level QUESTION tail, never here.
+                             // The full path form covers qualified types in value
+                             // position (`read(JSON::PullParser?)`, `Array(Int32)?`).
+                             // (type_single covers the qualified and generic
+                             // shapes: `JSON::PullParser?`, `Array(Int32)?`,
+                             // `Tuple(Int64, Int64)?`.)
                              | macro_array_tail
                              | array_literal
                              | hash_literal
                              | tuple_literal
                              | proc_literal
+                             // Nilable/generic type as a bare argument
+                             // (`Bool?`, `Array(Int32)?`, `Tuple(Int64, Int64)?`).
+                             // `&QUESTION` is a lookahead BEFORE the arm, so it
+                             // must run on the type's first token: keep this arm
+                             // ahead of `namespace_access` only for the `?` form.
+                             // (A general type-as-value arm here broke 5
+                             // resolution tests — do not widen it.)
+                             | (CONSTANT | namespace_access) (DOUBLE_COLON CONSTANT | namespace_access)* (type_arguments | named_tuple_type_args)? QUESTION &(RPAREN | COMMA | NEWLINE | DO | SEMICOLON | LBRACE)
                              | namespace_access
                              | method_call_expression
                              | bare_command_expression
@@ -1337,8 +1393,23 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // hash parsing instead of becoming callee `big_i` + phantom `: ...` error
 // (big_int.cr). `::` lexes as DOUBLE_COLON (not COLON), so `::X`/namespaces
 // unaffected; `foo bar: 1` unaffected (COLON not adjacent to the callee).
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | CONSTANT | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
+// The leading negative lookahead keeps a qualified path (`A::B::C(T).new`,
+// `A::B.method`, `A::B?`) a type/namespace expression instead of a bare command
+// whose callee is `A` with the rest as a positional argument (that split loses
+// the receiver's leading segment). It must fire ONLY on that shape:
+// `expect_raises ::Spec::Foo, "x" do` and `raise ::DB::Foo.new(msg)` are bare
+// commands whose FIRST ARGUMENT starts with `::` — the chain ends in `,`/string
+// there, not in `(`, `.` or `?`, so the lookahead declines and they still parse.
+// A paren-less callee followed by `{` always takes a BLOCK, never a bare hash
+// argument: Crystal reads `spawn { }` / `foo { 1 }` as a block, and an empty
+// hash argument needs `of` (`foo({} of K => V)`). Trying `bare_argument_list`
+// first let `{ }` munch as HASH_LITERAL (and `{ x }` as TUPLE_LITERAL), so the
+// `block` arm never ran. `!LBRACE` on the bare list defers to `block`; the
+// trailing `[block]` is kept so `expect_raises A, "m" do ... end` still
+// attaches its do-block.
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+                          | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (!LBRACE bare_argument_list [block] | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
 }
@@ -1420,8 +1491,36 @@ method_call_expression ::= type_path call_args [block]
 // Covers all expression-starting tokens: identifiers, constants, literals, vars, group/array/hash
 // literals, percent literals, heredocs, commands, regex, and macro interpolation.
 // Tradeoff: bare calls with splat like "add *args" need parentheses: "add(*args)".
-private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT | DOUBLE_STAR)
-                               (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
+// DOUBLE_STAR is split off: `target **args, name: v` is a double-splat call
+// argument followed by a named argument (valid Crystal, verified with the
+// compiler), not a power expression. A `:` right after the operand proves the
+// named-argument form (`a ** b: 1` is not legal Crystal), so that shape must
+// NOT be treated as a binary operator here.
+private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT) expression_start_lookahead
+                               | DOUBLE_STAR binary_op_operand_lookahead
+
+// Operand of a `**` that could make it a power operator. `foo **a` alone and
+// `foo **a, b` are both double-splat calls: a comma, a closer or a line end
+// after the operand means the `**` belongs to the argument list, not to a
+// binary expression. Only an operand that CONTINUES an expression (`a ** b + c`,
+// `a ** b.c`) keeps `**` as power.
+private binary_op_operand_lookahead ::= expression_start_lookahead !(COMMA | RPAREN | RBRACKET | RBRACE | NEWLINE | SEMICOLON | LBRACE)
+
+// First token of any bare argument/expression (shared by binary_op_lookahead and
+// the nested-bare guard below).
+// Guards the CONSTANT callee of a bare command: `A::B::C(T).new` is a qualified
+// path, not callee `A` plus argument `::B::C(T)`. Only a CONSTANT callee gets
+// this guard — `foo ::Bar.baz` is a real bare command whose first argument
+// starts with `::`, and restricting the guard to CONSTANT keeps it parsing as
+// one call instead of two sibling expressions.
+//
+// Tail of a `::`-chain in the bare-command callee guard below. Declared as a
+// separate private rule so the enclosing lookahead parses without forcing
+// GrammarKit to decide the repetition inline (an inline `(x)*` inside `!()`
+// shifted the enclosing bare_argument_list and broke hash arguments).
+private qualified_path_rest ::= (DOUBLE_COLON (CONSTANT | macro_interpolation))*
+
+private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL | INTEGER_LITERAL | FLOAT_LITERAL | CHAR_LITERAL
                                | SYMBOL_LITERAL | NIL | TRUE | FALSE | SELF | SUPER | PREVIOUS_DEF
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
                                | LPAREN | LBRACKET | LBRACE
@@ -1454,7 +1553,11 @@ private binary_op_lookahead ::= (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PE
 // index tail only on a full `[...]` (fail-fast otherwise — plain `&.foo`
 // and `&.foo(x)` keep their shapes, goldens confirm).
 implicit_object_call ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS RPAREN
-                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
+                       // `macro_interpolation` covers a method name spliced by `{{...}}`
+                       // (`&.{{ name }}?(...)` — a generated visitor guard): the `&.` form
+                       // reaches this rule, so the segment list needs the same arm
+                       // `dot_call_access` has.
+                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
 
 call_args ::= LPAREN NLS argument_list NLS RPAREN
@@ -1465,10 +1568,15 @@ argument_list ::= (macro_arg_splice | argument | macro_control) (NLS COMMA NLS (
 argument ::= STAR expression
            | SPLAT expression
            | DOUBLE_STAR expression
-           | AMPERSAND expression
+           // `&.` shorthand also takes bare trailing args (`&.should eq A::B`
+           // — lint specs). `implicit_object_call`'s own `[bare_argument_list]`
+           // is unreachable from here because `& ` commits as AMPERSAND+expression,
+           // so the callee tolerates the list itself.
+           | AMPERSAND expression [bare_argument_list]
            | OUT (IDENTIFIER | instance_var_access)
            | named_argument
            | and_assign_argument
+           | assign_argument
            | bracket_type_label
            | macro_control
            | expression
@@ -1495,6 +1603,14 @@ private macro_arg_splice ::= macro_control (NLS (argument | macro_control))+
 // PEG order: before `expression` so the assign-op is not left dangling.
 private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS expression
 
+// `name = value` as an argument (`M.new(headers = ..., body = ...)` — spec
+// suites build fixtures this way). Without this arm `expression` reads the
+// argument list's COMMA as a multi-assign separator, so the list collapses
+// and the rest of the call becomes ERROR_ELEMENTs. Guarded by pin=2: the
+// alternative only commits on `name <assign-op>`, so a genuine multi-assign
+// (`a, b = 1, 2`) and every non-assignment argument keep their old shape.
+private assign_argument ::= variable assign_op NLS? expression {pin=2}
+
 // Named argument: requires both name and COLON to match before committing.
 // The name may be a keyword (`for: STDIN`, `in: 1`, `of: 2` — real call sites;
 // process.cr `exec_stdio_to_fd(input, for: STDIN)`). Mirrors `bare_arg_name`
@@ -1514,7 +1630,29 @@ private and_assign_argument ::= variable (AND_AND_ASSIGN | OR_OR_ASSIGN) NLS exp
 // backtrack. try order: plain expression first (all non-brace values keep
 // their shape, goldens confirm), then the brace-type-tuple, then the legacy
 // decl_type_value path (fail-fast via its own scan guard).
-private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_tuple_type_value | decl_type_value | expression) {pin=2}
+// The BRACE-LED value guard below covers the paren form's hash values
+// (`headers: HTTP::Headers{...}` — HTTP::Client calls): `expression` reads
+// `HTTP::Headers` as a namespace value and orphans the `{...}` with no
+// backtrack (`... expected, got '{'`). A `{`-led named value commits to the
+// brace value FIRST (fail-fast: a lone CONSTANT without `{` never enters).
+private named_argument ::= (macro_interpolation | IDENTIFIER | keyword_as_record_field) COLON NLS? (macro_arg_splice | macro_control | named_brace_value | named_tuple_type_value | decl_type_value | expression) {pin=2}
+
+// Brace-led named value: `Type{...}` (type path + hash/tuple literal —
+// `HTTP::Headers{"Content-Type" => "application/json"}`) or a bare
+// hash/tuple/array literal. The `Type{...}` shape needs the full leading
+// path (CONSTANT (:: CONSTANT)*), not a lone `::Seg`: `namespace_access`
+// covers only one segment and its leading `::` cannot start a mid-list
+// value. Disjoint first tokens (CONSTANT-with-brace, LBRACE, LBRACKET):
+// plain values never start here, zero shape change elsewhere (goldens
+// confirm). No pin inside: fails cleanly with no input consumed when the
+// brace tail is absent.
+private named_brace_value ::= named_type_brace (hash_literal | tuple_literal | array_literal)
+                            | hash_literal
+                            | tuple_literal
+                            | array_literal
+// Leading type path of a brace value: `HTTP::Headers`, `::Socket::Protocol`.
+// A named (non-private) rule would emit a duplicate PSI getter pair; inline.
+private named_type_brace ::= [DOUBLE_COLON] CONSTANT (DOUBLE_COLON CONSTANT)*
 
 // Brace type tuple as a named-argument value (`as: {Int64, String?}` —
 // `DB#query_all(..., as: {...})` call sites with 4+ members incl. nullable).
@@ -1538,7 +1676,11 @@ private named_tuple_type_value ::= LBRACE NLS type_reference (NLS COMMA NLS type
 // The trailing terminator guard rejects partial matches (`x: a * b`,
 // `x: cond ? a : b` fall through to expression). No pin anywhere inside:
 // both guards fail cleanly with no input consumed.
-private decl_type_value ::= decl_complex_scan type_reference &decl_paren_end
+// Typed argument WITH a default (`f(a : Int32 = 1)` — accepted by the
+// Crystal compiler, `crystal run` confirms). The bare form still ends at the
+// terminator; the optional assign tail only fires on a real assign-op after
+// the type, so type-only values keep their exact shape (goldens confirm).
+private decl_type_value ::= decl_complex_scan type_reference (&decl_paren_end | assign_op NLS? expression)
 // Lookahead terminator WITHOUT leading NLS: `&(NLS MARKER)` is a trap —
 // NLS possessively eats the very newline that IS the marker (`x : UInt8*\n)`
 // fails: NLS eats `\n`, RPAREN mismatches, no retry with empty NLS).
@@ -1569,7 +1711,18 @@ private decl_paren_end ::= COMMA | RPAREN | NEWLINE | SEMICOLON
 // loop (index brackets `[16]`) but `[` is NOT a marker (`a[0]` index values
 // must stay expressions). DOT rides the loop (harmless: garbage like `a.b`
 // still fails at type_reference/terminator).
-private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
+// An assign operator is a marker too: it proves a typed argument carries a
+// default (`f(a : Int32 = 1)`, `f(a : Int32 += 1)`), so the scan commits on it
+// and `decl_type_value`'s assign tail can take over. ALL assign ops must be
+// listed, not just ASSIGN: `Int32 +=` otherwise failed the marker check and the
+// whole call fell apart into ERROR_ELEMENTs.
+private decl_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+                                | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                                | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                                | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN
+                                | DOUBLE_SLASH_ASSIGN | LSHIFT_ASSIGN | RSHIFT_ASSIGN
+                                | WRAP_PLUS_ASSIGN | WRAP_MINUS_ASSIGN
+                                | WRAP_STAR_ASSIGN | WRAP_DOUBLE_STAR_ASSIGN))
 
 // Bare (parenthesis-free) arguments — used for calls like: describe App5 do ... end
 // Arguments may continue on following lines after a comma (`printf "%s",\n  a` —
@@ -1586,6 +1739,29 @@ bare_argument ::= named_bare_argument
                 // prefix form — bare_expression would otherwise consume lone `out`
                 // (OUT is in variable_reference) and orphan `x` with no backtrack.
                  | OUT (IDENTIFIER | instance_var_access)
+                 // Leading-`::` positional value (`it ::HTTP::Status do`,
+                 // `foo ::A::B, x`): the bare tower has no leading-`::` primary
+                 // (see the NOTE below), so it needs its own arm. Guarded by a
+                 // terminator after the path so it can never steal the
+                 // `CONSTANT::...` tail of a bare callee (`IO::Memory.new` —
+                 // the regression the NOTE documents; there `.` follows).
+                 | namespace_access (namespace_access)* &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN)
+                 // Leading-`::` value that is a CALL on a constant
+                 // (`new ::HTTP::Request.new method, path`,
+                 // `raise ::DB::MappingException.new(msg)`): the plain path arm
+                 // above stops before the dot. Terminator-guarded so it cannot
+                 // steal a `CONSTANT::...` callee tail.
+                 | namespace_access (namespace_access)* dot_call_access &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN | SEMICOLON)
+                 // Leading-`::` value that is an INDEX on a constant
+                 // (`File.open ::Path[dir, file], "w" do |r|` — the bare tower
+                 // stops before `[`): same terminator guard as the arms above.
+                 | namespace_access (namespace_access)* LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION] &(COMMA | NEWLINE | DO | LBRACE | RBRACKET | RPAREN | SEMICOLON)
+                 // Nilable type as a bare argument (`should eq String?`,
+                 // `.get Bool?`, `foo A::B?`): the bare tower has no `?`
+                 // tail, so `B` parses and the `?` is left dangling. The
+                 // terminator set is the bare-argument boundary — the same
+                 // shape `primary_expression` already accepts.
+                 | (CONSTANT | namespace_access) (DOUBLE_COLON (CONSTANT | macro_interpolation) | namespace_access)* (type_arguments | named_tuple_type_args)? QUESTION
                  | bare_expression
 
 // Space-first leading value: the grouped/array first argument. Inlined into the
@@ -1619,7 +1795,10 @@ private named_bare_argument ::= bare_arg_name COLON named_bare_value [ASSIGN bar
 // regressed): the grouped arm is FIRST inside named_bare_value (PEG
 // longer-first within the rule). The `= tid` tail belongs to the OUTER
 // named_bare_argument [ASSIGN ...], not here — no inner ASSIGN.
- private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | bare_expression
+// Control expressions as a named value (`skip: if skip.is_a?(Category) ...
+// else ... end` — lint visitors). The bare tower has no `if`, so the arm is
+// explicit; peg order keeps it after the narrower shapes.
+ private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | if_statement | bare_expression
 private grouped_named_value ::= grouped_expression bare_postfix_op*
 
 // Bare-call label: plain identifier or any non-reserved keyword usable as a label.
@@ -1686,7 +1865,7 @@ private bare_postfix_expression ::= bare_primary_expression bare_postfix_op*
 private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
                          | NLS dot_call_access
                          | namespace_access
-                         | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] [index_assign_suffix]
+                         | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
 
 // Bare primary: like primary but no blocks or method calls with bare args (to prevent ambiguity).
 // The nested-bare alternative (`exec new_request method, path, headers, body` —
@@ -1702,7 +1881,11 @@ private bare_postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_refere
 // crystal 1.21.0. `foo bar: 1` still parses as outer+ named arg: the guard
 // fires, inner `bar: 1` fails (no args after callee `bar`), PEG backtracks
 // to the plain alternatives.
-private bare_primary_expression ::= &(IDENTIFIER IDENTIFIER (COMMA | COLON)) bare_command_expression
+// Nested-bare guard: any first argument token after the inner callee counts
+// (`should be_within 0.00001, of: 42` — literal first arg; the old
+// IDENTIFIER-only guard made the outer call eat `be_within` as a variable and
+// orphan the comma).
+private bare_primary_expression ::= &(IDENTIFIER expression_start_lookahead (COMMA | COLON)) bare_command_expression
                                   | grouped_expression
                                   | type_receiver_expression
                                   | macro_array_tail
@@ -1815,7 +1998,12 @@ regex_expression ::= REGEX_BEGIN (REGEX_LITERAL | STRING_ESCAPE | STRING_INTERPO
 
 command_expression ::= COMMAND_BEGIN (COMMAND_LITERAL | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* COMMAND_END
 
+// A heredoc used as the last call argument puts the closing bracket before the
+// body (`foo(<<-TXT)`), so START and the body are NOT contiguous: the lexer
+// emits the tail line normally and opens the body after its newline. The
+// trailing heredoc_body arm accepts that deferred shape.
 heredoc_literal ::= HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+heredoc_deferred_body ::= (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END
 
 percent_literal ::= PERCENT_LITERAL_BEGIN percent_literal_content* PERCENT_LITERAL_END
                   | PERCENT_SYMBOL_BEGIN percent_symbol_content* PERCENT_SYMBOL_END
@@ -1874,7 +2062,7 @@ array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 // to the choice point, so keywords/operators still fall through to tokens.
 macro_array_tail ::= LBRACKET NLS &MACRO_CONTROL_BEGIN (!RBRACKET (yield_bare_multiarg | yield_paren_expression | macro_control | macro_interpolation | expression | macro_control_token | COMMA | NEWLINE))+ NLS RBRACKET [OF type_reference array_of_tail?]
 
-hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference]
+hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body?
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens.
@@ -1882,7 +2070,7 @@ hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUB
 // covered by the `{% begin %}`-macro_control_in_expression path — no dedicated
 // tuple alternative (an inline flat alternative makes GrammarKit emit a
 // duplicate getExpressionList() overload pair that breaks javac — verified).
-tuple_literal ::= LBRACE NLS expression_list NLS RBRACE
+tuple_literal ::= LBRACE NLS expression_list NLS RBRACE heredoc_deferred_body?
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens, so
@@ -1984,7 +2172,7 @@ type_receiver_expression ::= type_path type_arguments &DOT
 private type_single ::= STAR type_path [type_arguments] [QUESTION]
                       | type_path macro_interpolation [QUESTION]
                       | type_path LPAREN NLS IDENTIFIER COLON type_reference (NLS COMMA NLS IDENTIFIER COLON type_reference)* [NLS COMMA] NLS RPAREN [QUESTION]
-                      | type_path [type_arguments] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
+                      | type_path [type_arguments] [QUESTION] [DOT CLASS] [QUESTION] (STAR | DOUBLE_STAR)* type_index_args* [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF STAR [QUESTION]
                       | SELF [QUESTION]
@@ -2003,6 +2191,8 @@ type_path ::= [DOUBLE_COLON] (CONSTANT | macro_interpolation) (DOUBLE_COLON (CON
 
 type_arguments ::= LPAREN NLS type_argument (NLS COMMA NLS type_argument)* [NLS COMMA] NLS RPAREN
 
+// Named member of a generic type argument (`NamedTuple(a: Int64, b: Int32)?`
+// in value position): the label is part of the type argument, not a value arg.
 private type_argument ::= type_reference | INTEGER_LITERAL
 
 // Static/named index on a type (`UInt8[16]`, `UInt8[LibC::MAX_PATH]`,
@@ -2020,7 +2210,9 @@ private type_parameter_item ::= [STAR] CONSTANT [ASSIGN type_reference]
 
 // ==================== Type Names ====================
 
-private type_name ::= (CONSTANT | macro_interpolation) (DOUBLE_COLON (CONSTANT | macro_interpolation))*
+// A leading `::` re-opens the top level (`class ::HTTP::Server::Response`,
+// `lib ::LibC`) and is legal on every type definition header.
+private type_name ::= [DOUBLE_COLON] (CONSTANT | macro_interpolation) (DOUBLE_COLON (CONSTANT | macro_interpolation))*
 
 // ==================== Typeof / Sizeof ====================
 
@@ -2088,5 +2280,9 @@ private asm_option_list ::= string_expression (NLS COMMA NLS string_expression)*
 expression_list ::= (assignment | expression | macro_control) ((NLS COMMA NLS !MACRO_CONTROL_BEGIN (assignment | expression)) | ([NLS COMMA] NLS macro_control [NLS (assignment | expression)]))* [NLS COMMA]
 
 // ==================== Helper Rules ====================
+
+// Named members in a type's generic list (`NamedTuple(a: Int64)?` in value
+// position) — `type_arguments` covers only positional members.
+private named_tuple_type_args ::= LPAREN NLS (IDENTIFIER COLON NLS type_reference) (NLS COMMA NLS IDENTIFIER COLON NLS type_reference)* [NLS COMMA] NLS RPAREN
 
 private NLS ::= NEWLINE*

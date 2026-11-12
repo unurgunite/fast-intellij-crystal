@@ -26,7 +26,7 @@ class CrystalAsmParameterInfoTest : BasePlatformTestCase() {
         ): Any? {
             val name = method.name
             if (isSetterCall(name)) {
-                calls.add(name to (args ?: emptyArray()))
+                calls.add(name to (args.orEmpty()))
                 return defaultFor(method.returnType)
             }
             return stubbedResult(name, proxy, args, method.returnType)

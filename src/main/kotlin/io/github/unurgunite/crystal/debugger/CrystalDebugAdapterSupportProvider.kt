@@ -8,5 +8,5 @@ class CrystalDebugAdapterSupportProvider : DebugAdapterSupportProvider<CrystalDe
     override val adapterId: CrystalDebugAdapterId get() = CrystalDebugAdapterId
 
     override fun createDebugAdapterDescriptor(project: Project): DebugAdapterDescriptor<CrystalDebugAdapterId> =
-        CrystalDebugAdapterDescriptor(project)
+        CrystalDebugAdapterDescriptor()
 }

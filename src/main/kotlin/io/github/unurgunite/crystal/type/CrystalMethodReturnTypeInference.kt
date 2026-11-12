@@ -24,6 +24,10 @@ object CrystalMethodReturnTypeInference {
         className: String?,
         project: Project,
     ): List<String> {
+        // `to_s` always yields String in Crystal (every overload). Short-circuit:
+        // body-shape inference on an unannotated `to_s` would otherwise return
+        // the receiver's own type (e.g. `proxy_id.to_s` infers Int32).
+        if (methodName == "to_s") return listOf("String")
         val scope = GlobalSearchScope.allScope(project)
         val methods =
             StubIndex

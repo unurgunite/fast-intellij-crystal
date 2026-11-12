@@ -63,7 +63,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
             com.intellij.codeInsight.lookup
                 .LookupElementPresentation()
         newElement.renderElement(presentation)
-        val tailText = presentation.tailText ?: ""
+        val tailText = presentation.tailText.orEmpty()
         assertTrue("Should show parameters: $tailText", tailText.contains("name") && tailText.contains("gewicht"))
     }
 
@@ -85,7 +85,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
             com.intellij.codeInsight.lookup
                 .LookupElementPresentation()
         newElement.renderElement(presentation)
-        val tailText = presentation.tailText ?: ""
+        val tailText = presentation.tailText.orEmpty()
         assertTrue("Parameterless initialize should show empty tail: '$tailText'", tailText.isEmpty() || tailText == "()")
     }
 
@@ -107,7 +107,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
             com.intellij.codeInsight.lookup
                 .LookupElementPresentation()
         newElement.renderElement(presentation)
-        val tailText = presentation.tailText ?: ""
+        val tailText = presentation.tailText.orEmpty()
         assertTrue("No initialize should show empty tail: '$tailText'", tailText.isEmpty() || tailText == "()")
     }
 
@@ -239,7 +239,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
         val lookups = myFixture.complete(CompletionType.BASIC)
         // When type inference fails, no methods are suggested (no fallback)
         // This may return null (no completions) or empty array
-        val names = lookups?.map { it.lookupString } ?: emptyList()
+        val names = lookups?.map { it.lookupString }.orEmpty()
         assertFalse("Should NOT contain hello when type inference fails", names.contains("hello"))
     }
 
@@ -345,7 +345,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
             com.intellij.codeInsight.lookup
                 .LookupElementPresentation()
         newLookup!!.renderElement(presentation)
-        val tailText = presentation.tailText ?: ""
+        val tailText = presentation.tailText.orEmpty()
         assertTrue(
             "Should show record parameters in tail text: $tailText",
             tailText.contains("host") && tailText.contains("port") && tailText.contains("ssl"),
@@ -434,7 +434,7 @@ class CrystalCompletionDotTest : BasePlatformTestCase() {
             com.intellij.codeInsight.lookup
                 .LookupElementPresentation()
         newLookup!!.renderElement(presentation)
-        val tailText = presentation.tailText ?: ""
+        val tailText = presentation.tailText.orEmpty()
         assertTrue(
             "Should show initialize params in tail text: $tailText",
             tailText.contains("cool") && tailText.contains("other"),

@@ -13,17 +13,37 @@ import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
  * for error reporting. Shared by regular methods and `record` constructors.
  */
 internal object CrystalOverloadEvaluator {
+    // Relative weights for overload mismatch scoring. An unknown named argument
+    // means the parameter sets disagree outright; missing/excess are milder.
+    private const val UNKNOWN_NAMED_WEIGHT = 4
+    private const val MISSING_PARAM_WEIGHT = 2
+    private const val EXCESS_ARG_WEIGHT = 1
+
     data class OverloadMatch(
         val isValid: Boolean,
         val missingParams: List<String> = emptyList(),
         val excessStartIndex: Int = -1,
         val maxArgs: Int = 0,
+        val excessArgCount: Int = 0,
         val unknownNamedArgs: Set<String> = emptySet(),
     ) {
-        fun isBetterThan(other: OverloadMatch): Boolean {
-            // Prefer match with fewer missing params
-            return missingParams.size < other.missingParams.size
-        }
+        /**
+         * Total mismatch cost across all failure kinds: unknown named args are the
+         * strongest signal that an overload is the wrong one, then missing required
+         * params, then excess args. Comparing only one kind let an overload with
+         * zero missing params but a wrong parameter set win over the right one.
+         */
+        val mismatchCost: Int
+            get() =
+                unknownNamedArgs.size * UNKNOWN_NAMED_WEIGHT +
+                    missingParams.size * MISSING_PARAM_WEIGHT +
+                    excessArgs * EXCESS_ARG_WEIGHT
+
+        /** Excess positional count encoded by [excessStartIndex]; 0 when none. */
+        private val excessArgs: Int
+            get() = if (excessStartIndex < 0) 0 else excessArgCount
+
+        fun isBetterThan(other: OverloadMatch): Boolean = mismatchCost < other.mismatchCost
     }
 
     data class ParamInfo(
@@ -49,7 +69,7 @@ internal object CrystalOverloadEvaluator {
         var bestMatch: OverloadMatch? = null
 
         for (method in methods) {
-            val params = method.parameterList?.parameterList ?: emptyList()
+            val params = method.parameterList?.parameterList.orEmpty()
             val match = evaluateOverload(params, effectiveArgCount, effectivePositionalCount, namedArgNames)
 
             if (match.isValid) return null // At least one overload accepts this call
@@ -110,8 +130,7 @@ internal object CrystalOverloadEvaluator {
 
         // Check too many args (only if no splat)
         return checkExcessArgs(
-            regularCount = regularParams.size,
-            paramNames = paramNames,
+            regularParams = regularParams,
             namedArgNames = namedArgNames,
             positionalCount = positionalCount,
             argCount = argCount,
@@ -153,20 +172,23 @@ internal object CrystalOverloadEvaluator {
 
     /** Excess positional args beyond the signature, unless a splat absorbs them. */
     private fun checkExcessArgs(
-        regularCount: Int,
-        paramNames: Set<String>,
+        regularParams: List<ParamInfo>,
         namedArgNames: Set<String>,
         positionalCount: Int,
         argCount: Int,
         hasSplat: Boolean,
     ): OverloadMatch? {
         if (hasSplat) return null
+        val regularCount = regularParams.size
+        val paramNames = regularParams.map { it.name }.toSet()
         val maxPositional = regularCount - namedArgNames.intersect(paramNames).size
         if (positionalCount > maxPositional) {
+            val excess = positionalCount - maxPositional
             return OverloadMatch(
                 isValid = false,
-                excessStartIndex = argCount - (positionalCount - maxPositional),
+                excessStartIndex = argCount - excess,
                 maxArgs = regularCount,
+                excessArgCount = excess,
             )
         }
         return null
@@ -200,18 +222,21 @@ internal object CrystalOverloadEvaluator {
 
     /** True when any splat/double-splat argument cannot be resolved to a literal. */
     fun hasUnresolvedSplat(arguments: List<ArgumentInfo>): Boolean {
-        val hasUnresolvedSplat = arguments.any { it.isSplat && it.resolvedSplatCount == null }
-        val hasUnresolvedDoubleSplat = arguments.any { it.isDoubleSplat && it.resolvedDoubleSplatKeys == null }
+        val hasUnresolvedSplat = arguments.any { !it.isBlock && it.isSplat && it.resolvedSplatCount == null }
+        val hasUnresolvedDoubleSplat = arguments.any { !it.isBlock && it.isDoubleSplat && it.resolvedDoubleSplatKeys == null }
         return hasUnresolvedSplat || hasUnresolvedDoubleSplat
     }
 
-    /** Positional argument count with resolved splats expanded (block-passes excluded). */
+    /** Positional argument count with resolved splats expanded (block-passes and blocks excluded). */
     fun effectivePositionalCount(arguments: List<ArgumentInfo>): Int =
         arguments.sumOf { arg ->
             when {
                 arg.isBlockPass -> 0
 
                 // block-pass (&block) is not a positional argument
+                arg.isBlock -> 0
+
+                // `{}`/`do` block body is never a positional argument in Crystal
                 arg.isSplat -> arg.resolvedSplatCount ?: 1
 
                 arg.isDoubleSplat -> 0

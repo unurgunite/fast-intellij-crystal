@@ -29,22 +29,25 @@ class CrystalParserDefinition : ParserDefinition {
                 // `UpToDateStubIndexMismatch: Stub count (7) doesn't match
                 // stubbed node length (12)` (e.g. io/delimited.cr, 2026-09).
                 // Version 3 forces a full stdlib reindex with the current parser.
-                override fun getStubVersion(): Int = 3
+                override fun getStubVersion(): Int = 4
             }
     }
 
     override fun createLexer(project: Project?): Lexer = CrystalLexerAdapter()
 
     override fun createParser(project: Project?): PsiParser {
-        // Safety net against the grammar's exponential backtracking on pathological
-        // inputs (e.g. deeply nested block / call structures) which previously froze the
-        // IDE. grammar-kit reads this property live on every parse, so capping the
-        // recursion depth guarantees termination. Valid Crystal files rarely nest deeper
-        // than ~100 levels, so the cap leaves ample headroom while aborting runaway
-        // parsing. The value can be overridden with -Dcrystal.gpub.max.level for tuning.
+        // Safety net against runaway backtracking on pathological inputs. The
+        // value must stay high enough for real code: grammar-kit charges one
+        // level per rule call, and a single nested call costs dozens (every
+        // `statement` alternative is a rule of its own), so a seven-deep
+        // do-block chain of `builder.field(...)` calls — an ordinary JSON
+        // builder — ran past 200 and stopped parsing mid-file with
+        // "unmatched input". 10_000 still cuts off genuine runaway recursion
+        // long before it can freeze the IDE. Override with
+        // -Dcrystal.gpub.max.level for tuning.
         try {
             if (System.getProperty("grammar.kit.gpub.max.level") == null) {
-                val limit = System.getProperty("crystal.gpub.max.level") ?: "200"
+                val limit = System.getProperty("crystal.gpub.max.level") ?: "10000"
                 System.setProperty("grammar.kit.gpub.max.level", limit)
             }
         } catch (_: SecurityException) {

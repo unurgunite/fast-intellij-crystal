@@ -87,3 +87,12 @@ class CrystalConstantAssignmentStub(
     override val name: String?,
 ) : StubBase<CrystalConstantAssignment>(parent, elementType),
     CrystalNamedStub
+
+// ==================== Alias Stub ====================
+
+class CrystalAliasDefinitionStub(
+    parent: StubElement<*>?,
+    elementType: IStubElementType<*, *>,
+    override val name: String?,
+) : StubBase<io.github.unurgunite.crystal.psi.CrystalAliasDefinition>(parent, elementType),
+    CrystalNamedStub
