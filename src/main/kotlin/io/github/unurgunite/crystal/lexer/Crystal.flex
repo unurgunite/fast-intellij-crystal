@@ -751,6 +751,8 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   "\\" "u" {HEX_DIGIT}{4}        { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" "x" {HEX_DIGIT}{1,2}      { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" {OCT_DIGIT}{1,3}          { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\n"             { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\r\n"           { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" .               { return track(CrystalTypes.STRING_ESCAPE); }
   [^\"\#\\]+           { return track(CrystalTypes.STRING_LITERAL); }
   "#"                  { return track(CrystalTypes.STRING_LITERAL); }
@@ -770,6 +772,8 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   "\\" "u" {HEX_DIGIT}{4}        { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" "x" {HEX_DIGIT}{1,2}      { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" {OCT_DIGIT}{1,3}          { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\n"             { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\r\n"           { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" .               { return track(CrystalTypes.STRING_ESCAPE); }
   "/" [imx]*            { popState(); return track(CrystalTypes.REGEX_END); }
   [^\/\#\\]+            { return track(CrystalTypes.REGEX_LITERAL); }
@@ -785,6 +789,8 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   "\\" {OCT_DIGIT}{1,3}          { return track(CrystalTypes.STRING_ESCAPE); }
   "\\\n"               { return track(CrystalTypes.STRING_ESCAPE); }
   "\\\r\n"             { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\n"             { return track(CrystalTypes.STRING_ESCAPE); }
+  "\\\r\n"           { return track(CrystalTypes.STRING_ESCAPE); }
   "\\" .               { return track(CrystalTypes.STRING_ESCAPE); }
   "`"                  { popState(); return track(CrystalTypes.COMMAND_END); }
   {NEWLINE}            { return track(CrystalTypes.COMMAND_LITERAL); }
