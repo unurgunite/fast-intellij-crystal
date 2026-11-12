@@ -11770,7 +11770,10 @@ public class CrystalParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
-  //                      | NLS dot_call_access [block]
+  //                      // `dot_call_access` ends with its own [block]; a second
+  //                      // one here let every nesting level retry the whole body
+  //                      // twice, going exponential on six-deep do-blocks.
+  //                      | NLS dot_call_access
   //                      | namespace_access
   //                      | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
   //                      | NLS DOT (INSTANCE_VAR | CLASS_VAR)
@@ -11814,23 +11817,15 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // NLS dot_call_access [block]
+  // NLS dot_call_access
   private static boolean postfix_op_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "postfix_op_1")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = NLS(builder_, level_ + 1);
     result_ = result_ && dot_call_access(builder_, level_ + 1);
-    result_ = result_ && postfix_op_1_2(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
-  }
-
-  // [block]
-  private static boolean postfix_op_1_2(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "postfix_op_1_2")) return false;
-    block(builder_, level_ + 1);
-    return true;
   }
 
   // LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
