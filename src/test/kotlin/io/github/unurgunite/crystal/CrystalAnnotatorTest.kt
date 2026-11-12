@@ -413,4 +413,24 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         val singleQuoteErrors = errors.filter { it.description?.contains("single quotes can only contain one character") == true }
         assertTrue("Valid char literal should not produce error", singleQuoteErrors.isEmpty())
     }
+
+    // ==================== Large generated regex literal ====================
+
+    /**
+     * A generated route table is one 25 KB regex literal with ~4 200 nested
+     * groups. The annotator used to run nine full passes and emit one
+     * annotation per match, freezing the IDE on this file. Highlighting must
+     * stay bounded and fast.
+     */
+    fun testHugeRegexLiteralHighlightingIsBounded() {
+        val group = "(?|b69b9/([^/]++)/([^/]++)/([^/]++)/5b69b9(*:24837)|"
+        val pattern = "^" + group.repeat(400)
+        val started = System.nanoTime()
+        myFixture.configureByText("test.cr", "r = /$pattern/")
+        val highlights = myFixture.doHighlighting()
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+
+        assertTrue("Highlighting a ${pattern.length}-char regex took ${elapsedMs}ms", elapsedMs < 5_000)
+        assertTrue("Annotation count should stay bounded, got ${highlights.size}", highlights.size < 5_000)
+    }
 }
