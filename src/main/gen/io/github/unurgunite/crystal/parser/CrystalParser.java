@@ -2361,9 +2361,9 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-  //                           | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-  //                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
+  // [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  //                           | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  //                           | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (!LBRACE bare_argument_list [block] | block) [postfix_modifier]
   //                           | macro_callee_call [block] [postfix_modifier]
   public static boolean bare_command_expression(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression")) return false;
@@ -2377,7 +2377,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  // [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
   private static boolean bare_command_expression_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_0")) return false;
     boolean result_;
@@ -2506,7 +2506,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // bare_argument_list [block] | block
+  // !LBRACE bare_argument_list [block] | block
   private static boolean bare_command_expression_0_9(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_0_9")) return false;
     boolean result_;
@@ -2517,20 +2517,31 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // bare_argument_list [block]
+  // !LBRACE bare_argument_list [block]
   private static boolean bare_command_expression_0_9_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_0_9_0")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
-    result_ = bare_argument_list(builder_, level_ + 1);
-    result_ = result_ && bare_command_expression_0_9_0_1(builder_, level_ + 1);
+    result_ = bare_command_expression_0_9_0_0(builder_, level_ + 1);
+    result_ = result_ && bare_argument_list(builder_, level_ + 1);
+    result_ = result_ && bare_command_expression_0_9_0_2(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
+  // !LBRACE
+  private static boolean bare_command_expression_0_9_0_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_0_9_0_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NOT_);
+    result_ = !consumeToken(builder_, LBRACE);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
   // [block]
-  private static boolean bare_command_expression_0_9_0_1(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "bare_command_expression_0_9_0_1")) return false;
+  private static boolean bare_command_expression_0_9_0_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_0_9_0_2")) return false;
     block(builder_, level_ + 1);
     return true;
   }
@@ -2570,7 +2581,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+  // [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
   private static boolean bare_command_expression_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1")) return false;
     boolean result_;
@@ -2733,7 +2744,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // bare_argument_list [block] | block
+  // !LBRACE bare_argument_list [block] | block
   private static boolean bare_command_expression_1_10(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1_10")) return false;
     boolean result_;
@@ -2744,20 +2755,31 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // bare_argument_list [block]
+  // !LBRACE bare_argument_list [block]
   private static boolean bare_command_expression_1_10_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_1_10_0")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
-    result_ = bare_argument_list(builder_, level_ + 1);
-    result_ = result_ && bare_command_expression_1_10_0_1(builder_, level_ + 1);
+    result_ = bare_command_expression_1_10_0_0(builder_, level_ + 1);
+    result_ = result_ && bare_argument_list(builder_, level_ + 1);
+    result_ = result_ && bare_command_expression_1_10_0_2(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
+  // !LBRACE
+  private static boolean bare_command_expression_1_10_0_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_1_10_0_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NOT_);
+    result_ = !consumeToken(builder_, LBRACE);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
   // [block]
-  private static boolean bare_command_expression_1_10_0_1(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "bare_command_expression_1_10_0_1")) return false;
+  private static boolean bare_command_expression_1_10_0_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_1_10_0_2")) return false;
     block(builder_, level_ + 1);
     return true;
   }
@@ -2797,7 +2819,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
+  // (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (!LBRACE bare_argument_list [block] | block) [postfix_modifier]
   private static boolean bare_command_expression_2(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_2")) return false;
     boolean result_;
@@ -2840,13 +2862,44 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // bare_argument_list | block
+  // !LBRACE bare_argument_list [block] | block
   private static boolean bare_command_expression_2_3(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "bare_command_expression_2_3")) return false;
     boolean result_;
-    result_ = bare_argument_list(builder_, level_ + 1);
+    Marker marker_ = enter_section_(builder_);
+    result_ = bare_command_expression_2_3_0(builder_, level_ + 1);
     if (!result_) result_ = block(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
     return result_;
+  }
+
+  // !LBRACE bare_argument_list [block]
+  private static boolean bare_command_expression_2_3_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_2_3_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = bare_command_expression_2_3_0_0(builder_, level_ + 1);
+    result_ = result_ && bare_argument_list(builder_, level_ + 1);
+    result_ = result_ && bare_command_expression_2_3_0_2(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // !LBRACE
+  private static boolean bare_command_expression_2_3_0_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_2_3_0_0")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NOT_);
+    result_ = !consumeToken(builder_, LBRACE);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
+  // [block]
+  private static boolean bare_command_expression_2_3_0_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "bare_command_expression_2_3_0_2")) return false;
+    block(builder_, level_ + 1);
+    return true;
   }
 
   // [postfix_modifier]

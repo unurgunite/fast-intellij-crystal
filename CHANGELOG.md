@@ -11,6 +11,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 - **Local verification matrix covers RubyMine**: `verifyPlugin` now checks IU Ultimate + RubyMine release builds, so RubyMine-only breakage can no longer stay green locally.
 - **CI keeps verifier reports on every run**: the per-IDE verification reports (same content as the Marketplace verification-results page) are uploaded as an artifact, so a Marketplace failure maps locally without re-running the verifier.
 - **Top-level helper no longer shadows a qualified receiver's method**: a `private def assert_compiles(code, *, line)` wrapper in a spec file was matched against `ASPEC::Methods.assert_compiles code, line: line, preamble: "..."`, reporting `preamble`/`postamble` as unknown named arguments (24 + 15 problems). An ownerless def now only answers unqualified calls in its own file.
+- **A brace block on a paren-less call is a block, not a hash argument** (`spawn { }`, `n.times { spawn { } }`): the bare-argument list munched `{ }` as an empty hash literal (and `{ x }` as a tuple literal), so `CrystalEmptyCollection` reported a phantom empty-hash error and the `block` arm never ran. The bare-command rules now defer to `block` when `{` opens the argument position. Covered by parser and inspection regression tests.
 
 ## [1.2.0] — 2026-10-14
 

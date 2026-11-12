@@ -62,4 +62,27 @@ class CrystalEmptyCollectionInspectionTest : BasePlatformTestCase() {
             highlights.any { it.description?.contains("Empty hash literal") == true },
         )
     }
+
+    /**
+     * `spawn { }` is a call with an empty brace BLOCK, not a hash argument.
+     * The callee was previously parsed as `spawn({})`, so the inspection
+     * reported a phantom empty-hash error inside a benchmark fixture.
+     */
+    fun testEmptyBraceBlockOnBareCallNotReported() {
+        myFixture.configureByText("test.cr", "spawn { }")
+        val highlights = myFixture.doHighlighting()
+        assertFalse(
+            "An empty brace block is a block, not an empty hash literal",
+            highlights.any { it.description?.contains("Empty hash literal") == true },
+        )
+    }
+
+    fun testBraceBlockBodyOnBareCallNotReported() {
+        myFixture.configureByText("test.cr", "n.times { spawn { } }")
+        val highlights = myFixture.doHighlighting()
+        assertFalse(
+            "Nested empty brace blocks are blocks, not empty hash literals",
+            highlights.any { it.description?.contains("Empty hash literal") == true },
+        )
+    }
 }
