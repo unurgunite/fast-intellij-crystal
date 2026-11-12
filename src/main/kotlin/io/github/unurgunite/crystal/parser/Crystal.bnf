@@ -703,6 +703,12 @@ private param_name ::= IDENTIFIER | keyword_as_record_field
 // and leave COLON dangling with no backtrack. Fails fast on `out x : T`
 // (COLON absent → fall through to prefix+name alternatives). No pin: no commit.
 parameter ::= OUT COLON type_reference [ASSIGN expression]
+            // Bodyless self type (`def initialize(source, &@on_call : Crystal::Call, self ->)`
+            // — a visitor whose block receives the visitor itself). `self` is a
+            // param_name keyword and `->` is not, so the generic named arms
+            // commit on `self` and strand the arrow; the pair needs its own arm
+            // FIRST (PEG longest-first, no backtrack).
+            | SELF ARROW [type_union]
             | param_prefix* [STAR | DOUBLE_STAR | AMPERSAND] param_name instance_var_access [COLON type_reference] [ASSIGN expression]
             // Named multi-input proc (`&block : Subscription, self ->` —
             // redis connection.cr): block name + proc type with several
