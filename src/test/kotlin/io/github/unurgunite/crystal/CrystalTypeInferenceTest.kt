@@ -393,7 +393,7 @@ puts a
     }
 
     fun testEnclosingClassNameFromStubDoesNotTouchAst() {
-        // Regression for UpToDateStubIndexMismatch (athena-console hash.cr):
+        // Regression for UpToDateStubIndexMismatch (a console helper hash.cr):
         // getEnclosingClassName runs on StubIndex hits whose stubs may
         // disagree with a fresh parse. It must answer from the stub tree
         // (no getParentOfType/getNode — those force reconciliation and throw

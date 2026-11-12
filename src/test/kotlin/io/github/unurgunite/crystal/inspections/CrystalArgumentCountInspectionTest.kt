@@ -582,17 +582,17 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "t.cr",
             """
-            module Athena::HTTPKernel
+            module Shop::HTTP
               struct Controller::ParameterMetadata(T)
                 def initialize(@name : String, @has : Bool = false, @default : T? = nil)
                 end
               end
             end
 
-            alias AHK = Athena::HTTPKernel
+            alias HK = Shop::HTTP
 
-            AHK::Controller::ParameterMetadata(String).new("a", false, nil)
-            AHK::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            HK::Controller::ParameterMetadata(String).new("a", false, nil)
+            HK::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
             """.trimIndent(),
         )
         myFixture.checkHighlighting()
@@ -633,14 +633,14 @@ class CrystalArgumentCountInspectionTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "t.cr",
             """
-            module Athena::HTTPKernel
+            module Shop::HTTP
               struct Controller::ParameterMetadata(T)
                 def initialize(@name : String)
                 end
               end
             end
 
-            Athena::HTTPKernel::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
+            Shop::HTTP::Controller::ParameterMetadata(String).new("a", <error descr="Unknown named argument 'bogus'">bogus: 1</error>)
             """.trimIndent(),
         )
         myFixture.checkHighlighting()

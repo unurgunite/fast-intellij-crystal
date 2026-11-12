@@ -34,15 +34,15 @@ class CrystalArgumentCountReopeningTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "a.cr",
             """
-            module Athena
+            module Shop
               class RouteCollection
                 def each
                 end
               end
             end
 
-            a = Athena::RouteCollection.new
-            b = Athena::RouteCollection.new 1, 2
+            a = Shop::RouteCollection.new
+            b = Shop::RouteCollection.new 1, 2
             puts "after"
             """.trimIndent(),
         )

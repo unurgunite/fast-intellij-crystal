@@ -31,9 +31,9 @@ class CrystalNestedTypeShadowTest : BasePlatformTestCase() {
 
     private fun anotherForeignResult() {
         myFixture.addFileToProject(
-            "ameba/liveness.cr",
+            "lint/liveness.cr",
             """
-            module Ameba
+            module Lint
               record Result, kind : Symbol
             end
             """.trimIndent(),

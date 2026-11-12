@@ -254,8 +254,8 @@ internal object CrystalParentResolve {
             CrystalTypeHierarchy
                 .findTypeByName(parentName, project)
                 ?.let { return it }
-            // Relative reference: `Rule::Base` inside `module Ameba` means
-            // `Ameba::Rule::Base`. Prefixing the enclosing namespace keeps
+            // Relative reference: `Rule::Base` inside `module Lint` means
+            // `Lint::Rule::Base`. Prefixing the enclosing namespace keeps
             // such parents inside their own namespace instead of falling
             // through to a bare-name lookup that grabs an unrelated type.
             enclosingNamespaceOf(current)?.let { namespace ->
@@ -381,7 +381,7 @@ internal object CrystalQualifiedLookup {
         scope: GlobalSearchScope,
         currentFile: PsiFile?,
     ): CrystalTypeHierarchy.TypeLookupResult? {
-        // `AHK::Controller::ParameterMetadata` -> `Athena::HTTPKernel::...`
+        // `HK::Controller::ParameterMetadata` -> `Shop::HTTP::...`
         val expanded = CrystalAliasLookup.expand(qualified, project, currentFile) ?: qualified
         val short = expanded.substringAfterLast("::")
         val namespace = expanded.substringBeforeLast("::")

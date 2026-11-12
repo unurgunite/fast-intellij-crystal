@@ -51,12 +51,12 @@ class CrystalRequireResolverTest : BasePlatformTestCase() {
     }
 
     fun testShardNestedRequire() {
-        myFixture.addFileToProject("lib/ameba/src/ameba/cli.cr", "module Ameba::Cli; end")
-        val targets = requireTargets("require \"ameba/cli\"\n", "src/main.cr")
+        myFixture.addFileToProject("lib/lint/src/lint/cli.cr", "module Lint::Cli; end")
+        val targets = requireTargets("require \"lint/cli\"\n", "src/main.cr")
         assertNotEmpty(targets)
         assertTrue(
-            "expected lib/ameba/src/ameba/cli.cr, got $targets",
-            targets.any { it.endsWith("lib/ameba/src/ameba/cli.cr") },
+            "expected lib/lint/src/lint/cli.cr, got $targets",
+            targets.any { it.endsWith("lib/lint/src/lint/cli.cr") },
         )
     }
 }
