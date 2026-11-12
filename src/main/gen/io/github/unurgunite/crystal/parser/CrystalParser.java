@@ -6873,7 +6873,11 @@ public class CrystalParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS RPAREN
-  //                        | DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
+  //                        // `macro_interpolation` covers a method name spliced by `{{...}}`
+  //                        // (`&.{{ name }}?(...)` — a generated visitor guard): the `&.` form
+  //                        // reaches this rule, so the segment list needs the same arm
+  //                        // `dot_call_access` has.
+  //                        | DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
   //                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
   public static boolean implicit_object_call(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "implicit_object_call")) return false;
@@ -6913,7 +6917,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
+  // DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
   private static boolean implicit_object_call_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "implicit_object_call_1")) return false;
     boolean result_;
@@ -6928,13 +6932,14 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG
+  // IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG
   private static boolean implicit_object_call_1_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "implicit_object_call_1_1")) return false;
     boolean result_;
     result_ = consumeToken(builder_, IDENTIFIER);
     if (!result_) result_ = consumeToken(builder_, CONSTANT);
     if (!result_) result_ = keyword_as_method(builder_, level_ + 1);
+    if (!result_) result_ = macro_interpolation(builder_, level_ + 1);
     if (!result_) result_ = consumeToken(builder_, INSTANCE_VAR);
     if (!result_) result_ = consumeToken(builder_, CLASS_VAR);
     if (!result_) result_ = consumeToken(builder_, CASE_EQ);

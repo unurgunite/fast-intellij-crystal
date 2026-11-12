@@ -1553,7 +1553,11 @@ private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL |
 // index tail only on a full `[...]` (fail-fast otherwise — plain `&.foo`
 // and `&.foo(x)` keep their shapes, goldens confirm).
 implicit_object_call ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference NLS RPAREN
-                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
+                       // `macro_interpolation` covers a method name spliced by `{{...}}`
+                       // (`&.{{ name }}?(...)` — a generated visitor guard): the `&.` form
+                       // reaches this rule, so the segment list needs the same arm
+                       // `dot_call_access` has.
+                       | DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
 
 call_args ::= LPAREN NLS argument_list NLS RPAREN
