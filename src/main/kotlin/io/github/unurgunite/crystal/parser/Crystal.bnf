@@ -288,7 +288,7 @@ lib_definition ::= LIB CONSTANT lib_body END {pin=1}
 // definition's `end` (`record EndOfRequest` inside `module HTTP` consumed the
 // module's `end`, breaking all of http/common.cr past that point): with an empty
 // class_body, `class_body END` matches the outer `end` and PEG commits to it.
-// `record Foo(T) < Base, field : T do ... end` (athena parameter_bag.cr): the
+// `record Foo(T) < Base, field : T do ... end` (shop parameter_bag.cr): the
 // superclass clause is legal on a record and sits before the field list.
 record_definition ::= RECORD type_name [type_parameters] [superclass_clause] [COMMA NLS record_field (COMMA NLS record_field)*] (DO class_body END)? {pin=1}
 
@@ -1278,7 +1278,7 @@ private keyword_as_method ::= ABSTRACT | ALIAS | ANNOTATION | AS | AS_QUESTION |
 private primary_expression ::= grouped_expression
                              | type_receiver_expression
                              // Nilable class literal as a value (`option(name, Bool?)`
-                             // binding to `T.class` — athena-console input.cr):
+                             // binding to `T.class` — a console helper input.cr):
                              // CONSTANT + glued `?` only where an argument ends
                              // (`)`/`,` follow). The guard keeps real ternaries
                              // (`cond ? a : b` — expression follows `?`) on the
@@ -1569,7 +1569,7 @@ argument ::= STAR expression
            | SPLAT expression
            | DOUBLE_STAR expression
            // `&.` shorthand also takes bare trailing args (`&.should eq A::B`
-           // — ameba specs). `implicit_object_call`'s own `[bare_argument_list]`
+           // — lint specs). `implicit_object_call`'s own `[bare_argument_list]`
            // is unreachable from here because `& ` commits as AMPERSAND+expression,
            // so the callee tolerates the list itself.
            | AMPERSAND expression [bare_argument_list]
@@ -1796,7 +1796,7 @@ private named_bare_argument ::= bare_arg_name COLON named_bare_value [ASSIGN bar
 // longer-first within the rule). The `= tid` tail belongs to the OUTER
 // named_bare_argument [ASSIGN ...], not here — no inner ASSIGN.
 // Control expressions as a named value (`skip: if skip.is_a?(Category) ...
-// else ... end` — ameba visitors). The bare tower has no `if`, so the arm is
+// else ... end` — lint visitors). The bare tower has no `if`, so the arm is
 // explicit; peg order keeps it after the narrower shapes.
  private named_bare_value ::= grouped_named_value | decl_bare_type_value | namespace_access bare_postfix_op* | if_statement | bare_expression
 private grouped_named_value ::= grouped_expression bare_postfix_op*

@@ -81,8 +81,8 @@ class CrystalClassByEnclosingIndex : StringStubIndexExtension<CrystalNamedElemen
 }
 
 /**
- * Index that maps alias names (`alias AHK = Athena::HTTPKernel`) to their
- * definitions, so a qualified reference through the alias (`AHK::Foo`) can be
+ * Index that maps alias names (`alias HK = Shop::HTTP`) to their
+ * definitions, so a qualified reference through the alias (`HK::Foo`) can be
  * expanded to the aliased namespace before a type lookup.
  */
 class CrystalAliasIndex : StringStubIndexExtension<CrystalAliasDefinition>() {

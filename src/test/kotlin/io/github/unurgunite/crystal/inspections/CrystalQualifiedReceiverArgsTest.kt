@@ -13,7 +13,7 @@ class CrystalQualifiedReceiverArgsTest : BasePlatformTestCase() {
         myFixture.addFileToProject(
             "methods.cr",
             """
-            module Athena::Spec::Methods
+            module Gate::Spec::Methods
               extend self
               def helper(message : String, *, preamble : String = "", line : Int32 = __LINE__) : Nil
               end
@@ -25,7 +25,7 @@ class CrystalQualifiedReceiverArgsTest : BasePlatformTestCase() {
             "t.cr",
             """
             private def helper(message : String, *, line : Int32 = __LINE__) : Nil
-              Athena::Spec::Methods.helper message, line: line, preamble: "x"
+              Gate::Spec::Methods.helper message, line: line, preamble: "x"
             end
             """.trimIndent(),
         )
@@ -36,7 +36,7 @@ class CrystalQualifiedReceiverArgsTest : BasePlatformTestCase() {
         myFixture.addFileToProject(
             "methods.cr",
             """
-            module Athena::Spec::Methods
+            module Gate::Spec::Methods
               extend self
               def helper(message : String, *, preamble : String = "") : Nil
               end
@@ -47,7 +47,7 @@ class CrystalQualifiedReceiverArgsTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "t.cr",
             """
-            Athena::Spec::Methods.helper "m", bogus: 1
+            Gate::Spec::Methods.helper "m", bogus: 1
             """.trimIndent(),
         )
         assertTrue(myFixture.doHighlighting().any { it.description?.contains("bogus") == true })

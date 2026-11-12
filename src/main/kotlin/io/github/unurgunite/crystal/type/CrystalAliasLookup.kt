@@ -9,10 +9,10 @@ import io.github.unurgunite.crystal.psi.CrystalTypeReference
 import io.github.unurgunite.crystal.stubs.CrystalAliasIndex
 
 /**
- * Expands a leading type alias in a qualified name: athena declares
- * `alias AHK = Athena::HTTPKernel` and then writes
- * `AHK::Controller::ParameterMetadata(T).new(...)`. Without expansion the type
- * lookup searches for a class literally named `AHK::...`, finds nothing, and
+ * Expands a leading type alias in a qualified name: shop declares
+ * `alias HK = Shop::HTTP` and then writes
+ * `HK::Controller::ParameterMetadata(T).new(...)`. Without expansion the type
+ * lookup searches for a class literally named `HK::...`, finds nothing, and
  * constructor arity is checked against the wrong overloads (or none).
  */
 internal object CrystalAliasLookup {
@@ -31,7 +31,7 @@ internal object CrystalAliasLookup {
         return target + qualified.removePrefix(head)
     }
 
-    /** Aliased target of [name] (`Athena::HTTPKernel` for `AHK`). */
+    /** Aliased target of [name] (`Shop::HTTP` for `HK`). */
     fun resolveTarget(
         name: String,
         project: Project,

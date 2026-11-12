@@ -502,7 +502,7 @@ class CrystalUnusedVariableInspectionTest : BasePlatformTestCase() {
               rows.each do |row|
                 config = row.config
               end
-              Ameba.run(config)
+              Lint.run(config)
             end
             """.trimIndent(),
         )
@@ -569,7 +569,7 @@ class CrystalUnusedVariableInspectionTest : BasePlatformTestCase() {
     }
 
     // A block body runs once per iteration, so a value written at its end is
-    // read again at the top of the next iteration (ameba's percent_arrays:
+    // read again at the top of the next iteration (a tokenizer:
     // `issue = start_token = nil` after the case, read by the next yield).
     fun testWriteAtEndOfBlockReadByNextIteration() {
         myFixture.configureByText(

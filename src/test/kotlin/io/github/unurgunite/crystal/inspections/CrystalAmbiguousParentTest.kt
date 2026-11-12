@@ -23,9 +23,9 @@ class CrystalAmbiguousParentTest : BasePlatformTestCase() {
             """.trimIndent(),
         )
         myFixture.addFileToProject(
-            "src/ameba/base.cr",
+            "src/lint/base.cr",
             """
-            module Ameba
+            module Lint
               class Base
                 def initialize(@rule : String, @source : String)
                 end

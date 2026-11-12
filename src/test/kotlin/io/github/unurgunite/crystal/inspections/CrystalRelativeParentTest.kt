@@ -3,8 +3,8 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 /**
- * A relative qualified parent (`Rule::Base` written inside `module Ameba`)
- * must resolve to `Ameba::Rule::Base`. Falling through to a bare-name lookup
+ * A relative qualified parent (`Rule::Base` written inside `module Lint`)
+ * must resolve to `Lint::Rule::Base`. Falling through to a bare-name lookup
  * grabbed an unrelated `Base` and pulled its initializer into every `.new`.
  */
 class CrystalRelativeParentTest : BasePlatformTestCase() {
@@ -23,9 +23,9 @@ class CrystalRelativeParentTest : BasePlatformTestCase() {
             """.trimIndent(),
         )
         myFixture.addFileToProject(
-            "src/ameba/base.cr",
+            "src/lint/base.cr",
             """
-            module Ameba
+            module Lint
               class Rule
                 class Base
                   def initialize(@rule : String, @source : String)
@@ -39,7 +39,7 @@ class CrystalRelativeParentTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "spec.cr",
             """
-            module Ameba
+            module Lint
               class ScopeRule < Rule::Base
               end
 
@@ -54,9 +54,9 @@ class CrystalRelativeParentTest : BasePlatformTestCase() {
 
     fun testRelativeQualifiedParentStillReportsRealMismatch() {
         myFixture.addFileToProject(
-            "src/ameba/base.cr",
+            "src/lint/base.cr",
             """
-            module Ameba
+            module Lint
               class Rule
                 class Base
                   def initialize(@rule : String, @source : String)
@@ -70,7 +70,7 @@ class CrystalRelativeParentTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "spec.cr",
             """
-            module Ameba
+            module Lint
               class ScopeRule < Rule::Base
               end
 

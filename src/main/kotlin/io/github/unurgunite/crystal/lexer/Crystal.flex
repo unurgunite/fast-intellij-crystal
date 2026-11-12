@@ -1306,7 +1306,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
 
   <MACRO_CONTROL> {
   "%}"                 { popState(); return track(CrystalTypes.MACRO_CONTROL_END); }
-  // `#` comments inside `{% %}` (multi-line macro code — athena view.cr):
+  // `#` comments inside `{% %}` (multi-line macro code — shop view.cr):
   // plain line comments; the parser skips them as whitespace.
   {LINE_COMMENT}       { inLineComment = true; return track(CrystalTypes.LINE_COMMENT); }
   "{%"                 { pushState(MACRO_CONTROL); return track(CrystalTypes.MACRO_CONTROL_BEGIN); }

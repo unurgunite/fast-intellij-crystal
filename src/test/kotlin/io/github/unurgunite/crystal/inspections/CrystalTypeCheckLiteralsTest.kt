@@ -628,7 +628,7 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
 
     fun testNilableClassLiteralAsArgument() {
         // `option(name, Bool?)` binding to `T.class`: nilable class literal
-        // as a call argument (athena-console input.cr).
+        // as a call argument (a console helper input.cr).
         myFixture.configureByText(
             "test.cr",
             """
@@ -642,7 +642,7 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
 
     fun testOperatorSymbolsAsArguments() {
         // `delegate :insert, :<<, :[], to: @columns`: bare operator symbols
-        // as arguments (athena-console table.cr).
+        // as arguments (a console helper table.cr).
         myFixture.configureByText(
             "test.cr",
             """

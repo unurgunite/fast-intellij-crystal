@@ -417,7 +417,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //            | SPLAT expression
   //            | DOUBLE_STAR expression
   //            // `&.` shorthand also takes bare trailing args (`&.should eq A::B`
-  //            // — ameba specs). `implicit_object_call`'s own `[bare_argument_list]`
+  //            // — lint specs). `implicit_object_call`'s own `[bare_argument_list]`
   //            // is unreachable from here because `& ` commits as AMPERSAND+expression,
   //            // so the callee tolerates the list itself.
   //            | AMPERSAND expression [bare_argument_list]
@@ -12045,7 +12045,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   // grouped_expression
   //                              | type_receiver_expression
   //                              // Nilable class literal as a value (`option(name, Bool?)`
-  //                              // binding to `T.class` — athena-console input.cr):
+  //                              // binding to `T.class` — a console helper input.cr):
   //                              // CONSTANT + glued `?` only where an argument ends
   //                              // (`)`/`,` follow). The guard keeps real ternaries
   //                              // (`cond ? a : b` — expression follows `?`) on the
