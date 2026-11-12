@@ -83,12 +83,6 @@ public class CrystalMacroArrayTailImpl extends ASTWrapperPsiElement implements C
 
   @Override
   @NotNull
-  public List<CrystalBlock> getBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBlock.class);
-  }
-
-  @Override
-  @NotNull
   public List<CrystalBreakExpression> getBreakExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBreakExpression.class);
   }

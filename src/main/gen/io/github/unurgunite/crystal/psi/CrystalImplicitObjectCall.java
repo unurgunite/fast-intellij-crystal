@@ -28,8 +28,8 @@ public interface CrystalImplicitObjectCall extends PsiElement {
   @NotNull
   List<CrystalBeginStatement> getBeginStatementList();
 
-  @NotNull
-  List<CrystalBlock> getBlockList();
+  @Nullable
+  CrystalBlock getBlock();
 
   @NotNull
   List<CrystalBreakExpression> getBreakExpressionList();

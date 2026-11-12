@@ -1062,7 +1062,10 @@ private unary_expression ::= (PLUS | MINUS | UNARY_PLUS | UNARY_MINUS | TILDE | 
 private postfix_expression ::= primary_expression postfix_op*
 
 private postfix_op ::= NLS DOT (AS | AS_QUESTION | IS_A) LPAREN type_reference RPAREN
-                     | NLS dot_call_access [block]
+                     // `dot_call_access` ends with its own [block]; a second
+                     // one here let every nesting level retry the whole body
+                     // twice, going exponential on six-deep do-blocks.
+                     | NLS dot_call_access
                      | namespace_access
                      | LBRACKET NLS [range_argument_list] [assign_op NLS expression] RBRACKET [QUESTION !(NLS expression COLON)] index_assign_suffix?
                      | NLS DOT (INSTANCE_VAR | CLASS_VAR)

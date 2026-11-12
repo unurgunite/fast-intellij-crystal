@@ -70,9 +70,9 @@ public class CrystalImplicitObjectCallImpl extends ASTWrapperPsiElement implemen
   }
 
   @Override
-  @NotNull
-  public List<CrystalBlock> getBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBlock.class);
+  @Nullable
+  public CrystalBlock getBlock() {
+    return PsiTreeUtil.getChildOfType(this, CrystalBlock.class);
   }
 
   @Override

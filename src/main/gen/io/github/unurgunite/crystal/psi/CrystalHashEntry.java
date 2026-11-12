@@ -26,9 +26,6 @@ public interface CrystalHashEntry extends PsiElement {
   List<CrystalBeginStatement> getBeginStatementList();
 
   @NotNull
-  List<CrystalBlock> getBlockList();
-
-  @NotNull
   List<CrystalBreakExpression> getBreakExpressionList();
 
   @NotNull

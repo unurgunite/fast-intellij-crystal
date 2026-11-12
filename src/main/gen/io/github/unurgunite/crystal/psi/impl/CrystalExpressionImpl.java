@@ -65,12 +65,6 @@ public class CrystalExpressionImpl extends ASTWrapperPsiElement implements Cryst
 
   @Override
   @NotNull
-  public List<CrystalBlock> getBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBlock.class);
-  }
-
-  @Override
-  @NotNull
   public List<CrystalBreakExpression> getBreakExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalBreakExpression.class);
   }
