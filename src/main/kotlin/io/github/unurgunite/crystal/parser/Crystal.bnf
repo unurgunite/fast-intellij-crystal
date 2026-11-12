@@ -541,8 +541,12 @@ private macro_escaped_content ::= macro_control_token | macro_control | macro_in
                              | LPAREN | RPAREN
                              | LBRACKET | RBRACKET
 
-macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS MACRO_INTERPOLATION_END
-                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS RBRACE
+// `expression` has no postfix modifier of its own (statements add one), so
+// `{{ foo(1) if type }}` failed to match this rule at all and the whole macro
+// body stopped at the newline before it. The suffix is optional and sits before
+// the closing delimiter, so plain interpolations keep their shape.
+macro_interpolation ::= MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS MACRO_INTERPOLATION_END
+                      | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS RBRACE
                       // Macro-splat parameter (`def initialize({{ x.map ...
                       // end.splat }})` — macros.cr `record`): ILLEGAL in real
                       // crystal (verified 1.21.0: `unexpected token "{{"`),

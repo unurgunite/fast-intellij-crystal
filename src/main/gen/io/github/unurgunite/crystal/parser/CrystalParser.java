@@ -8573,8 +8573,8 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS MACRO_INTERPOLATION_END
-  //                       | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS RBRACE
+  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS MACRO_INTERPOLATION_END
+  //                       | MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS RBRACE
   //                       // Macro-splat parameter (`def initialize({{ x.map ...
   //                       // end.splat }})` — macros.cr `record`): ILLEGAL in real
   //                       // crystal (verified 1.21.0: `unexpected token "{{"`),
@@ -8599,7 +8599,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS MACRO_INTERPOLATION_END
+  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS MACRO_INTERPOLATION_END
   private static boolean macro_interpolation_0(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "macro_interpolation_0")) return false;
     boolean result_;
@@ -8607,6 +8607,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = consumeToken(builder_, MACRO_INTERPOLATION_BEGIN);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && macro_interpolation_0_2(builder_, level_ + 1);
+    result_ = result_ && macro_interpolation_0_3(builder_, level_ + 1);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && consumeToken(builder_, MACRO_INTERPOLATION_END);
     exit_section_(builder_, marker_, null, result_);
@@ -8622,7 +8623,14 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) NLS RBRACE
+  // [postfix_modifier]
+  private static boolean macro_interpolation_0_3(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "macro_interpolation_0_3")) return false;
+    postfix_modifier(builder_, level_ + 1);
+    return true;
+  }
+
+  // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression) [postfix_modifier] NLS RBRACE
   private static boolean macro_interpolation_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "macro_interpolation_1")) return false;
     boolean result_;
@@ -8630,6 +8638,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = consumeToken(builder_, MACRO_INTERPOLATION_BEGIN);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && macro_interpolation_1_2(builder_, level_ + 1);
+    result_ = result_ && macro_interpolation_1_3(builder_, level_ + 1);
     result_ = result_ && NLS(builder_, level_ + 1);
     result_ = result_ && consumeToken(builder_, RBRACE);
     exit_section_(builder_, marker_, null, result_);
@@ -8643,6 +8652,13 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     result_ = bare_command_expression(builder_, level_ + 1);
     if (!result_) result_ = expression(builder_, level_ + 1);
     return result_;
+  }
+
+  // [postfix_modifier]
+  private static boolean macro_interpolation_1_3(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "macro_interpolation_1_3")) return false;
+    postfix_modifier(builder_, level_ + 1);
+    return true;
   }
 
   // MACRO_INTERPOLATION_BEGIN NLS (bare_command_expression | expression)? NLS MACRO_INTERPOLATION_END

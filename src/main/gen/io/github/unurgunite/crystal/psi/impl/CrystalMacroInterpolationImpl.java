@@ -39,4 +39,10 @@ public class CrystalMacroInterpolationImpl extends ASTWrapperPsiElement implemen
     return PsiTreeUtil.getChildOfType(this, CrystalExpression.class);
   }
 
+  @Override
+  @Nullable
+  public CrystalPostfixModifier getPostfixModifier() {
+    return PsiTreeUtil.getChildOfType(this, CrystalPostfixModifier.class);
+  }
+
 }

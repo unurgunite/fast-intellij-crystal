@@ -13,4 +13,7 @@ public interface CrystalMacroInterpolation extends PsiElement {
   @Nullable
   CrystalExpression getExpression();
 
+  @Nullable
+  CrystalPostfixModifier getPostfixModifier();
+
 }
