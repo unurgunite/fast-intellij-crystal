@@ -1387,9 +1387,16 @@ private index_assign_suffix ::= [QUESTION] assign_op NLS? (assignment | expressi
 // `expect_raises ::Spec::Foo, "x" do` and `raise ::DB::Foo.new(msg)` are bare
 // commands whose FIRST ARGUMENT starts with `::` — the chain ends in `,`/string
 // there, not in `(`, `.` or `?`, so the lookahead declines and they still parse.
-bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-                          | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
-                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (bare_argument_list | block) [postfix_modifier]
+// A paren-less callee followed by `{` always takes a BLOCK, never a bare hash
+// argument: Crystal reads `spawn { }` / `foo { 1 }` as a block, and an empty
+// hash argument needs `of` (`foo({} of K => V)`). Trying `bare_argument_list`
+// first let `{ }` munch as HASH_LITERAL (and `{ x }` as TUPLE_LITERAL), so the
+// `block` arm never ran. `!LBRACE` on the bare list defers to `block`; the
+// trailing `[block]` is kept so `expect_raises A, "m" do ... end` still
+// attaches its do-block.
+bare_command_expression ::= [DOUBLE_COLON] (IDENTIFIER | SELECT | UNION) !COLON !LPAREN !DOT !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+                          | [DOUBLE_COLON] CONSTANT !COLON !LPAREN !DOT !(DOUBLE_COLON (CONSTANT | macro_interpolation) qualified_path_rest (LPAREN | DOT | QUESTION | COMMA)) !LBRACKET !binary_op_lookahead !bare_assign_lookahead !(YIELD !LPAREN) (!LBRACE bare_argument_list [block] | block) [(OR_OR | AND_AND) NLS expression] [postfix_modifier]
+                          | (SUPER | PREVIOUS_DEF) !LPAREN !bare_assign_lookahead (!LBRACE bare_argument_list [block] | block) [postfix_modifier]
                           | macro_callee_call [block] [postfix_modifier] {
   mixin="io.github.unurgunite.crystal.psi.impl.CrystalMethodCallExpressionMixin"
 }

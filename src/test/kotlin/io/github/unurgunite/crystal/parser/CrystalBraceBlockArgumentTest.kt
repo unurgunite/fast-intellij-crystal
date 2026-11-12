@@ -33,4 +33,12 @@ class CrystalBraceBlockArgumentTest : ParsingTestCase("", "cr", CrystalParserDef
     fun testBraceBlockThenDotChain() = assertParses("a.cr", "foo a.b { 1 }.c, 2\n")
 
     fun testMultipleAssignmentStillParses() = assertParses("a.cr", "a, b = 1, 2\n")
+
+    // A paren-less callee followed by `{` takes a block, never a hash argument
+    // (`spawn { }` used to parse as `spawn({})`).
+    fun testEmptyBraceBlockOnBareCallee() = assertParses("a.cr", "spawn { }\n")
+
+    fun testBraceBlockBodyOnBareCallee() = assertParses("a.cr", "spawn { 1 }\n")
+
+    fun testNestedEmptyBraceBlockOnBareCallee() = assertParses("a.cr", "n.times do\n  spawn { }\nend\n")
 }
