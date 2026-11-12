@@ -567,4 +567,41 @@ class CrystalUnusedVariableInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // A block body runs once per iteration, so a value written at its end is
+    // read again at the top of the next iteration (ameba's percent_arrays:
+    // `issue = start_token = nil` after the case, read by the next yield).
+    fun testWriteAtEndOfBlockReadByNextIteration() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(list)
+              start = nil
+              list.each do |item|
+                use start
+                start = item
+              end
+            end
+            def use(x); end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testDeadStoreInsideBlockStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo
+              list = [1]
+              <weak_warning descr="Value assigned to 'x' is never used">x</weak_warning> = 1
+              list.each do
+                <weak_warning descr="Value assigned to 'x' is never used">x</weak_warning> = 2
+                <weak_warning descr="Value assigned to 'x' is never used">x</weak_warning> = 3
+              end
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
