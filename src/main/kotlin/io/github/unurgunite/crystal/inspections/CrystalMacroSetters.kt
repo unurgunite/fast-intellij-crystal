@@ -1,10 +1,16 @@
 package io.github.unurgunite.crystal.inspections
 
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.unurgunite.crystal.psi.CrystalBareCommandExpression
+import io.github.unurgunite.crystal.psi.CrystalBlock
 import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
+import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.stubs.CrystalMacroIndex
+import io.github.unurgunite.crystal.type.CrystalCallArguments
 
 /**
  * A DSL setter has two declarations with the same name: a macro that takes the
@@ -30,4 +36,27 @@ internal object CrystalMacroSetters {
                 GlobalSearchScope.allScope(project),
                 CrystalMacroDefinition::class.java,
             ).isNotEmpty()
+
+    /**
+     * True when [call] is a bare DSL entry inside the block of a macro-driven
+     * configuration call (`properties do description "x" end`).
+     *
+     * The macro expands each entry into a method that shares nothing with the
+     * source text, so the entry name resolves only by accident -- `line_number 1`
+     * inside such a block matched `XML::Node#line_number : Int64?` from the
+     * indexed stdlib and reported a bogus excess argument. An entry whose own
+     * name has no macro is unknowable this way, so arity checking skips it.
+     */
+    fun isMacroBlockEntry(call: PsiElement): Boolean {
+        // The entry sits in statement/expression wrappers inside the block, so
+        // walk past them rather than assuming a direct parent.
+        val block = PsiTreeUtil.getParentOfType(call, CrystalBlock::class.java) ?: return false
+        val owner = macroCallOwning(block) ?: return false
+        val ownerName = CrystalCallArguments.extractMethodName(owner) ?: return false
+        return hasMacro(ownerName, call.project)
+    }
+
+    /** The call whose block this is: `properties do ... end` owns the block. */
+    private fun macroCallOwning(block: CrystalBlock): PsiElement? =
+        block.parent as? CrystalBareCommandExpression ?: block.parent as? CrystalMethodCallExpression
 }

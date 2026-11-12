@@ -90,7 +90,11 @@ class CrystalArgumentCountInspection : LocalInspectionTool() {
         val methodName = CrystalCallArguments.extractMethodName(callExpr) ?: return
         if (isSkippedBareCall(callExpr, methodName)) return
         val arguments = CrystalCallArguments.extractArguments(callExpr)
-        val methodNameElement = findMethodNameElement(callExpr) ?: return
+        val methodNameElement = findMethodNameElement(callExpr)
+        // A DSL entry inside a macro configuration block (`properties do
+        // line_number 1 end`) is expanded by that macro; its name must not be
+        // matched against an unrelated same-named method from the stdlib.
+        if (methodNameElement == null || CrystalMacroSetters.isMacroBlockEntry(callExpr)) return
 
         val methods =
             if (methodName == "new") {
