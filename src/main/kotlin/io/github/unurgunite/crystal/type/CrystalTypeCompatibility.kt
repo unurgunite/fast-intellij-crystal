@@ -97,11 +97,11 @@ object CrystalTypeCompatibility {
                 true
             }
 
-            // `_` wildcard (`value : _`), the `Enumerable` module and the
-            // `self` type fit any argument: an Array passed to `Enumerable(T)`
-            // is valid Crystal, so element types must not be compared by
-            // Array's invariance rule; `self` (`x : self`, `Array#reverse!`)
-            // is not tracked here at all.
+            // `_` wildcard (`value : _`), the `Enumerable`/`Indexable` modules
+            // and the `self` type fit any argument: an Array passed to
+            // `Enumerable(T)` is valid Crystal, so element types must not be
+            // compared by Array's invariance rule; `self` (`x : self`,
+            // `Array#reverse!`) is not tracked here at all.
             acceptsAnyType(normalizedParam) -> {
                 true
             }
@@ -114,29 +114,25 @@ object CrystalTypeCompatibility {
             // parens (`Hash(K | L, V | W)` → `Hash(K`, `L, V`, `W)`).
             // Single-member result (all `|` nested) is not a union at all —
             // fall through to generic handling instead of self-recursing.
-            isMultiMemberUnion(normalizedArg) -> {
-                splitTopLevel(normalizedArg).any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
+            unionMembers(normalizedArg).isNotEmpty() -> {
+                unionMembers(normalizedArg).any { isCompatible(it.trim(), normalizedParam, isUnsuffixedNumericLiteral) }
             }
 
-            // Nilable "Type?" is sugar for "Type | Nil"
-            normalizedParam.endsWith("?") -> {
-                isCompatibleNilable(normalizedArg, normalizedParam, isUnsuffixedNumericLiteral)
+            // Nilability on either side: a nilable argument still fits when
+            // its non-Nil member does; a nilable parameter is `Type | Nil`.
+            normalizedArg.endsWith("?") || normalizedParam.endsWith("?") -> {
+                compatibleNilable(normalizedArg, normalizedParam, isUnsuffixedNumericLiteral)
             }
 
             // Union "Type1 | Type2 | ...": any member may match.
             // Same single-member guard as the argument side.
-            isMultiMemberUnion(normalizedParam) -> {
-                splitTopLevel(normalizedParam).any { isCompatible(normalizedArg, it.trim(), isUnsuffixedNumericLiteral) }
+            unionMembers(normalizedParam).isNotEmpty() -> {
+                unionMembers(normalizedParam).any { isCompatible(normalizedArg, it.trim(), isUnsuffixedNumericLiteral) }
             }
 
-            // Unsuffixed numeric literals autocast to ANY numeric type
-            isUnsuffixedNumericLiteral && normalizedParam in NUMERIC_TYPES -> {
-                true
-            }
-
-            // Suffixed numeric autocast (lossless widening)
+            // Both numeric: literal autocast, or lossless widening.
             normalizedArg in NUMERIC_TYPES && normalizedParam in NUMERIC_TYPES -> {
-                NUMERIC_AUTOCAST[normalizedArg]?.contains(normalizedParam) == true
+                isUnsuffixedNumericLiteral || NUMERIC_AUTOCAST[normalizedArg]?.contains(normalizedParam) == true
             }
 
             // Generic shapes: both, or neither, must be generic
@@ -154,30 +150,32 @@ object CrystalTypeCompatibility {
     }
 
     /**
-     * Parameters that constrain nothing about the argument:
-     * `_` is a type wildcard (`def add_parameter(key : String, value : _)`),
-     * and `Enumerable`/`Indexable` are modules, not invariant containers —
-     * Array, Tuple, Set and user collections all satisfy them, so comparing
-     * element types by the generic invariance rule above reports
-     * `Array(String)` against `Enumerable(Address | String)` as a mismatch
-     * that Crystal accepts.
+     * `_` wildcard (`value : _`), the `Enumerable`/`Indexable` modules and the
+     * `self` type accept any argument: an Array passed to `Enumerable(T)` is
+     * valid Crystal, so element types must not be compared by Array's
+     * invariance rule; `self` (`x : self`, `Array#reverse!`) is not tracked.
      */
-    private fun acceptsAnyType(normalizedParam: String): Boolean {
-        if (normalizedParam == "_") return true
-        if (normalizedParam == SELF_TYPE) return true
-        if (normalizedParam in NON_INVARIANT_MODULES) return true
-        return NON_INVARIANT_MODULES.any { normalizedParam.startsWith("$it(") }
-    }
+    private fun acceptsAnyType(normalizedParam: String): Boolean =
+        normalizedParam == "_" ||
+            normalizedParam == SELF_TYPE ||
+            normalizedParam in NON_INVARIANT_MODULES ||
+            NON_INVARIANT_MODULES.any { normalizedParam.startsWith("$it(") }
 
     /**
-     * Nilable check: `Nil` always fits; otherwise recurse against the base type
-     * (so autocast rules still apply, e.g. `Int8` fits `Int32?`).
+     * At least one side is nilable. A nilable argument is `Type | Nil`, so only
+     * its non-Nil member has to fit -- otherwise the `?` stays glued to the base
+     * and `Tuple(..)?` never matches `Tuple(..)`.
      */
-    private fun isCompatibleNilable(
+    private fun compatibleNilable(
         argType: String,
         normalizedParam: String,
         isUnsuffixedNumericLiteral: Boolean,
     ): Boolean {
+        if (!normalizedParam.endsWith("?")) {
+            return isCompatible(argType.dropLast(1).trim(), normalizedParam, isUnsuffixedNumericLiteral)
+        }
+        // `Nil` always fits a nilable parameter; otherwise recurse on the base,
+        // so autocast still applies (`Int8` fits `Int32?`).
         val baseType = normalizedParam.dropLast(1).trim()
         if (argType == "Nil" || argType == baseType) return true
         return isCompatible(argType, baseType, isUnsuffixedNumericLiteral)
@@ -249,10 +247,8 @@ object CrystalTypeCompatibility {
         val trimmed = name.trim()
         if (trimmed.length == 1 && trimmed[0].isUpperCase()) return true
         if (trimmed.length == 2 && trimmed[0].isUpperCase() && trimmed[1].isDigit()) return true
-        if (trimmed.contains("|")) {
-            val members = splitTopLevel(trimmed)
-            if (members.isNotEmpty() && members.all { isUnboundTypeVariable(it) }) return true
-        }
+        val members = unionMembers(trimmed)
+        if (members.isNotEmpty() && members.all { isUnboundTypeVariable(it) }) return true
         return false
     }
 
@@ -271,7 +267,25 @@ object CrystalTypeCompatibility {
 
     private fun normalizeType(type: String): String {
         // Leading `::` is semantically void (`::Set(String)` == `Set(String)`).
-        val trimmed = type.trim().removePrefix("::")
+        // A parenthesised union (`(Char | String)`, from an overload whose
+        // parameter is written that way) is the same type without the parens;
+        // leaving them on makes every member comparison fail.
+        // The outermost `(` must close at the very last character; a generic's
+        // own parens close early, so `Array(Int32)` keeps them.
+        fun wrapsWhole(text: String): Boolean {
+            if (!text.startsWith("(") || !text.endsWith(")")) return false
+            var depth = 0
+            for (i in text.indices) {
+                if (text[i] == '(') depth++
+                if (text[i] == ')') depth--
+                if (depth == 0) return i == text.lastIndex
+            }
+            return false
+        }
+        var trimmed = type.trim().removePrefix("::")
+        while (wrapsWhole(trimmed)) {
+            trimmed = trimmed.substring(1, trimmed.lastIndex).trim()
+        }
         // `{A, B}` is sugar for `Tuple(A, B)`: a tuple literal resolves to
         // `Tuple(Int32, Int32)` while the parameter says `{Int32, Int32}`.
         if (trimmed.length > 1 && trimmed.startsWith("{") && trimmed.endsWith("}")) {
@@ -314,25 +328,6 @@ object CrystalTypeCompatibility {
         }
         result.add(inner.substring(start).trim())
         return result
-    }
-
-    /**
-     * Top-level `|` split respecting generic parens (`Hash(K | L, V | W)`
-     * stays one member). File-level shape keeps isCompatible under
-     * detekt's ReturnCount budget.
-     */
-    private fun splitTopLevel(typeText: String): List<String> = CrystalMethodReturnTypeInference.splitTypeNames(typeText)
-
-    /**
-     * True for a real (multi-member) top-level union. Guards both union
-     * branches: a `|` nested inside generic parens (`Hash(K | L, V | W)`)
-     * is not a union split — without the guard the branch self-recurses
-     * on the single unsplit member (StackOverflow). File-level: keeps
-     * isCompatible under complexity budget.
-     */
-    private fun isMultiMemberUnion(typeText: String): Boolean {
-        if (!typeText.contains("|")) return false
-        return splitTopLevel(typeText).size > 1
     }
 
     /**
@@ -392,4 +387,16 @@ internal object BareGenericCheck {
     }
 
     private val GENERIC_ALIAS_EXPANSIONS = mapOf("Bytes" to "Slice(UInt8)")
+}
+
+/**
+ * Top-level union members, or an empty list when [typeText] is not a real
+ * (multi-member) union. A `|` nested inside generic parens
+ * (`Hash(K | L, V | W)`) is not a split point -- splitting it would make the
+ * union branches recurse on a single unsplit member.
+ */
+private fun unionMembers(typeText: String): List<String> {
+    if (!typeText.contains("|")) return emptyList()
+    val members = CrystalMethodReturnTypeInference.splitTypeNames(typeText)
+    return if (members.size > 1) members else emptyList()
 }
