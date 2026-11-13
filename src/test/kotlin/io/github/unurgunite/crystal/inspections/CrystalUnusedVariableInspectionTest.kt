@@ -604,4 +604,52 @@ class CrystalUnusedVariableInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Reads inside range/slice expressions ====================
+
+    /** ameba `unless_else.cr`: the variable is read one line later, as a range bound. */
+    fun testReadAsRangeBoundIsUsed() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(location, else_location)
+              cond_end_pos = source.pos(location, end: true)
+              else_begin_pos = source.pos(else_location)
+              body_range = cond_end_pos...else_begin_pos
+              puts body_range
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** ameba `heredoc_indent.cr`: the variable indexes a slice. */
+    fun testReadAsSliceIndexIsUsed() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo(body_dedent)
+              dedent = body_dedent
+              puts "#{" " * 2}#{line[dedent..]}"
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    /** Exclusive range on both sides. */
+    fun testReadAsExclusiveRangeBoundIsUsed() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def foo
+              first = 1
+              last = 5
+              slice = first...last
+              puts slice
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
