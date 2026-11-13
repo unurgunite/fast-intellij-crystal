@@ -15,6 +15,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Reference from a `namespace_access` element (e.g. `::Unterklasse` in `Oberklasse::Unterklasse`)
@@ -41,7 +42,7 @@ class CrystalNamespaceReference(
 ) : PsiReferenceBase<PsiElement>(element, TextRange(rangeStart, rangeStart + rangeLength), true) {
     override fun resolve(): PsiElement? {
         val project = element.project
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val fullName = buildFullName()
         val isGlobal = isRooted()
 

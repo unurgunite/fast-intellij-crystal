@@ -72,7 +72,7 @@ object CrystalMethodLookup {
         }
         // Unresolved type: legacy direct lookup (may mix same-named classes,
         // but guessing beats silence when the type itself is unknown).
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         return StubIndex
             .getElements(
                 CrystalMethodByClassIndex.KEY,
@@ -92,7 +92,7 @@ object CrystalMethodLookup {
         chain: List<CrystalTypeHierarchy.TypeLookupResult>,
         project: Project,
     ): List<CrystalMethodDefinition> {
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val out = mutableListOf<CrystalMethodDefinition>()
         for (link in chain) {
             val short = link.element.name ?: continue

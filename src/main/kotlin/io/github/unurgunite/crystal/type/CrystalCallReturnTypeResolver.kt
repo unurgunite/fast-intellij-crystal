@@ -113,7 +113,7 @@ object CrystalCallReturnTypeResolver {
         // first unannotated overload it meets (`ENV.fetch(...).to_i` typed
         // as String instead of Int32).
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val methods =
             StubIndex.getElements(
                 CrystalMethodIndex.KEY,
@@ -170,7 +170,7 @@ object CrystalCallReturnTypeResolver {
         project: Project,
     ): String? {
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val short = className.substringAfterLast("::")
         val methods =
             StubIndex

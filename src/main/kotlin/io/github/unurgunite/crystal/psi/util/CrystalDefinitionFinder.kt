@@ -8,6 +8,7 @@ import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Project-wide definition lookup for Go to Definition and Reference resolution.
@@ -24,7 +25,7 @@ object CrystalDefinitionFinder {
         name: String,
         project: Project,
     ): List<PsiElement> {
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val results = mutableListOf<PsiElement>()
 
         val types =

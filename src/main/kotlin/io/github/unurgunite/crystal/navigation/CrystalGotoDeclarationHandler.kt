@@ -15,6 +15,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
 import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Handles Go to Definition (Ctrl+Click / Ctrl+B) for:
@@ -126,7 +127,7 @@ class CrystalGotoDeclarationHandler : GotoDeclarationHandler {
         sourceElement: PsiElement,
     ): List<PsiElement> {
         val project = sourceElement.project
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
 
         // 1. Explicit "def self.new" in the class — takes priority (overrides default "new")
         val classMethods =

@@ -31,6 +31,7 @@ import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalConstantIndex
 import io.github.unurgunite.crystal.stubs.CrystalMacroIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 import java.util.ArrayDeque
 
 /**
@@ -132,7 +133,7 @@ class CrystalReference(
      * scope plain allScope misses).
      */
     private fun indexScopeWithStdlib(project: com.intellij.openapi.project.Project): GlobalSearchScope {
-        val baseScope = GlobalSearchScope.allScope(project)
+        val baseScope = CrystalSearchScopes.project(project)
         val stdlibRoot = CrystalStdlibResolver.resolveStdlibPath(project) ?: return baseScope
         return baseScope.union(GlobalSearchScope.fileScope(project, stdlibRoot))
     }

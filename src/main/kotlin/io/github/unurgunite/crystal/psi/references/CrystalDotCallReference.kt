@@ -25,6 +25,7 @@ import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
 import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Reference from a DOT-call method-name identifier to its definition.
@@ -79,7 +80,7 @@ class CrystalDotCallReference(
     override fun resolve(): PsiElement? {
         val info = receiverInfo ?: return null
         val project = element.project
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
 
         val qualifiedName = info.qualifiedName
         val classNames = info.classNames

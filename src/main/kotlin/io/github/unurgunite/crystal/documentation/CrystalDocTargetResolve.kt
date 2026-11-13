@@ -15,6 +15,7 @@ import io.github.unurgunite.crystal.psi.CrystalVariableReference
 import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Target resolution for Quick Documentation: which PSI element the popup
@@ -170,7 +171,7 @@ internal object CrystalDocTargetResolve {
     /** Last resort: direct StubIndex lookup for classes/methods by hovered text. */
     fun lookupByName(unwrapped: PsiElement): PsiElement? {
         val project = unwrapped.project
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val name = unwrapped.text
 
         val classes =
