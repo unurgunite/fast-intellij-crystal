@@ -1,0 +1,5 @@
+<!-- Loaded only when the intellij.testRunner.plugin bundle is present (2026.2+).
+     All test-runner extensions live in the main descriptor; this file exists
+     because an optional <depends> must name the descriptor it would load. -->
+<idea-plugin>
+</idea-plugin>

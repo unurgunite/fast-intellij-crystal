@@ -245,6 +245,7 @@
 ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends optional="true" config-file="testRunner-plugin.xml">intellij.testRunner.plugin</depends>
 
     <incompatible-with>net.kenro.ji.jin.intellij.crystal-2</incompatible-with>
 
