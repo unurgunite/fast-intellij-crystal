@@ -1,0 +1,362 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/geetest_solver/lib/ameba/src/ameba/rule/style/unless_else.cr</file>
+  <line>71</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/geetest_solver/lib/ameba/src/ameba/rule/style/unless_else.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'cond_end_pos' is never used</description>
+  <highlighted_element>cond_end_pos</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/geetest_solver/lib/ameba/src/ameba/rule/style/unless_else.cr</file>
+  <line>75</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/geetest_solver/lib/ameba/src/ameba/rule/style/unless_else.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'else_end_pos' is never used</description>
+  <highlighted_element>else_end_pos</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/geetest_solver/lib/catalyst/src/catalyst/rules/select_first_to_find.cr</file>
+  <line>76</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/geetest_solver/lib/catalyst/src/catalyst/rules/select_first_to_find.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'name_end' is never used</description>
+  <highlighted_element>name_end</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/heredoc_indent.cr</file>
+  <line>97</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/heredoc_indent.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'dedent' is never used</description>
+  <highlighted_element>dedent</highlighted_element>
+  <language>Crystal</language>
+  <offset>12</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/unless_else.cr</file>
+  <line>71</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/unless_else.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'cond_end_pos' is never used</description>
+  <highlighted_element>cond_end_pos</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/unless_else.cr</file>
+  <line>75</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/ameba/src/ameba/rule/style/unless_else.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'else_end_pos' is never used</description>
+  <highlighted_element>else_end_pos</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena/spec/controller_spec.cr</file>
+  <line>7</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena/spec/controller_spec.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'name' is never used</description>
+  <highlighted_element>name</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena/spec/controller_spec.cr</file>
+  <line>17</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena/spec/controller_spec.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'name' is never used</description>
+  <highlighted_element>name</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-console/src/helper/athena_question.cr</file>
+  <line>49</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-console/src/helper/athena_question.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'choices' is never used</description>
+  <highlighted_element>choices</highlighted_element>
+  <language>Crystal</language>
+  <offset>13</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-console/src/helper/formatter.cr</file>
+  <line>33</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-console/src/helper/formatter.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'len' is never used</description>
+  <highlighted_element>len</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-console/src/helper/formatter.cr</file>
+  <line>34</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-console/src/helper/formatter.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'lines' is never used</description>
+  <highlighted_element>lines</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-http_kernel/src/listeners/routing.cr</file>
+  <line>21</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-http_kernel/src/listeners/routing.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'parameters' is never used</description>
+  <highlighted_element>parameters</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-image_size/src/extractors/gif.cr</file>
+  <line>11</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-image_size/src/extractors/gif.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'packed_bit' is never used</description>
+  <highlighted_element>packed_bit</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-orm/src/entity_manager.cr</file>
+  <line>336</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-orm/src/entity_manager.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'successful' is never used</description>
+  <highlighted_element>successful</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/athena-orm/src/mapping/class_factory.cr</file>
+  <line>74</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/athena-orm/src/mapping/class_factory.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'em' is never used</description>
+  <highlighted_element>em</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/catalyst/src/catalyst/rules/select_first_to_find.cr</file>
+  <line>76</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/catalyst/src/catalyst/rules/select_first_to_find.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'name_end' is never used</description>
+  <highlighted_element>name_end</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/db/spec/manual/load_test.cr</file>
+  <line>33</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/db/spec/manual/load_test.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'db' is never used</description>
+  <highlighted_element>db</highlighted_element>
+  <language>Crystal</language>
+  <offset>2</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/mosquito/src/mosquito/runners/coordinator.cr</file>
+  <line>63</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/mosquito/src/mosquito/runners/coordinator.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'enqueued' is never used</description>
+  <highlighted_element>enqueued</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/mosquito/src/mosquito/runners/queue_list.cr</file>
+  <line>37</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/mosquito/src/mosquito/runners/queue_list.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'queues_which_were_expected_but_not_found' is never used</description>
+  <highlighted_element>queues_which_were_expected_but_not_found</highlighted_element>
+  <language>Crystal</language>
+  <offset>10</offset>
+  <length>40</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/mosquito/test/mosquito/backend/deleting_test.cr</file>
+  <line>53</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/mosquito/test/mosquito/backend/deleting_test.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'pending_job_run' is never used</description>
+  <highlighted_element>pending_job_run</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/mosquito/test/mosquito/runnable_test.cr</file>
+  <line>57</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/mosquito/test/mosquito/runnable_test.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'notifier' is never used</description>
+  <highlighted_element>notifier</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/pg/src/pg/record.cr</file>
+  <line>20</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/pg/src/pg/record.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'io' is never used</description>
+  <highlighted_element>io</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/pg/src/pg/replication/copy_data.cr</file>
+  <line>6</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/pg/src/pg/replication/copy_data.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'size' is never used</description>
+  <highlighted_element>size</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/pg/src/pg/replication/error_frame.cr</file>
+  <line>10</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/pg/src/pg/replication/error_frame.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'size' is never used</description>
+  <highlighted_element>size</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/redis/spec/stream_spec.cr</file>
+  <line>148</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/redis/spec/stream_spec.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'entry_id' is never used</description>
+  <highlighted_element>entry_id</highlighted_element>
+  <language>Crystal</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/redis/src/search.cr</file>
+  <line>91</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/redis/src/search.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'start' is never used</description>
+  <highlighted_element>start</highlighted_element>
+  <language>Crystal</language>
+  <offset>10</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/redis/src/search.cr</file>
+  <line>95</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/redis/src/search.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Value assigned to 'start' is never used</description>
+  <highlighted_element>start</highlighted_element>
+  <language>Crystal</language>
+  <offset>10</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/lib/redis/src/search.cr</file>
+  <line>152</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/lib/redis/src/search.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'command' is never used</description>
+  <highlighted_element>command</highlighted_element>
+  <language>Crystal</language>
+  <offset>6</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/spec/support/fake_api_server.cr</file>
+  <line>85</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/spec/support/fake_api_server.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'port' is never used</description>
+  <highlighted_element>port</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/integrations/fsms/client.cr</file>
+  <line>17</line>
+  <module>autoreg</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/integrations/fsms/client.cr" />
+  <problem_class id="CrystalUnusedVariable" severity="WEAK WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused variable</problem_class>
+  <description>Variable 'resp' is never used</description>
+  <highlighted_element>resp</highlighted_element>
+  <language>Crystal</language>
+  <offset>4</offset>
+  <length>4</length>
+</problem>
+</problems>

@@ -3,7 +3,9 @@ package io.github.unurgunite.crystal.inspections
 import com.intellij.psi.PsiElement
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.type.CrystalCallArguments.DotCallInfo
+import io.github.unurgunite.crystal.type.CrystalExpressionTypeResolver
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
 
 /**
  * Candidate overloads for a DOT-call, resolved per receiver.
@@ -42,9 +44,30 @@ internal object CrystalDotCallOverloads {
             }
 
             else -> {
-                CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
+                // Lowercase receiver: `receiverName` is its TEXT (`row`, `db`),
+                // not a class. Resolve the receiver's inferred class and filter
+                // by it — an unfiltered name-only lookup pulled every method of
+                // that name from the index, so `row[0]`/`proc.call(...)` were
+                // reported against unrelated classes (a whole false-positive
+                // family in the 1.2.2 export).
+                val candidates = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
+                val receiverClass = inferredReceiverClass(info.receiverElement)
+                if (receiverClass == null) candidates else candidates.filter { ownedByReceiver(it, receiverClass) }
             }
         }
+
+    /** Class of a lowercase receiver, or null when its type is unknown. */
+    private fun inferredReceiverClass(receiver: PsiElement?): String? {
+        if (receiver == null) return null
+        val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
+        return CrystalMethodReturnTypeInference
+            .splitTypeNames(typeName)
+            .firstOrNull()
+            ?.trim()
+            ?.removeSuffix("?")
+            ?.substringAfterLast("::")
+            ?.takeIf { it.isNotEmpty() && it.first().isUpperCase() }
+    }
 
     /** True when [method]'s enclosing type is [receiverName] or its tail (`Tools` for `RvmCli::Tools`). */
     private fun ownedByReceiver(
