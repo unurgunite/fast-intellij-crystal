@@ -7,6 +7,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 ### Fixed
 
 - **IntelliJ IDEA 2026.3 rejected the plugin as binary incompatible**: 263.7307.200 replaced `DapBreakpointsDescription(sourceBreakpointType, exceptionBreakpointType)` with a three-argument constructor whose extra `functionBreakpointType` is nullable and defaults to `null`, and dropped the two-argument one. Compiling against either signature left the other release line with an `invokespecial` to a constructor that no longer exists — the verifier reported `Method not found` / `Invocation of unresolved constructor`, and a debug session on 2026.3 would have thrown `NoSuchMethodError`. The constructor is now resolved at runtime, so the compiled code references neither signature and 2026.1, 2026.2 and 2026.3 all work from one artifact.
+- **RubyMine 2026.2 reported 19 binary-compatibility problems**: 2026.2 moved `intellij.platform.smRunner` out of the core libraries into the bundled `intellij.testRunner.plugin` bundle, so declaring the module alone left the SM test-runner classes (`TestConsoleProperties`, `sm.runner.events.*`, `BaseTestsOutputConsoleView`) unresolved there. That bundle does not exist on 2026.1, where the module still ships in core, so it is declared as an optional dependency with a config file instead of a mandatory one. `verifyPlugin` is now `Compatible` on 2026.1 and 2026.2, IDEA Ultimate and RubyMine both.
 
 ## [1.2.1] — Unreleased
 
