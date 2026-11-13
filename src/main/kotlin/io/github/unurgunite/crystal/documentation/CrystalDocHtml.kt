@@ -8,6 +8,7 @@ import com.intellij.psi.stubs.StubIndex
 import io.github.unurgunite.crystal.CrystalLanguage
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * HTML emission for documentation popups: syntax highlighting, class links and
@@ -33,7 +34,7 @@ internal object CrystalDocHtml {
                 CrystalClassIndex.KEY,
                 name,
                 project,
-                GlobalSearchScope.allScope(project),
+                CrystalSearchScopes.project(project),
                 CrystalNamedElement::class.java,
             )
         if (elements.isEmpty()) return null
@@ -122,7 +123,7 @@ internal object CrystalDocHtml {
             CrystalClassIndex.KEY,
             name,
             project,
-            GlobalSearchScope.allScope(project),
+            CrystalSearchScopes.project(project),
             CrystalNamedElement::class.java,
         )
 

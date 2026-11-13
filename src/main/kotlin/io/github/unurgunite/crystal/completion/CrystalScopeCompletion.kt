@@ -19,6 +19,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Free-text completion: scope items (block params, for-vars, method params,
@@ -213,7 +214,7 @@ internal object CrystalScopeCompletion {
         if (method == null) return
         val enclosingClassName = CrystalMethodLookup.getEnclosingClassName(method) ?: return
         val project = position.project
-        val classSink = ClassMethodSink(project, GlobalSearchScope.allScope(project), seen, result)
+        val classSink = ClassMethodSink(project, CrystalSearchScopes.project(project), seen, result)
         addClassMethods(enclosingClassName, CrystalCompletionContributor.PRIORITY_OWN_CLASS_METHOD, classSink)
 
         // Inherited: direct superclass

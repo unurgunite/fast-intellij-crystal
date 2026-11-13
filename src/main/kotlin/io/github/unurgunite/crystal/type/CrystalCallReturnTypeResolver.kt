@@ -5,6 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
@@ -112,7 +113,7 @@ object CrystalCallReturnTypeResolver {
         // first unannotated overload it meets (`ENV.fetch(...).to_i` typed
         // as String instead of Int32).
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val methods =
             StubIndex.getElements(
                 CrystalMethodIndex.KEY,
@@ -169,7 +170,7 @@ object CrystalCallReturnTypeResolver {
         project: Project,
     ): String? {
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val short = className.substringAfterLast("::")
         val methods =
             StubIndex
@@ -264,6 +265,41 @@ internal object CrystalReceiverNames {
 }
 
 /**
+ * Type named by an `as:` argument (`query_one?(sql, nil, as: {Int64, String})`),
+ * or null when the call has no such argument. DB's generic queries declare
+ * `as types : Tuple` and yield it, so the argument text is the result type.
+ */
+private fun asNamedArgumentType(expr: PsiElement): String? {
+    // The argument sits inside CALL_ARGS / BARE_ARGUMENT_LIST, so the search
+    // must descend. `as` is its own token and the value is a TUPLE_LITERAL
+    // (`as: {Int64, String}`) or a bare type reference.
+    val named =
+        com.intellij.psi.util.PsiTreeUtil
+            .findChildrenOfType(expr, com.intellij.psi.PsiElement::class.java)
+            .firstOrNull { it.node?.elementType == CrystalTypes.AS }
+            ?: return null
+    val colon = named.nextSibling
+    if (colon?.node?.elementType != CrystalTypes.COLON) return null
+    val value = valueAfterColon(colon) ?: return null
+    if (value.node?.elementType == CrystalTypes.TUPLE_LITERAL) {
+        val members =
+            com.intellij.psi.util.PsiTreeUtil
+                .findChildrenOfType(value, CrystalExpression::class.java)
+                .mapNotNull { it.text?.trim() }
+                .filter { it.isNotEmpty() }
+        if (members.isNotEmpty()) return "Tuple(${members.joinToString(", ")})"
+    }
+    return value.text?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+/** First meaningful sibling after a `COLON` leaf. */
+private fun valueAfterColon(colon: PsiElement): PsiElement? {
+    var next = colon.nextSibling
+    while (next is PsiWhiteSpace) next = next.nextSibling
+    return next
+}
+
+/**
  * Receiver-scoped lookup, then project-wide fallback for receiver-less
  * fragments. Unknown receiver: no guessing — the first hit is a lottery
  * across same-named methods (`command.downcase` typed as Char via
@@ -274,6 +310,10 @@ internal fun resolveScopedOrFallback(
     receiver: PsiElement?,
     expr: PsiElement,
 ): ResolvedType? {
+    // Fixed shapes first: they hold for the whole receiver family, so no
+    // index lookup is needed — and the index would miss them, because
+    // `Enumerable#size` is defined on a module, not on the receiver's class.
+    fixedShapes(methodName, receiver, expr)?.let { return it }
     // Receiver-class-scoped (`data.to_hash` where data: PersonData must
     // take PersonData#to_hash, not stdlib's generic `Hash#to_hash`).
     val receiverClass = receiverClassNameOf(receiver)
@@ -286,5 +326,21 @@ internal fun resolveScopedOrFallback(
     CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
         return ResolvedType(it)
     }
+    return null
+}
+
+/**
+ * Return types known without any index lookup: fixed receiver-family members,
+ * and the `as:` argument that DB's generic queries yield.
+ */
+private fun fixedShapes(
+    methodName: String,
+    receiver: PsiElement?,
+    expr: PsiElement,
+): ResolvedType? {
+    receiver?.let { CrystalReceiverMemberTypes.resolve(methodName, it) }?.let { return ResolvedType(it) }
+    // `query_one?(..., as: {Int64, String})` — the named argument IS the
+    // return type; the generic block signature is not resolvable.
+    asNamedArgumentType(expr)?.let { return ResolvedType(it) }
     return null
 }

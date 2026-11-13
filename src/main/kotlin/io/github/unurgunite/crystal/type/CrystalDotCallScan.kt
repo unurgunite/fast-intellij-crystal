@@ -52,8 +52,9 @@ internal object CrystalDotCallScan {
         if (nameNode == null || nameNode.node.elementType !in DOT_NAME_TYPES || isArgumentsCarrier) return null
         // No method-name sibling exists here (the name is INSIDE the holder),
         // so resolve the receiver from the holder's left neighbour.
-        val receiverName = receiverTypeName(CrystalPsiUtils.prevMeaningfulSibling(dotCall) ?: return null)
-        return receiverName?.let { DotCallInfo(it, nameNode.text, nameNode) }
+        val receiver = CrystalPsiUtils.prevMeaningfulSibling(dotCall) ?: return null
+        val receiverName = receiverTypeName(receiver) ?: return null
+        return DotCallInfo(receiverName, nameNode.text, nameNode, receiver)
     }
 
     /** First direct leaf child of [parent] with [type], or null. */
@@ -79,7 +80,7 @@ internal object CrystalDotCallScan {
         if (isOperatorTail(argsElement, methodNameNode)) return null
         val receiver = findDotCallReceiver(methodNameNode) ?: return null
         val receiverName = receiverTypeName(receiver) ?: return null
-        return DotCallInfo(receiverName, methodNameNode.text, methodNameNode)
+        return DotCallInfo(receiverName, methodNameNode.text, methodNameNode, receiver)
     }
 
     /**

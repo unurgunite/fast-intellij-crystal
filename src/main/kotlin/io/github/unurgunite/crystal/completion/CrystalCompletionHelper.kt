@@ -9,6 +9,7 @@ import io.github.unurgunite.crystal.stubs.CrystalClassIndex
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
 import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 import io.github.unurgunite.crystal.type.CrystalTypeHierarchy
 import io.github.unurgunite.crystal.type.CrystalTypeHierarchy.TypeKind
 
@@ -49,7 +50,7 @@ object CrystalCompletionHelper {
         val typeResult = CrystalTypeHierarchy.findTypeByName(typeName, project) ?: return emptyList()
         val hierarchy = CrystalTypeHierarchy.hierarchyWithImplicitObject(typeResult)
 
-        val sink = CompletionSink(project, GlobalSearchScope.allScope(project))
+        val sink = CompletionSink(project, CrystalSearchScopes.project(project))
 
         for ((depth, className) in hierarchy.withIndex()) {
             addHierarchyLevelLookups(className, sink, hierarchyPriority(depth))

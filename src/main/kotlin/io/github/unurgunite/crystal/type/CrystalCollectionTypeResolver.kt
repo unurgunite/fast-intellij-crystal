@@ -101,6 +101,78 @@ object CrystalCollectionTypeResolver {
         return resolveType(keyExpr)
     }
 
+    /**
+     * Element type of `recv[index]` for a known [receiverType]: `Tuple(A, B)`
+     * with a literal index picks that member; an `Array(T)`/`Enumerable(T)`
+     * index yields `T`. Returns null when it cannot be decided, so the caller
+     * keeps its own fallback instead of guessing.
+     */
+    fun indexedElementType(
+        receiverType: String,
+        indexText: String,
+    ): ResolvedType? {
+        if (receiverType.startsWith("Tuple(")) {
+            val index = indexText.toIntOrNull() ?: return null
+            val members = tupleMembers(receiverType)
+            // Negative indexes count from the end, as in Crystal.
+            val resolved = if (index < 0) members.getOrNull(members.size + index) else members.getOrNull(index)
+            return resolved?.let { ResolvedType(it) }
+        }
+        val generic = receiverType.removeSuffix("?").substringBefore('(')
+        if (generic !in INDEXABLE_GENERICS) return null
+        return io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
+            .splitTypeNames(receiverType.removeSuffix("?").substringAfter('(', "").removeSuffix(")"))
+            .firstOrNull()
+            ?.trim()
+            ?.let { ResolvedType(it) }
+    }
+
+    /** Containers whose `[]` yields their single element type. */
+    private val INDEXABLE_GENERICS = setOf("Array", "Set", "Slice", "Deque", "Enumerable", "Iterator")
+
+    /**
+     * Members of `Tuple(A, B)`, split on top-level commas only — a member may
+     * itself be generic (`Hash(String, Int32)`) or a union (`Int32 | Nil`).
+     */
+    private fun tupleMembers(tupleType: String): List<String> {
+        val inner = tupleType.removePrefix("Tuple(").removeSuffix(")")
+        val members = mutableListOf<String>()
+        var depth = 0
+        var current = StringBuilder()
+        for (ch in inner) {
+            when (ch) {
+                '(', '[', '{' -> {
+                    depth++
+                    current.append(ch)
+                }
+
+                ')', ']', '}' -> {
+                    depth = maxOf(0, depth - 1)
+                    current.append(ch)
+                }
+
+                ',' -> {
+                    if (depth == 0) {
+                        members.add(current.toString().trim())
+                        current = StringBuilder()
+                    } else {
+                        current.append(ch)
+                    }
+                }
+
+                else -> {
+                    current.append(ch)
+                }
+            }
+        }
+        current
+            .toString()
+            .trim()
+            .takeIf { it.isNotEmpty() }
+            ?.let { members.add(it) }
+        return members
+    }
+
     private fun resolveTupleLiteral(expr: CrystalTupleLiteral): ResolvedType? {
         val elements = expr.expressionList.expressionList
         if (elements.isEmpty()) return null

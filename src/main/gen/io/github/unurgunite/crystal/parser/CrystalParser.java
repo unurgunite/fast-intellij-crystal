@@ -3942,6 +3942,10 @@ public class CrystalParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // (PLUS | MINUS | STAR | SLASH | DOUBLE_SLASH | PERCENT) expression_start_lookahead
+  //                                // A range operator after the operand is never a bare-command
+  //                                // argument: `line[dedent..]` and `a...b` are ranges, not
+  //                                // `dedent ..` / `a ... b` calls with leading-dot args.
+  //                                | (DOTDOT | DOTDOTDOT) !(DOT | LPAREN)
   //                                | DOUBLE_STAR binary_op_operand_lookahead
   static boolean binary_op_lookahead(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "binary_op_lookahead")) return false;
@@ -3949,6 +3953,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     Marker marker_ = enter_section_(builder_);
     result_ = binary_op_lookahead_0(builder_, level_ + 1);
     if (!result_) result_ = binary_op_lookahead_1(builder_, level_ + 1);
+    if (!result_) result_ = binary_op_lookahead_2(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
@@ -3977,9 +3982,48 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     return result_;
   }
 
-  // DOUBLE_STAR binary_op_operand_lookahead
+  // (DOTDOT | DOTDOTDOT) !(DOT | LPAREN)
   private static boolean binary_op_lookahead_1(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "binary_op_lookahead_1")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_);
+    result_ = binary_op_lookahead_1_0(builder_, level_ + 1);
+    result_ = result_ && binary_op_lookahead_1_1(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
+    return result_;
+  }
+
+  // DOTDOT | DOTDOTDOT
+  private static boolean binary_op_lookahead_1_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_1_0")) return false;
+    boolean result_;
+    result_ = consumeToken(builder_, DOTDOT);
+    if (!result_) result_ = consumeToken(builder_, DOTDOTDOT);
+    return result_;
+  }
+
+  // !(DOT | LPAREN)
+  private static boolean binary_op_lookahead_1_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_1_1")) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NOT_);
+    result_ = !binary_op_lookahead_1_1_0(builder_, level_ + 1);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
+  // DOT | LPAREN
+  private static boolean binary_op_lookahead_1_1_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_1_1_0")) return false;
+    boolean result_;
+    result_ = consumeToken(builder_, DOT);
+    if (!result_) result_ = consumeToken(builder_, LPAREN);
+    return result_;
+  }
+
+  // DOUBLE_STAR binary_op_operand_lookahead
+  private static boolean binary_op_lookahead_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "binary_op_lookahead_2")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = consumeToken(builder_, DOUBLE_STAR);

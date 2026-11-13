@@ -1,6 +1,6 @@
 # Test Conventions
 
-Rules learned while building the suite (1289 tests in `test`, 142 parser goldens
+Rules learned while building the suite (1314 tests in `test`, 142 parser goldens
 run separately via `-PgoldenOnly=true`). Follow them for every new test.
 
 ## Suite layout

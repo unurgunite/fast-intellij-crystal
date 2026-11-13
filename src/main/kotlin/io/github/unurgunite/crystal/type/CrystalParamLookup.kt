@@ -122,7 +122,7 @@ internal object CrystalParamLookup {
             CrystalClassIndex.KEY,
             short,
             project,
-            GlobalSearchScope.allScope(project),
+            CrystalSearchScopes.project(project),
             CrystalNamedElement::class.java,
         )) {
             element.containingFile?.let { files.add(it) }

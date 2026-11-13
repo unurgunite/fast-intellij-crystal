@@ -6,6 +6,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Overload matching for arity checks: evaluates each candidate signature against
@@ -83,15 +84,44 @@ internal object CrystalOverloadEvaluator {
     }
 
     /**
-     * Method overloads named [methodName] from the StubIndex.
+     * Every indexed method with this name, regardless of owner.
+     *
+     * Cached per project and invalidated on any PSI change: this is the hot
+     * path of both the type-check and argument-count inspections (once per
+     * dot-call and per call respectively), and an identical name is looked up
+     * many times within one highlighting pass. Unfiltered on purpose — callers
+     * narrow by receiver class or by rendered argument shape afterwards.
      */
     fun findCandidateMethods(
         methodName: String,
         project: com.intellij.openapi.project.Project,
     ): List<CrystalMethodDefinition> {
+        val stamp =
+            com.intellij.psi.util.PsiModificationTracker
+                .getInstance(project)
+                .modificationCount
+        val key = project.basePath + "#" + methodName
+        synchronized(cacheLock) {
+            if (cacheStamp != stamp) {
+                cache.clear()
+                cacheStamp = stamp
+            }
+            cache[key]?.let { return it }
+        }
+        val result = lookupCandidateMethods(methodName, project)
+        synchronized(cacheLock) {
+            // Re-check: a PSI change during the lookup makes the result stale.
+            if (cacheStamp == stamp) cache[key] = result
+        }
+        return result
+    }
+
+    private fun lookupCandidateMethods(
+        methodName: String,
+        project: com.intellij.openapi.project.Project,
+    ): List<CrystalMethodDefinition> {
         val scope =
-            com.intellij.psi.search.GlobalSearchScope
-                .allScope(project)
+            CrystalSearchScopes.project(project)
         return com.intellij.psi.stubs.StubIndex
             .getElements(
                 CrystalMethodIndex.KEY,
@@ -260,4 +290,8 @@ internal object CrystalOverloadEvaluator {
         }
         return namedArgNames
     }
+
+    private val cache = HashMap<String, List<CrystalMethodDefinition>>()
+    private val cacheLock = Any()
+    private var cacheStamp = -1L
 }
