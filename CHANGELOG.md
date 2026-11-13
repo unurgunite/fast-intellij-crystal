@@ -8,6 +8,11 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 
 - **IntelliJ IDEA 2026.3 rejected the plugin as binary incompatible**: 263.7307.200 replaced `DapBreakpointsDescription(sourceBreakpointType, exceptionBreakpointType)` with a three-argument constructor whose extra `functionBreakpointType` is nullable and defaults to `null`, and dropped the two-argument one. Compiling against either signature left the other release line with an `invokespecial` to a constructor that no longer exists — the verifier reported `Method not found` / `Invocation of unresolved constructor`, and a debug session on 2026.3 would have thrown `NoSuchMethodError`. The constructor is now resolved at runtime, so the compiled code references neither signature and 2026.1, 2026.2 and 2026.3 all work from one artifact.
 - **RubyMine 2026.2 reported 19 binary-compatibility problems**: 2026.2 moved `intellij.platform.smRunner` out of the core libraries into the bundled `intellij.testRunner.plugin` bundle, so declaring the module alone left the SM test-runner classes (`TestConsoleProperties`, `sm.runner.events.*`, `BaseTestsOutputConsoleView`) unresolved there. That bundle does not exist on 2026.1, where the module still ships in core, so it is declared as an optional dependency with a config file instead of a mandatory one. `verifyPlugin` is now `Compatible` on 2026.1 and 2026.2, IDEA Ultimate and RubyMine both.
+- **README stated debugger setup that does not work**: `lldb-dap` is located by a fixed list of directories, not through `PATH`, so the documented "add it to your PATH" advice left the debugger silently disabled. The README now lists the directories the plugin actually checks, plus the two features it had never documented (Implement Members, inlay hints).
+
+### Changed
+
+- **Documentation trimmed to what is maintained**: the unimplemented ECR design sketch and the single-file `decision-log/` were removed; the Code Style decision moved into `ARCHITECTURE.md`'s invariants. The README was rewritten around claims verified against `plugin.xml` and the registering classes, and `TODO.md` dropped three items that had shipped in 1.1.0/1.2.1.
 
 ## [1.2.1] — 2026-11-13
 

@@ -101,3 +101,11 @@ Debug: compile `bin/<name> --debug` → `crystal-lldb` over `lldb-dap`.
   depend on it, never the reverse. `run/` → `debugger/` goes through the
   `CrystalDebugStateFactory` application service. `psi/` never imports
   `navigation/`.
+- **No Code Style settings page** — `crystal tool format` ignores
+  `CodeStyleSettings` entirely, so a page with tab/indent options would be
+  inert and misleading. `IndentOptions` still reach `CrystalEnterHandler` for
+  auto-indent. Only a native `FormattingModelBuilder` would justify adding the
+  page; until then `crystal tool format` is the single source of formatting
+  truth. (An earlier `langCodeStyleSettingsProvider` registration was removed —
+  it also had the wrong attribute, `implementationClass=` instead of
+  `implementation=`, so it never loaded.)
