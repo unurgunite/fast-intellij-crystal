@@ -25,6 +25,23 @@ class CrystalOverloadCacheTest : BasePlatformTestCase() {
         assertEquals(2, CrystalOverloadEvaluator.findCandidateMethods("call", project).size)
     }
 
+    fun testRepeatedLookupDoesNotQueryTheIndexAgain() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class Service
+              def call(path : String)
+              end
+            end
+            """.trimIndent(),
+        )
+        val first = CrystalOverloadEvaluator.findCandidateMethods("call", project)
+        val second = CrystalOverloadEvaluator.findCandidateMethods("call", project)
+        // The cached instance is handed back, so a highlighting pass that hits
+        // the same method name many times walks the stub index once.
+        assertSame(first, second)
+    }
+
     fun testCacheIsPerProjectName() {
         myFixture.configureByText("test.cr", "class Service\n  def only_here\n  end\nend\n")
         assertTrue(CrystalOverloadEvaluator.findCandidateMethods("only_here", project).isNotEmpty())
