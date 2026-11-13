@@ -108,35 +108,51 @@
     <change-notes><![CDATA[
 <h3>1.2.2</h3>
 <ul>
-  <li><b>IntelliJ IDEA 2026.3 compatibility</b> — the DAP breakpoint description is built against whichever `DapBreakpointsDescription` constructor the running IDE has, so 2026.3 no longer throws `NoSuchMethodError` when a debug session starts</li>
+  <li><b>IntelliJ IDEA 2026.3 support</b> — the debugger's breakpoint description is built against whichever <code>DapBreakpointsDescription</code> constructor the running IDE provides, so starting a debug session on 2026.3 no longer fails with <code>NoSuchMethodError</code></li>
+  <li><b>RubyMine 2026.2 verification clean</b> — 2026.2 moved the SM test-runner module into a separate bundled plugin; it is now declared as an optional dependency, so the 19 remaining binary-compatibility problems on RM-262 are gone. <code>verifyPlugin</code> is <code>Compatible</code> on IDEA Ultimate and RubyMine, 2026.1 and 2026.2 both</li>
 </ul>
 
 <h3>1.2.1</h3>
 <ul>
-  <li><b>RubyMine compatibility</b> — declared test-runner platform dependency (Marketplace verification clean on RubyMine)</li>
-  <li><b>Platform API hygiene</b> — replaced scheduled-for-removal and deprecated API usages</li>
+  <li><b>Far fewer false red errors on real-world Crystal</b> — 30+ parser, resolver and inspection fixes, all covered by regression tests. Parsing: heredocs in argument position, <code>**opts</code> double splats, assignment-style arguments, a lone expression in braces as a block body, arguments after a brace block on a dot call, indexes on leading-<code>::</code> constants, qualified constant paths, deeply nested <code>do</code>-blocks (the 200-level recursion cap stopped parsing mid-file), macro interpolations with a postfix modifier, bodyless <code>self</code> block parameters, <code>\</code>-newline continuations inside literals, and method names spliced by <code>&amp;.</code></li>
+  <li><b>Fewer bogus type mismatches</b> — tuples are accepted where <code>Indexable(T)</code> is expected, nilable and parenthesised-union types reduce to the type they name, self-referential generics are accepted, and qualified receivers match short owner names</li>
+  <li><b>Fewer bogus warnings</b> — unused-variable reporting no longer fires on attribute writes, block variables after reassignment, values kept alive across blocks that may not run, or writes read by the next loop iteration; argument-count and type checks no longer fire on generic receivers, DSL setters, spec hooks, macro configuration-block entries, top-level helpers and reopened-class constructors</li>
+  <li><b>Better resolution</b> — type aliases and qualified receivers resolve to the methods they name; no more guessing a same-named method for a typed receiver</li>
+  <li><b>Regex-literal highlighting no longer freezes</b> — sub-pattern coloring is one linear scan instead of nine, and emission is capped, so a large machine-generated regex no longer stalls analysis</li>
+  <li><b>Every inspection has a description</b> — the settings tree no longer reports missing descriptions</li>
+  <li><b>RubyMine compatibility</b> — declared the test-runner platform dependency (Marketplace verification clean on RubyMine)</li>
+  <li><b>Platform API hygiene</b> — replaced scheduled-for-removal and deprecated API usages; local verification now covers RubyMine as well as IDEA Ultimate, and CI keeps the verifier reports on every run</li>
 </ul>
 
 <h3>1.2.0</h3>
 <ul>
-  <li><b>Parser fixes for real-world code</b> — named tuples with nullable types as call arguments, `@[...]` annotations before methods, nested `%()` literals inside string interpolation</li>
-  <li><b>`::`-rooted paths resolve from root</b> — leading `::` no longer resolves to a shadowing local type</li>
+  <li><b>Parser fixes for real-world code</b> — named tuples with nullable types as call arguments, <code>@[...]</code> annotations before <code>def</code>, nested <code>%()</code> literals inside string interpolation</li>
+  <li><b><code>::</code>-rooted paths resolve from root</b> — leading <code>::</code> no longer resolves to a shadowing local type. Shard sources under <code>lib/</code> are not indexed yet: such targets resolve to nothing rather than jumping to the wrong declaration; shard indexing is planned for 1.3.0</li>
+  <li><b>Plugin renamed to Fast Crystal</b> — new plugin id and Marketplace listing</li>
 </ul>
 
 <h3>1.1.0</h3>
 <ul>
-  <li><b>Implement Members</b> — generate stubs for unimplemented abstract methods (Code → Generate)</li>
-  <li><b>Inlay Hints</b> — inferred variable types shown inline in the editor</li>
+  <li><b>Implement Members</b> — Code → Generate creates stubs for unimplemented <code>abstract def</code> methods across the ancestor chain (superclass and includes), raising <code>NotImplementedError</code> with signatures copied including return type and <code>forall</code>; macro-generated names are skipped</li>
+  <li><b>Inlay Hints</b> — Settings → Editor → Inlay Hints → Crystal shows inferred local-variable types after unannotated assignments</li>
+  <li><b>No more resolve-path freezes on big files</b> — assignments, <code>record</code> lookups and heredoc end-delimiter searches are indexed once per file version instead of re-walking the file on every call, so Go to Definition no longer stalls on large sources</li>
+  <li><b>Go to Definition through ivar-aliased locals</b> — <code>name = @name</code> now carries <code>@name</code>'s type, so calls on it resolve; <code>@</code>-shorthand parameters and property declarations are indexed as the type source</li>
+  <li><b>Stdlib types no longer buried in completion</b> — <code>String</code>, <code>Int32</code>, <code>Nil</code> and <code>self</code> stay visible in empty-prefix completion on machines with an indexed stdlib</li>
+  <li><b>Stub index version bumped</b> — a full reindex discards stale stubs that could fail with <code>UpToDateStubIndexMismatch</code></li>
+  <li><b>CI can no longer stay green on broken tests</b> — test tasks never serve results from the build cache, and a test-count guard fails the job when fewer than 500 tests ran or any failure is present</li>
 </ul>
 
 <h3>1.0.1</h3>
 <ul>
-  <li><b>CI fix</b> — stdlib-graph workflow green on fresh runners (test sandbox wiring, no configuration cache, failure diagnostics upload)</li>
+  <li><b>Stdlib-graph workflow green on fresh runners</b> — the tasks now prepare the test sandbox like <code>test</code> does, run without the configuration cache, and upload JUnit/HTML diagnostics on failure instead of leaving a truncated log</li>
+  <li><b>Docs follow the new package layout</b> — architecture section and diagrams updated for the <code>type/</code> kernel and <code>editor/</code> package</li>
 </ul>
 
 <h3>1.0.0</h3>
 <ul>
   <li><b>Fast Crystal Plugin 1.0.0</b> — first release of the independent project: indexing stall fixes (ternary parse 191s→94ms, type-inference StackOverflow guard, <code>def Type.name</code> parse), full project navigation via StubIndex, and 60+ inspections/completions documented in the changelog below</li>
+  <li><b>Rebranded to <code>io.github.unurgunite.crystal</code></b> — independent plugin id, vendor and Marketplace listing</li>
+  <li><b>Release infrastructure</b> — CI workflows for lint, tests and plugin verification, plus signing and Marketplace publishing</li>
 </ul>
 
 <h3>0.1.17</h3>
