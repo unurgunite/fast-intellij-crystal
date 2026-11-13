@@ -11,11 +11,7 @@ import com.intellij.platform.dap.connection.DebugAdapterHandle
 class CrystalDebugAdapterDescriptor : DebugAdapterDescriptor<CrystalDebugAdapterId>() {
     override val id: CrystalDebugAdapterId = CrystalDebugAdapterId
 
-    override val breakpointsDescription: DapBreakpointsDescription =
-        DapBreakpointsDescription(
-            CrystalLineBreakpointType::class.java,
-            CrystalExceptionBreakpointType::class.java,
-        )
+    override val breakpointsDescription: DapBreakpointsDescription = createBreakpointsDescription()
 
     override suspend fun launchDebugAdapter(
         environment: ExecutionEnvironment,
@@ -33,6 +29,30 @@ class CrystalDebugAdapterDescriptor : DebugAdapterDescriptor<CrystalDebugAdapter
     }
 
     companion object {
+        /**
+         * Builds the breakpoint description across the 261/262 and 263 platform
+         * API shapes. 263 renamed the constructor (added a nullable
+         * `functionBreakpointType` third parameter) and dropped the two-argument
+         * one, so a direct call compiles against one release line and throws
+         * NoSuchMethodError on the other. The matching constructor is picked at
+         * runtime instead; bodyBreakpoints stay null on 263 and are the same as
+         * the two-argument call on 261/262.
+         */
+        fun createBreakpointsDescription(): DapBreakpointsDescription {
+            val source = CrystalLineBreakpointType::class.java
+            val exception = CrystalExceptionBreakpointType::class.java
+            val type = DapBreakpointsDescription::class.java
+            // 263: (source, exception, function) with function defaulting to null.
+            runCatching { type.getConstructor(Class::class.java, Class::class.java, Class::class.java) }
+                .getOrNull()
+                ?.let { return it.newInstance(source, exception, null) as DapBreakpointsDescription }
+            // 261/262: (source, exception). Reflective too, so the compiled
+            // constant pool holds no reference to a constructor that 263 dropped.
+            return type
+                .getConstructor(Class::class.java, Class::class.java)
+                .newInstance(source, exception) as DapBreakpointsDescription
+        }
+
         /**
          * First executable lldb-dap/lldb-vscode candidate, or null when none is
          * installed. Extracted for testability; PATH lookup is deliberately NOT

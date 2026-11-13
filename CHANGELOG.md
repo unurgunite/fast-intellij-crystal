@@ -2,12 +2,19 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.2.1] — Unreleased
+## [1.2.2] — Unreleased
+
+### Fixed
+
+- **IntelliJ IDEA 2026.3 rejected the plugin as binary incompatible**: 263.7307.200 replaced `DapBreakpointsDescription(sourceBreakpointType, exceptionBreakpointType)` with a three-argument constructor whose extra `functionBreakpointType` is nullable and defaults to `null`, and dropped the two-argument one. Compiling against either signature left the other release line with an `invokespecial` to a constructor that no longer exists — the verifier reported `Method not found` / `Invocation of unresolved constructor`, and a debug session on 2026.3 would have thrown `NoSuchMethodError`. The constructor is now resolved at runtime, so the compiled code references neither signature and 2026.1, 2026.2 and 2026.3 all work from one artifact.
+- **RubyMine 2026.2 reported 19 binary-compatibility problems**: 2026.2 moved `intellij.platform.smRunner` out of the core libraries into the bundled `intellij.testRunner.plugin` bundle, so declaring the module alone left the SM test-runner classes (`TestConsoleProperties`, `sm.runner.events.*`, `BaseTestsOutputConsoleView`) unresolved there. That bundle does not exist on 2026.1, where the module still ships in core, so it is declared as an optional dependency with a config file instead of a mandatory one. `verifyPlugin` is now `Compatible` on 2026.1 and 2026.2, IDEA Ultimate and RubyMine both.
+
+## [1.2.1] — 2026-11-13
 
 ### Fixed
 
 - **Release notes and source comments name no third-party project**: the 1.2.1 entries and the explanatory comments that came with them described the real projects the fixes were found in, including file paths. They now state the failing shape in Crystal instead. The internal work-in-progress notes were removed from the repository.
-- **RubyMine compatibility (Marketplace verification)**: test-runner classes from `intellij.platform.smRunner` are declared as a plugin dependency (were resolved transitively on IDEA but missing on RubyMine — 14 binary-compatibility problems on RM-262).
+- **RubyMine compatibility (Marketplace verification)**: test-runner classes from `intellij.platform.smRunner` are declared as a plugin dependency (were resolved transitively on IDEA but missing on RubyMine — 14 binary-compatibility problems on RM-262). A residual 19 problems on RM-262 remained in this release and are fixed in 1.2.2.
 - **Scheduled-for-removal and deprecated API usages**: run-marker `Info` constructor, `prepareEditorForWrite`, blocking `runReadAction`, legacy `MarkdownParser` entry-point, debugger session APIs, override-only `navigate` delegation.
 - **Local verification matrix covers RubyMine**: `verifyPlugin` now checks IU Ultimate + RubyMine release builds, so RubyMine-only breakage can no longer stay green locally.
 - **CI keeps verifier reports on every run**: the per-IDE verification reports (same content as the Marketplace verification-results page) are uploaded as an artifact, so a Marketplace failure maps locally without re-running the verifier.
@@ -22,6 +29,28 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 - **A bodyless `self` block parameter parses** (`def initialize(source, &on_call : Call, self ->)`): `self` is a parameter-name keyword and `->` is not, so the generic named parameter alternatives committed on `self` and stranded the arrow, breaking the whole signature. The parameter rule now has an explicit `self ->` arm ahead of the named alternatives.
 - **A string continued with a trailing backslash keeps parsing**: JFlex's `.` does not match a line terminator, so the catch-all escape rule could not consume a `\` at the end of a line. The backslash came back as an error token, the literal was split in two, and the enclosing call lost its parse — a multi-line `description "..."` inside a DSL block reported a bogus argument error. String, regex, command and symbol literals now accept a backslash-newline escape.
 - **A method name spliced by `&.` parses**: `&.{{ name }}(...)` — a generated visitor guard — put the interpolation after `&.`, and that form goes through the implicit-object-call rule, whose segment list had no `macro_interpolation` arm (only `dot_call_access` did), so the whole enclosing macro method body failed to parse. The segment list now accepts the interpolation, matching the dot-call rule.
+- **Heredocs lex as arguments, literals and blocks**: a `<<-TEXT` / `<<~TEXT` body opening in argument position was not recognised as a here-document, so the literal split across lines and the enclosing call lost its parse.
+- **`**opts` parses as a bare call argument**: a double-splat on a paren-less call was rejected, breaking the whole statement that contained it.
+- **Assignment-style call arguments parse**: an argument written `name: value` in a bare call list is now accepted instead of ending the argument list early.
+- **A brace block with a lone expression is a block body**: `foo { bar }` was read as a tuple literal argument, so the block arm never ran and downstream inspections reported phantom type errors.
+- **Arguments after a brace block on a dot call are kept**: `receiver.method { ... }, next_argument` dropped everything after the closing brace.
+- **An index on a leading-`::` constant parses as a bare argument**: `::Foo[...]` in a paren-less argument position ended the argument list.
+- **A qualified constant path no longer swallows its arguments**: arguments following `A::B` were parsed as part of the path instead of as separate call arguments.
+- **Tuples are accepted where `Indexable(T)` is expected**: a tuple argument was reported as a type mismatch against an `Indexable(T)` parameter, though every tuple is one.
+- **Aliases and qualified receivers resolve**: a type alias in a receiver position and a receiver written with its full namespace now resolve to the methods they name, instead of falling back to a same-named match or to nothing.
+- **Qualified receivers match against short owner names**: `A::B#method` is found by a receiver typed `B`, which previously only matched the fully qualified name.
+- **Self-referential generics are accepted**: a type whose generic element refers to the enclosing type matched nothing, so every such signature reported a bogus mismatch.
+- **Reopening parameter macros are treated per reopening**: each reopening's parameter macro now describes its own constructor instead of matching a sibling reopening's parameters.
+- **Macro controls scope variables only when they wrap the body**: a macro control used as a statement no longer hides variables declared after it, which had produced unused-variable false positives.
+- **Attribute writes are not unused variables**: an assignment to `@ivar` / `self.attr` was reported as a dead store.
+- **A block variable stays readable after reassignment**: reassigning a variable inside a block no longer makes the earlier read look dead.
+- **Variables stay alive across blocks that may not run**: a value assigned in a conditional block and read afterwards is no longer reported as unused.
+- **Relative and ambiguous parent resolution**: a parent written relative to a nested namespace, and a parent name shared by several types, no longer resolve to the wrong class or report spurious member errors.
+- **No same-named method guessing for typed receivers**: on a receiver with a known type, a method not declared on that type is no longer satisfied by an unrelated same-named method elsewhere, which had masked real typos.
+- **`def Type.new` reopenings are no longer offered to unrelated constructors**: a custom constructor defined on one type no longer answers `new` calls on another.
+- **Generic receivers, DSL setters and spec hooks no longer report argument-count errors**: calls through a generic type parameter, setters generated by a DSL macro, and `before_each`-style spec hooks were arity-checked against the wrong candidate.
+- **Every inspection has a description**: each registered inspection now ships an HTML description, so the settings UI no longer shows a missing-description warning.
+- **Whole-tree parser sweep harness committed**: a fixture-driven sweep over complete files catches truncated parses that a hand-written snippet misses.
 
 ## [1.2.0] — 2026-10-14
 
