@@ -274,6 +274,12 @@ private fun resolveDotCallFragmentOf(expr: PsiElement): CrystalExpressionTypeRes
     val (methodName, receiver) = dotCallPartsOf(expr)
     if (methodName == "to_json") return CrystalExpressionTypeResolver.ResolvedType("String")
     if (methodName == null) return null
+    // `A.new` without parentheses parses as EXPRESSION + DOT_CALL_ACCESS, not
+    // as a method call, so it never reached resolveMethodCallReturnType's
+    // `Klasse.new` pattern. The instance type is the receiver's own type.
+    if (methodName == "new") {
+        return receiverClassNameOf(receiver)?.let { CrystalExpressionTypeResolver.ResolvedType(it) }
+    }
     // Fixed-yield conversions first (`to_s`, `to_i`, ...): defined by
     // the method itself, independent of any receiver.
     CrystalCallReturnTypeResolver.fixedReturnType(methodName)?.let {
