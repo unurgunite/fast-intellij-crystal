@@ -63,16 +63,13 @@ intellijPlatform {
     pluginVerification {
         ides {
             // Verify against RELEASED IDEs in the supported range (sinceBuild
-            // 261 -> 261.x, 262.x), IU Ultimate AND RubyMine: the SM
+            // 261 -> 261.x through 263.x), IU Ultimate AND RubyMine: the SM
             // test-runner hierarchy resolves transitively on IDEA but NOT on
             // RubyMine, so an IU-only matrix stayed green while Marketplace
-            // flagged 14 binary-compatibility problems on RM-262. The default
-            // recommended() set also pulls EAP builds (263-EAP), whose
-            // platform APIs may legitimately differ from the release the
-            // plugin compiles against (intellijIdea 2026.1.3) — e.g. the
-            // DapBreakpointsDescription ctor, unresolved on 263-EAP while
-            // 261/262 verify Compatible. EAP drift is not a release blocker;
-            // a real incompatibility with a released IDE still fails.
+            // flagged 19 binary-compatibility problems on RM-262. RELEASE
+            // channel only — the default recommended() set also pulls EAP
+            // builds, whose platform APIs may legitimately differ from the
+            // release the plugin compiles against (intellijIdea 2026.1.3).
             select {
                 types.set(listOf(IntelliJPlatformType.IntellijIdeaUltimate, IntelliJPlatformType.RubyMine))
                 channels.set(listOf(ProductRelease.Channel.RELEASE))

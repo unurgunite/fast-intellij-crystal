@@ -2,7 +2,7 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.3.0] — Unreleased
+## [1.3.0] — 2026-11-14
 
 ### Fixed
 
@@ -10,12 +10,15 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 - **An unresolvable call was typed as its receiver**: a `Proc#call` reported the Proc, an `as:`-typed query reported the query object, and a container `size` reported the container. Unknown return types now stay unknown instead of becoming a guess.
 - **An indexed expression reported its container**: `row[0]` on a tuple reported the tuple, and the same for arrays, slices and sets. An index now resolves to the element type, including a negative index.
 - **A lowercase DOT-call was checked against every same-named method**: the dot-call info carried only the receiver's text, never the receiver itself, so unrelated classes defining the same method name became candidates. It is now filtered by the receiver's inferred class.
+- **A union receiver was checked against its first member only**: a call on `Reader | Writer` was resolved as `Reader`, so a method belonging to any later member was skipped instead of verified. Candidates are now kept when any member of the union owns them.
+- **`A.new` without parentheses was typed as unknown**: the class-instantiation pattern is matched against the call's text, but the argument-less form parses as an expression with a dot-call fragment rather than a call, so it never reached that pattern. The instance type is now the receiver's class, namespace intact (`UI::Widget`).
 - **Empty reports from five inspections were not evidence they worked**: they reported nothing on a large project, which turned out to be a clean project rather than a defect. Each of the five now has a minimal case that must fire; `CrystalColonSpacingInspection` had no test at all.
 
 ### Changed
 
 - **Stub-index lookups honour configured exclusions**: all 26 call sites use `ProjectAndLibrariesScope` instead of `allScope`, so a directory the user excluded is no longer searched behind their back. Directories the user added to the project keep their highlighting, navigation and inspections unchanged.
 - **Method candidates are cached per project and dropped on any PSI change**, removing a repeated uncached StubIndex query from the hot path of both the type-check and argument-count inspections.
+- **2026.3 is inside the supported range**: `untilBuild` moves from `262.*` to `263.*`. The pin outlived its reason — it existed because 263 renamed `DapBreakpointsDescription`'s constructor, which 1.2.2 resolves reflectively. Verified Compatible on IU-263.7307.200 and RM-263.7307.205.
 
 ## [1.2.2] — 2026-11-13
 
