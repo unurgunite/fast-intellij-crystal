@@ -37,6 +37,60 @@ class CrystalDotCallUnionReceiverTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
+    fun testMethodOnThirdUnionMemberIsAccepted() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class First
+              def one(x : Int32)
+              end
+            end
+
+            class Second
+              def two(x : Int32)
+              end
+            end
+
+            class Third
+              def three(x : String)
+              end
+            end
+
+            def run(pick : First | Second | Third)
+              pick.three("ok")
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testMismatchOnThirdUnionMemberIsStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            class First
+              def one(x : Int32)
+              end
+            end
+
+            class Second
+              def two(x : Int32)
+              end
+            end
+
+            class Third
+              def three(x : String)
+              end
+            end
+
+            def run(pick : First | Second | Third)
+              pick.three(<error descr="Type mismatch: expected 'String', got 'Int32'">1</error>)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
     fun testMismatchOnSecondUnionMemberIsStillReported() {
         myFixture.configureByText(
             "test.cr",
