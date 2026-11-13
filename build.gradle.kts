@@ -77,11 +77,13 @@ intellijPlatform {
                 types.set(listOf(IntelliJPlatformType.IntellijIdeaUltimate, IntelliJPlatformType.RubyMine))
                 channels.set(listOf(ProductRelease.Channel.RELEASE))
                 sinceBuild.set("261")
-                // Verified range is 261.x-262.x (sinceBuild 261). The 263 line
-                // is only available as EAP, and 263.7307.200 already renamed
-                // DapBreakpointsDescription's ctor (added functionBreakpointType),
-                // so it reports expected drift rather than a release blocker.
-                untilBuild.set("262.*")
+                // Verified range is 261.x-263.x on both products: IU-263.7307.200
+                // and RM-263.7307.205 report Compatible with only deprecated and
+                // experimental API advisories. 263 renamed DapBreakpointsDescription's
+                // ctor and moved intellij.platform.smRunner into the test-runner
+                // plugin; the debugger resolves the ctor reflectively and the module
+                // is declared alongside an optional test-runner dependency.
+                untilBuild.set("263.*")
             }
         }
     }
