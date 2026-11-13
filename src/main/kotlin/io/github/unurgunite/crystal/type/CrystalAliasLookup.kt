@@ -42,7 +42,7 @@ internal object CrystalAliasLookup {
                 CrystalAliasIndex.KEY,
                 name,
                 project,
-                GlobalSearchScope.allScope(project),
+                CrystalSearchScopes.project(project),
                 CrystalAliasDefinition::class.java,
             )
         // Aliases are usually one per name per project; a file-owned definition

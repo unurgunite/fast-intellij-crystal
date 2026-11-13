@@ -14,6 +14,7 @@ import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.stubs.CrystalClassByEnclosingIndex
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Provides type completions for type annotation contexts (after `:` in parameters and return types).
@@ -259,7 +260,7 @@ object CrystalTypeCompletionProvider {
         enclosingName: String,
         project: Project,
     ): List<LookupElementBuilder> {
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val nestedTypes =
             StubIndex.getElements(
                 CrystalClassByEnclosingIndex.KEY,

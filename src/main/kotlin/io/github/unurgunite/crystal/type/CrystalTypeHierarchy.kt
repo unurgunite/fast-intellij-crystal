@@ -44,7 +44,7 @@ object CrystalTypeHierarchy {
         project: Project,
         currentFile: PsiFile? = null,
     ): TypeLookupResult? {
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         if (name.contains("::")) {
             CrystalQualifiedLookup.find(name, project, scope, currentFile)?.let { return it }
         }
@@ -107,7 +107,7 @@ object CrystalTypeHierarchy {
         val hierarchyNames = collectFullHierarchy(typeResult)
 
         // 2. For each class in the hierarchy, look up its methods directly via the index
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val result = mutableListOf<CrystalMethodDefinition>()
         val seen = mutableSetOf<String>()
 
@@ -427,7 +427,7 @@ private fun findTypeForCall(
                 CrystalClassIndex.KEY,
                 name,
                 project,
-                GlobalSearchScope.allScope(project),
+                CrystalSearchScopes.project(project),
                 CrystalNamedElement::class.java,
             )
         namespacePrefixes(callSite)
@@ -471,6 +471,6 @@ private fun isAmbiguousTypeName(
             CrystalClassIndex.KEY,
             name,
             project,
-            GlobalSearchScope.allScope(project),
+            CrystalSearchScopes.project(project),
             CrystalNamedElement::class.java,
         ).count { CrystalTypeHierarchy.kindOf(it) != null } > 1

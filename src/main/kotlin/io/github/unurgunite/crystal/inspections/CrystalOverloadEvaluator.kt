@@ -6,6 +6,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.psi.util.extractParameterName
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 import io.github.unurgunite.crystal.type.CrystalCallArguments.ArgumentInfo
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Overload matching for arity checks: evaluates each candidate signature against
@@ -90,8 +91,7 @@ internal object CrystalOverloadEvaluator {
         project: com.intellij.openapi.project.Project,
     ): List<CrystalMethodDefinition> {
         val scope =
-            com.intellij.psi.search.GlobalSearchScope
-                .allScope(project)
+            CrystalSearchScopes.project(project)
         return com.intellij.psi.stubs.StubIndex
             .getElements(
                 CrystalMethodIndex.KEY,

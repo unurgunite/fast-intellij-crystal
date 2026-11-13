@@ -28,7 +28,7 @@ object CrystalMethodReturnTypeInference {
         // body-shape inference on an unannotated `to_s` would otherwise return
         // the receiver's own type (e.g. `proxy_id.to_s` infers Int32).
         if (methodName == "to_s") return listOf("String")
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val methods =
             StubIndex
                 .getElements(

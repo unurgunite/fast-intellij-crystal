@@ -28,6 +28,7 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 import io.github.unurgunite.crystal.stubs.CrystalMethodIndex
 import io.github.unurgunite.crystal.type.CrystalMethodLookup
 import io.github.unurgunite.crystal.type.CrystalRecordLookup
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Provides parameter info (Ctrl+P) for Crystal method calls.
@@ -82,7 +83,7 @@ class CrystalParameterInfoHandler : ParameterInfoHandler<PsiElement, Any> {
         argsHolder: PsiElement,
     ): Array<CrystalMethodDefinition> {
         val project = context.project
-        val scope = GlobalSearchScope.allScope(project)
+        val scope = CrystalSearchScopes.project(project)
         val methods =
             StubIndex
                 .getElements(

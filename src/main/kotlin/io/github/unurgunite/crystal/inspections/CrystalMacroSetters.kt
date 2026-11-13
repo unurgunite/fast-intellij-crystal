@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.psi.CrystalMacroDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodCallExpression
 import io.github.unurgunite.crystal.stubs.CrystalMacroIndex
 import io.github.unurgunite.crystal.type.CrystalCallArguments
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * A DSL setter has two declarations with the same name: a macro that takes the
@@ -33,7 +34,7 @@ internal object CrystalMacroSetters {
                 CrystalMacroIndex.KEY,
                 methodName,
                 project,
-                GlobalSearchScope.allScope(project),
+                CrystalSearchScopes.project(project),
                 CrystalMacroDefinition::class.java,
             ).isNotEmpty()
 

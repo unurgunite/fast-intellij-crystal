@@ -11,6 +11,7 @@ import io.github.unurgunite.crystal.documentation.CrystalDocHtml.escapeHtml
 import io.github.unurgunite.crystal.psi.CrystalNamedElement
 import io.github.unurgunite.crystal.psi.CrystalParameter
 import io.github.unurgunite.crystal.stubs.CrystalClassIndex
+import io.github.unurgunite.crystal.type.CrystalSearchScopes
 
 /**
  * Provides Quick Documentation (Ctrl+Q / F1) and hover documentation for Crystal elements.
@@ -72,7 +73,7 @@ class CrystalDocumentationProvider : AbstractDocumentationProvider() {
                 CrystalClassIndex.KEY,
                 className,
                 project,
-                GlobalSearchScope.allScope(project),
+                CrystalSearchScopes.project(project),
                 CrystalNamedElement::class.java,
             )
         return elements.firstOrNull()
