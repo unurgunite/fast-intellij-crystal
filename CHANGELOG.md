@@ -7,9 +7,10 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 ### Fixed
 
 - **A range operator was parsed as a bare command**: `a...b` became a command whose right operand was a bare argument, because the binary-operator lookahead covered only arithmetic operators. The left operand never got a reference, so a variable read only inside a range was reported as unused. Binary, prefix and postfix forms are covered; the first attempt broke the open slice form (`line[offset..]`) and needed an operand-agnostic lookahead.
-- **An unresolvable call was typed as its receiver**: tuple indexing reported the whole tuple, a `Proc#call` reported the Proc, an `as:`-typed query reported the query object, and a container `size` reported the container. Unknown return types now stay unknown instead of becoming a guess.
+- **An unresolvable call was typed as its receiver**: a `Proc#call` reported the Proc, an `as:`-typed query reported the query object, and a container `size` reported the container. Unknown return types now stay unknown instead of becoming a guess.
+- **An indexed expression reported its container**: `row[0]` on a tuple reported the tuple, and the same for arrays, slices and sets. An index now resolves to the element type, including a negative index.
 - **A lowercase DOT-call was checked against every same-named method**: the dot-call info carried only the receiver's text, never the receiver itself, so unrelated classes defining the same method name became candidates. It is now filtered by the receiver's inferred class.
-- **Empty reports from five inspections were not evidence they worked**: each of the five now has a minimal case that must fire. `CrystalColonSpacingInspection` had no test at all.
+- **Empty reports from five inspections were not evidence they worked**: they reported nothing on a large project, which turned out to be a clean project rather than a defect. Each of the five now has a minimal case that must fire; `CrystalColonSpacingInspection` had no test at all.
 
 ### Changed
 
