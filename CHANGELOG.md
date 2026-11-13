@@ -2,6 +2,12 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
+## [1.2.2] — Unreleased
+
+### Fixed
+
+- **IntelliJ IDEA 2026.3 rejected the plugin as binary incompatible**: 263.7307.200 replaced `DapBreakpointsDescription(sourceBreakpointType, exceptionBreakpointType)` with a three-argument constructor whose extra `functionBreakpointType` is nullable and defaults to `null`, and dropped the two-argument one. Compiling against either signature left the other release line with an `invokespecial` to a constructor that no longer exists — the verifier reported `Method not found` / `Invocation of unresolved constructor`, and a debug session on 2026.3 would have thrown `NoSuchMethodError`. The constructor is now resolved at runtime, so the compiled code references neither signature and 2026.1, 2026.2 and 2026.3 all work from one artifact.
+
 ## [1.2.1] — Unreleased
 
 ### Fixed
