@@ -47,6 +47,10 @@ internal object CrystalCallArguments {
         val receiverName: String,
         val methodName: String,
         val methodNameElement: PsiElement,
+        // The receiver PSI, when known: `receiverName` is the receiver's TEXT
+        // (`row`, `db`, `@read_xml`), so overload filtering needs the element
+        // to infer the receiver's actual class.
+        val receiverElement: PsiElement? = null,
     )
 
     /**
