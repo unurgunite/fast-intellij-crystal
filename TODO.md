@@ -55,8 +55,9 @@ GrammarKit — see the environment note below.
 - **CI hygiene** — `spotlessCheck` + `detekt` green (manual refactors, no
   threshold tuning); large test classes split.
 - **Docs restructure** — living behavior in `docs/specs/`, conventions in
-  `docs/TESTING.md`, wave reports in `docs/reports/` (marked historical),
-  decisions in `docs/decision-log/`, ECR sketch in `docs/proposals/`.
+  `docs/TESTING.md`, wave reports in `docs/reports/` (marked historical). The
+  unimplemented ECR sketch and the single-file `decision-log/` were dropped; the
+  Code Style decision now lives in `ARCHITECTURE.md`'s invariants.
 - **Architecture waves 0–3** — `editor/` extracted, `psi/{references,stdlib,util}`
   split, leaf `type/` kernel, cycles dead, `ARCHITECTURE.md` module map updated.
 
