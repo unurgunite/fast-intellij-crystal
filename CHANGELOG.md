@@ -2,7 +2,21 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.2.2] — Unreleased
+## [1.3.0] — Unreleased
+
+### Fixed
+
+- **A range operator was parsed as a bare command**: `a...b` became a command whose right operand was a bare argument, because the binary-operator lookahead covered only arithmetic operators. The left operand never got a reference, so a variable read only inside a range was reported as unused. Binary, prefix and postfix forms are covered; the first attempt broke the open slice form (`line[offset..]`) and needed an operand-agnostic lookahead.
+- **An unresolvable call was typed as its receiver**: tuple indexing reported the whole tuple, a `Proc#call` reported the Proc, an `as:`-typed query reported the query object, and a container `size` reported the container. Unknown return types now stay unknown instead of becoming a guess.
+- **A lowercase DOT-call was checked against every same-named method**: the dot-call info carried only the receiver's text, never the receiver itself, so unrelated classes defining the same method name became candidates. It is now filtered by the receiver's inferred class.
+- **Empty reports from five inspections were not evidence they worked**: each of the five now has a minimal case that must fire. `CrystalColonSpacingInspection` had no test at all.
+
+### Changed
+
+- **Stub-index lookups honour configured exclusions**: all 26 call sites use `ProjectAndLibrariesScope` instead of `allScope`, so a directory the user excluded is no longer searched behind their back. Directories the user added to the project keep their highlighting, navigation and inspections unchanged.
+- **Method candidates are cached per project and dropped on any PSI change**, removing a repeated uncached StubIndex query from the hot path of both the type-check and argument-count inspections.
+
+## [1.2.2] — 2026-11-13
 
 ### Fixed
 
