@@ -70,6 +70,10 @@ object CrystalExpressionTypeResolver {
     private val recursionDepth = ThreadLocal.withInitial { 0 }
 
     private fun resolveTypeInner(expr: PsiElement): ResolvedType? {
+        // Index expressions go first: `row[0]` is an EXPRESSION whose first child
+        // is the receiver, so any descent-based wrapper resolution below would
+        // return the tuple/array type instead of the indexed element.
+        CrystalIndexedTypeResolver.resolve(expr)?.let { return it }
         resolveLeafShape(expr)?.let { return it }
         return resolveCompositeShape(expr)
     }
