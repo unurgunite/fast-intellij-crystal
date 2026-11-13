@@ -13,7 +13,11 @@ editing, navigation, completion, inspections, running, and debugging.
 Built on a GrammarKit parser with StubIndex-backed resolution; requires
 IntelliJ Platform 2026.1+ and a Crystal toolchain.
 
-The repo ships a `stdlib-graph/` harness (`stdlibParseErrors`, `stdlibStructure`,
+Verified against IntelliJ IDEA Ultimate and RubyMine 2026.1 and 2026.2.
+IntelliJ Platform 2026.3 is also targeted at runtime, but is not part of the
+verification matrix yet (see `build.gradle.kts`).
+
+The repo ships a `stdlib-graph` harness (`stdlibParseErrors`, `stdlibStructure`,
 `stdlibBuildGraph`, `stdlibCheckFile`) that parses and resolves the entire Crystal
 standard library through the plugin's own parser, so regressions show up as numbers
 before they ship.
@@ -71,6 +75,11 @@ before they ship.
 ### Refactoring
 
 - **Rename** (Shift+F6) — in-place rename with preview dialog, Crystal identifier validation, and automatic compiler verification (`crystal build --no-codegen`)
+- **Implement Members** (Ctrl+I) — discovers abstract methods in parent classes and modules and generates stubs with the matching signatures
+
+### Editor Feedback
+
+- **Inlay Hints** — inferred types shown inline for variables, parameters, and return values
 
 ### Code Formatting
 
@@ -103,7 +112,9 @@ before they ship.
 
 - **IntelliJ Platform** 2026.1 or later
 - **Crystal** compiler (for formatting and compiler verification)
-- **LLDB DAP** (optional, for debugging) — the `lldb-dap` binary must be installed
+- **LLDB DAP** (optional, for debugging) — the `lldb-dap` binary must be installed in
+  a location the plugin checks (`/usr/bin`, `/usr/local/bin`, or the LLVM program files
+  directory on Windows); `PATH` is not searched
 
 See [Installing Dependencies](#installing-dependencies) below for OS-specific instructions.
 
@@ -112,8 +123,12 @@ See [Installing Dependencies](#installing-dependencies) below for OS-specific in
 ### Installing Dependencies
 
 This plugin depends on the **Crystal compiler** and (optionally) the **LLDB DAP** debugger.
-Both binaries must be available in your `PATH`. The plugin additionally checks
-`/usr/bin/lldb-dap` and `/usr/local/bin/lldb-dap` for auto-detection.
+
+`crystal` must be available in your `PATH`. For the debugger the plugin does **not**
+search `PATH` — it checks fixed locations: `/usr/bin/lldb-dap`, `/usr/local/bin/lldb-dap`
+(plus the legacy `lldb-vscode` names) on macOS and Linux, and
+`C:\Program Files\LLVM\bin\lldb-dap.exe` on Windows. The per-OS sections below show how
+to get the binary there.
 
 #### Linux — Arch / Manjaro / EndeavourOS / CachyOS
 
@@ -142,8 +157,8 @@ sudo ./llvm.sh 23
 sudo apt install lldb-23
 ```
 
-The binary is installed as `/usr/bin/lldb-dap-23`. Either add it to your `PATH` as
-`lldb-dap`, or symlink it so the plugin finds it automatically:
+The binary is installed as `/usr/bin/lldb-dap-23`. Symlink it to one of the locations
+the plugin checks:
 
 ```bash
 sudo ln -s /usr/bin/lldb-dap-23 /usr/bin/lldb-dap
@@ -184,8 +199,8 @@ the `llvm` formula, so `llvm` alone no longer provides `lldb-dap`:
 brew install crystal lldb
 ```
 
-If `lldb-dap` is not on your `PATH` afterwards, symlink it so the plugin finds
-it automatically (works on both Intel and Apple Silicon):
+If `lldb-dap` is not in one of the plugin's search paths afterwards, symlink it
+(the plugin does not scan `PATH`; works on both Intel and Apple Silicon):
 
 ```bash
 sudo ln -s "$(brew --prefix lldb)/bin/lldb-dap" /usr/local/bin/lldb-dap
@@ -230,18 +245,20 @@ Download the latest LLVM Windows installer from the
 
 - `LLVM-<VERSION>-win64.exe`
 
-During installation, enable **"Add LLVM to the system PATH for all users"** so
-`lldb-dap.exe` is discoverable by the plugin.
+During installation, enable **"Add LLVM to the system PATH for all users"** and keep the
+default install directory — the plugin looks for `lldb-dap.exe` under
+`C:\Program Files\LLVM\bin` (and the x86 variant).
 
 #### Verifying the installation
 
 ```bash
 crystal --version
-lldb-dap --help
+lldb-dap --help     # then confirm it sits in a path the plugin checks
 ```
 
-If both commands work from a fresh shell, the plugin will pick up the toolchain
-automatically.
+If `crystal` works, formatting, running and rename verification are ready; if
+`lldb-dap` also resolves from one of the checked directories, debugging is too.
+Remember that `lldb-dap` in `PATH` alone is not enough.
 
 ### From JetBrains Marketplace
 

@@ -25,6 +25,7 @@ flowchart TB
         Editor["editor/\nenter/brace/folding\ncommenter/quote/typed"]
         Highlighting["highlighting/\nlexer colors + annotator\n+ TODO"]
         Structure["structure/\nstructure view"]
+        Inlay["inlay/\ninferred-type hints"]
         Formatting["formatting/\ncrystal tool format"]
         Root["root: language plumbing\nLanguage/File/FileType\nParserDefinition"]
     end
@@ -34,6 +35,7 @@ flowchart TB
         Debugger["debugger/\nLLDB-DAP\nservice implementation"]
         SDK["sdk/ + project/\nSDK detect + wizard"]
         Refactoring["refactoring/\nrename"]
+        Generation["generation/\nimplement members"]
     end
 
     PSI --> Completion
@@ -44,10 +46,12 @@ flowchart TB
     Stubs --> Completion
     Stubs --> Navigation
     Stubs --> Inspections
+    Stubs --> Generation
     Type --> Completion
     Type --> Navigation
     Type --> Inspections
     Type --> Documentation
+    Type --> Inlay
     Type --> PSI
     Root --> Editor
     Run --> Debugger
