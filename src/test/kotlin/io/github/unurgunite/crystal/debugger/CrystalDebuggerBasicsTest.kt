@@ -64,6 +64,14 @@ class CrystalDebugAdapterSupportProviderTest : BasePlatformTestCase() {
         assertNotNull(breakpoints)
     }
 
+    fun testBreakpointsDescriptionWiresBothTypes() {
+        // Guards the 261/262 vs 263 constructor split: whichever signature the
+        // running IDE has, both breakpoint types must come through.
+        val breakpoints = CrystalDebugAdapterDescriptor.createBreakpointsDescription()
+        assertSame(CrystalLineBreakpointType::class.java, breakpoints.sourceBreakpointType)
+        assertSame(CrystalExceptionBreakpointType::class.java, breakpoints.exceptionBreakpointType)
+    }
+
     fun testLldbDapCandidateIsExecutableOrNull() {
         // No PATH lookup by design (fixed candidates only): result is either an
         // executable file or null (→ "lldb-dap" fallback at launch time).
