@@ -67,6 +67,32 @@ class CrystalStdlibLibraryProviderTest : BasePlatformTestCase() {
         )
     }
 
+    fun testInstalledShardsBecomeLibraries() {
+        // Installed shards are output side of dependencies, not the project's
+        // own code: registering them as library roots keeps navigation and
+        // require resolution but takes their 1894 .cr files out of the
+        // inspection scope.
+        com.intellij.openapi.vfs.LocalFileSystem
+            .getInstance()
+            .findFileByPath(project.basePath!!)
+            .also { it?.refresh(false, false) }
+        val shardDir = java.io.File(project.basePath!!, "lib/athena-core/src")
+        assertTrue(shardDir.mkdirs())
+        realFiles.add(java.io.File(project.basePath!!, "lib"))
+        val lib =
+            com.intellij.openapi.vfs.LocalFileSystem
+                .getInstance()
+                .refreshAndFindFileByPath(java.io.File(project.basePath!!, "lib").absolutePath)
+        assertNotNull(lib)
+        CrystalStdlibLibraryProvider.clearCache()
+        val shards = provider.getAdditionalProjectLibraries(project).filterIsInstance<Any>()
+        // The shard library itself is private; assert through toString.
+        assertTrue(
+            "expected a shard library root, got $shards",
+            shards.any { it.toString().contains("/lib/athena-core") },
+        )
+    }
+
     fun testCrystalProjectYieldsStableLibrary() {
         Assume.assumeTrue(
             "Requires installed Crystal binary",

@@ -17,6 +17,13 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
         internal fun clearCache() = libCache.clear()
     }
 
+    /**
+     * Roots of installed shards under `lib/<shard>/`. Registered as library
+     * roots (not content roots) so shard code is still resolvable and
+     * navigable, but is out of the scope of inspections and highlighting for
+     * the project's own files. Model-free on purpose, like the stdlib path
+     * above: the only lookup is a directory listing of `lib/`.
+     */
     override fun getAdditionalProjectLibraries(project: Project): Collection<SyntheticLibrary> {
         // Computed at most once per project. MUST NOT touch the workspace model
         // (ModuleManager / ModuleRootManager): this callback is invoked by the platform
@@ -25,7 +32,7 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
         // "workspace model save" loop. Detection stays limited to lightweight, model-free
         // checks (shard.yml / a .cr child in the project base path).
         val cached = libCache[project]
-        if (cached != null) return listOf(cached)
+        if (cached != null) return listOf(cached) + shardLibraries(project)
         val lib =
             synchronized(lock) {
                 libCache[project] ?: run {
@@ -35,7 +42,16 @@ class CrystalStdlibLibraryProvider : AdditionalLibraryRootsProvider() {
                     CrystalStdlibLibrary(stdlibRoot, version).also { libCache[project] = it }
                 }
             }
-        return listOfNotNull(lib)
+        return listOfNotNull(lib) + shardLibraries(project)
+    }
+
+    private fun shardLibraries(project: Project): List<SyntheticLibrary> {
+        val basePath = project.basePath ?: return emptyList()
+        val libDir = LocalFileSystem.getInstance().findFileByPath("$basePath/lib") ?: return emptyList()
+        val shards = libDir.children?.filter { it.isDirectory } ?: return emptyList()
+        // One library per shard: a changed shard set invalidates only that
+        // shard's library instead of the whole dependency block.
+        return shards.map { CrystalShardLibrary(it) }
     }
 
     private fun isCrystalProject(project: Project): Boolean {
@@ -68,4 +84,18 @@ private class CrystalStdlibLibrary(
     override fun hashCode(): Int = root.url.hashCode() * 31 + crystalVersion.hashCode()
 
     override fun toString(): String = "CrystalStdlibLibrary(${root.url}, $crystalVersion)"
+}
+
+private class CrystalShardLibrary(
+    private val root: VirtualFile,
+) : SyntheticLibrary() {
+    override fun getSourceRoots(): Collection<VirtualFile> = listOf(root)
+
+    override fun getBinaryRoots(): Collection<VirtualFile> = emptyList()
+
+    override fun equals(other: Any?): Boolean = other is CrystalShardLibrary && root.url == other.root.url
+
+    override fun hashCode(): Int = root.url.hashCode()
+
+    override fun toString(): String = "CrystalShardLibrary(${root.url})"
 }
