@@ -51,22 +51,31 @@ internal object CrystalDotCallOverloads {
                 // reported against unrelated classes (a whole false-positive
                 // family in the 1.2.2 export).
                 val candidates = CrystalOverloadEvaluator.findCandidateMethods(info.methodName, argsElement.project)
-                val receiverClass = inferredReceiverClass(info.receiverElement)
-                if (receiverClass == null) candidates else candidates.filter { ownedByReceiver(it, receiverClass) }
+                val receiverClasses = inferredReceiverClasses(info.receiverElement)
+                if (receiverClasses.isEmpty()) {
+                    candidates
+                } else {
+                    candidates.filter { method -> receiverClasses.any { ownedByReceiver(method, it) } }
+                }
             }
         }
 
-    /** Class of a lowercase receiver, or null when its type is unknown. */
-    private fun inferredReceiverClass(receiver: PsiElement?): String? {
-        if (receiver == null) return null
-        val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return null
+    /**
+     * Classes a lowercase receiver may have. A union (`A | B`) yields every
+     * member, so a method defined on the second member is still a candidate.
+     */
+    private fun inferredReceiverClasses(receiver: PsiElement?): List<String> {
+        if (receiver == null) return emptyList()
+        val typeName = CrystalExpressionTypeResolver.resolveType(receiver)?.typeName ?: return emptyList()
         return CrystalMethodReturnTypeInference
             .splitTypeNames(typeName)
-            .firstOrNull()
-            ?.trim()
-            ?.removeSuffix("?")
-            ?.substringAfterLast("::")
-            ?.takeIf { it.isNotEmpty() && it.first().isUpperCase() }
+            .mapNotNull { member ->
+                member
+                    .trim()
+                    .removeSuffix("?")
+                    .substringAfterLast("::")
+                    .takeIf { it.isNotEmpty() && it.first().isUpperCase() }
+            }
     }
 
     /** True when [method]'s enclosing type is [receiverName] or its tail (`Tools` for `RvmCli::Tools`). */
