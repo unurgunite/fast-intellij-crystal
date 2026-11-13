@@ -18,6 +18,4 @@ feature, update it when behavior changes.
 | [find-usages.md](find-usages.md) | Find Usages / Rename from definition names |
 
 Elsewhere: testing conventions → [../TESTING.md](../TESTING.md);
-point-in-time grammar reports → [../reports/](../reports/);
-unimplemented designs → [../proposals/](../proposals/);
-one-off decisions → [../decision-log/](../decision-log/).
+point-in-time grammar reports → [../reports/](../reports/).

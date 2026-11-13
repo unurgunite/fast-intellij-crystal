@@ -2,32 +2,26 @@
   <img src="src/main/resources/META-INF/pluginIcon.svg" width="150" alt="Crystal Logo">
 </p>
 
-# Fast Crystal for JetBrains IDEs
+# Fast Crystal
 
-[![IntelliJ Platform](https://img.shields.io/badge/IntelliJ_Platform-2026.1+-blue)](https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html)
-[![Crystal](https://img.shields.io/badge/Crystal-1.x-black)](https://crystal-lang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+Crystal language support for JetBrains IDEs — IntelliJ IDEA, RubyMine, WebStorm, and anything else on the 2026.1+ platform.
 
-Crystal language support for IntelliJ IDEA, WebStorm, RubyMine, and other JetBrains IDEs:
-editing, navigation, completion, inspections, running, and debugging.
-Built on a GrammarKit parser with StubIndex-backed resolution; requires
-IntelliJ Platform 2026.1+ and a Crystal toolchain.
+It gives Crystal the things an IDE is expected to know about a language: what a name refers to, what type it has, which arguments a method takes, and how to build, run, and debug the result. Parsing is GrammarKit PEG; every cross-file lookup goes through StubIndex rather than scanning the project.
 
-The repo ships a `stdlib-graph/` harness (`stdlibParseErrors`, `stdlibStructure`,
-`stdlibBuildGraph`, `stdlibCheckFile`) that parses and resolves the entire Crystal
-standard library through the plugin's own parser, so regressions show up as numbers
-before they ship.
+**Status:** the whole Crystal standard library (2172 files) parses with 2 residual errors, both pre-existing EOF artifacts, and 94% of its references resolve. The plugin is verified against IntelliJ IDEA Ultimate and RubyMine 2026.1 and 2026.2; 2026.3 runs but is not in the verification matrix yet.
+
+## Why it is fast
+
+The plugin started as a rewrite of an unmaintained one that could not edit real Crystal files. The numbers that motivated it, measured on the [catalyst](https://github.com/unurgunite/catalyst) project:
 
 | Metric | Before | After |
 |---|---|---|
-| Parse time, 2.5 KB file ([catalyst](https://github.com/unurgunite/catalyst)`/src/catalyst/formatters/json.cr`) | 191 s | 94 ms |
-| Project index, 522 `.cr` files ([catalyst](https://github.com/unurgunite/catalyst)) | 709 s, stuck at 95–99% | completes, IDE goes idle |
+| Parse time, 2.5 KB file (`src/catalyst/formatters/json.cr`) | 191 s | 94 ms |
+| Project index, 522 `.cr` files | 709 s, stuck at 95–99% | completes, IDE goes idle |
 | Parse errors in `float.cr` (Crystal 1.21 stdlib) | present | 0 |
 | `StackOverflowError` on self-referential assignments | crash | unknown type, no crash |
 
-> [!NOTE]
-> Early Beta — bugs are to be expected. Please [open an issue](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose)
-> and fill out the template (current/expected examples are required).
+The whole stdlib is parsed and resolved by the plugin's own code in CI (`stdlibParseErrors`, `stdlibStructure`, `stdlibBuildGraph`, `stdlibCheckFile`), so a grammar regression shows up as a number before it ships.
 
 ![New project wizard](docs/img/screenshots/001_new_project.png)
 *New project wizard.*
@@ -38,220 +32,31 @@ before they ship.
 ![Debugger](docs/img/screenshots/003_debugger.png)
 *Debugging via lldb-dap: breakpoints, variables, stepping.*
 
-## Features
+## What it does
 
-### Syntax & Editing
+**Navigation.** Go to Definition on types, methods, macros, `@`/`@@` variables, `obj.method` / `Class.method` calls, and namespace segments (`Inner` in `Outer::Inner.method`). Also Go to Symbol, Go to Class, Find Usages, Structure View, and Quick Documentation — doc comments rendered as Markdown, with type names linking to their own documentation. Hovering a variable shows its inferred type.
 
-- **Syntax Highlighting** — keywords, operators, strings with interpolation, numbers, symbols, regex, percent literals, heredocs, annotations, macros
-- **Semantic Highlighting** — PSI-based: variables, methods, types, parameters, macro fresh vars
-- **Keyword Block Highlighting** — cursor on `if`, `else`, `elsif`, `end`, `begin`, `rescue`, `ensure`, `case`, `when`, `def`, `class`, `module` highlights the related structural keywords of the enclosing block
-- **Color Settings Page** — customizable colors for all token types
-- **Code Folding** — blocks, methods, classes, multi-line comments, arrays, hashes
-- **Brace Matching** — parentheses, brackets, braces, percent literal delimiters, `do`/`end` pairs
-- **Auto-Insert** — closing quotes and brackets, `end` after block keywords, indentation after block openers
-- **TODO Indexing** — highlights and indexes task comments
+**Completion.** Class methods after `Class.`, instance methods after a variable once its type is inferred, locals/params/class variables in free text, types after `:` in annotations and inside `Array(` or `String | `. Overloads appear as separate entries with their signatures. `record` definitions get completion, parameter info, and argument checks instead of being treated as plain calls.
 
-### Navigation
+**Inspections.** Eight of them, following Crystal's actual rules: argument types against parameter annotations (numeric autocasting, unions, nilable types, overloads — an error only when every overload rejects), argument counts (named args, splat, double-splat, defaults), assigned-but-never-read variables, empty collection literals, untyped `lib fun` parameters, colon spacing, instance variable types, and single-quote strings.
 
-- **Go to Definition** (Ctrl+Click / Ctrl+B) — classes, modules, structs, enums, methods, instance and class variables (`@name`, `@@name`), DOT-call methods (`obj.method`, `Class.method`), intermediate namespace segments (`Inner` in `Outer::Inner.method`)
-- **Go to Symbol** (Ctrl+Alt+Shift+N) — any symbol in the project
-- **Go to Class** (Ctrl+N) — classes, modules, structs, enums
-- **Find Usages** (Alt+F7) — methods, classes, instance and class variables within the enclosing class
-- **Structure View** — nested types, methods, macros, constants
-- **Parameter Info** (Ctrl+P) — method signatures at the call site: parenthesized, bare, and DOT-calls, `ClassName.new(...)`, overloads; project-wide via StubIndex
-- **Quick Documentation** (Ctrl+Q) — doc comments with syntax-highlighted signature and Markdown; type names link to their documentation
-- **Hover Popups** — inferred types for variables and parameters, documentation for definitions
+**Editing.** Syntax and semantic highlighting, keyword-block highlighting that shows you the `def`/`end` pair you are inside, folding, brace matching, auto-inserted `end`, and `crystal tool format` behind Reformat Code.
 
-### Code Completion
+**Refactoring.** Rename (Shift+F6) with preview, identifier validation, and a `crystal build --no-codegen` check that runs after the rename and reports compile errors in a notification. Implement Members (Ctrl+I) discovers abstract methods in parents and writes the stubs.
 
-- **Context-Aware Completion** (Ctrl+Space) — static methods on classes, instance methods on variables via type inference, classes/methods/locals/stdlib types in free text, types after `:` in annotations, inside generics (`Array(<caret>)`) and unions (`String | <caret>`)
-- **Overloaded Methods** — each overload appears as a separate entry with its parameter signature
-- **Record Macro Support** — completion, parameter info, and argument inspections for record macros
+**Run & Debug.** `crystal run`, `build`, and `spec` configurations with arguments, environment, and working directory. The spec runner has gutter icons, single-test execution, and a result tree with click-to-source. The debugger speaks DAP over `lldb-dap`: breakpoints, stepping, variable inspection, and the Crystal value formatters bundled from the compiler repo.
 
-### Refactoring
-
-- **Rename** (Shift+F6) — in-place rename with preview dialog, Crystal identifier validation, and automatic compiler verification (`crystal build --no-codegen`)
-
-### Code Formatting
-
-- **Reformat Code** (Ctrl+Alt+L) — delegates to `crystal tool format` via stdin/stdout
-
-### Run & Debug
-
-- **Run Configurations** — `crystal run`, `build`, and `spec` with configurable arguments, environment variables, and working directory; right-click a `.cr` file to run it
-- **Debugger** — breakpoints, variable inspection, and stepping via lldb-dap (DAP protocol)
-- **Test Runner** — integrated spec runner with gutter icons, single-test execution, and result tree
-
-### Code Generation
-
-- **Live Templates** — 21 snippets for common Crystal patterns (class, module, struct, def, spec, etc.)
-
-### Inspections
-
-- **Type Checking** — argument types against parameter annotations (numeric autocasting, union and nilable types, overloads)
-- **Argument Count** — argument count against method signatures (named args, splat, double-splat, defaults)
-- **Unused Variables** — assigned-but-never-read local variables
-- **Smaller Checks** — empty collection literals, untyped `lib fun` parameters, colon spacing (`x:Int32`), instance variable types, invalid single-quote strings
-
-### Parser
-
-- **Grammar Coverage** — classes, modules, structs, enums, methods, macros, control flow (including postfix modifiers), expressions with operator precedence, generics and unions, blocks, all literal forms with interpolation, `lib` bindings, pattern matching. Full rule set: [`Crystal.bnf`](src/main/kotlin/io/github/unurgunite/crystal/parser/Crystal.bnf)
-- **StubIndex** — project-wide index for classes and methods (instant navigation even in large projects)
-- **Error-Tolerant** — pin/recovery rules keep the parser working with incomplete code while typing
+**Also.** 21 live templates (`def`, `deft`, `class`, `classi`, `mod`, `struct`, `enum`, `if`, `ife`, `unless`, `while`, `each`, `map`, `begin`, `case`, `describe`, `it`, `prop`, `getter`, `init`, `req`), TODO indexing, customizable colors, and `asm(...)` section-by-section parameter info.
 
 ## Requirements
 
-- **IntelliJ Platform** 2026.1 or later
-- **Crystal** compiler (for formatting and compiler verification)
-- **LLDB DAP** (optional, for debugging) — the `lldb-dap` binary must be installed
+- **IntelliJ Platform 2026.1+** — IntelliJ IDEA Ultimate, RubyMine, WebStorm, or any IDE on that platform
+- **Crystal** on your `PATH` — needed for formatting, running, and the post-rename compile check. Everything else works without it
+- **`lldb-dap`** — only for the debugger. It is **not** looked up on `PATH`; see below
 
-See [Installing Dependencies](#installing-dependencies) below for OS-specific instructions.
+## Installing
 
-## Installation
-
-### Installing Dependencies
-
-This plugin depends on the **Crystal compiler** and (optionally) the **LLDB DAP** debugger.
-Both binaries must be available in your `PATH`. The plugin additionally checks
-`/usr/bin/lldb-dap` and `/usr/local/bin/lldb-dap` for auto-detection.
-
-#### Linux — Arch / Manjaro / EndeavourOS / CachyOS
-
-```bash
-sudo pacman -S crystal shards lldb
-```
-
-The `lldb` package ships `lldb-dap`.
-
-#### Linux — Debian / Ubuntu / Mint / Pop!_OS
-
-Crystal (official install script):
-
-```bash
-curl -fsSL https://crystal-lang.org/install.sh | sudo bash
-```
-
-LLDB DAP — the default `lldb` package in Debian/Ubuntu repos is often too old or
-does not ship `lldb-dap`. Use the official LLVM apt script for a current release
-(23 as of September 2026):
-
-```bash
-wget https://apt.llvm.org/llvm.sh
-chmod +x llvm.sh
-sudo ./llvm.sh 23
-sudo apt install lldb-23
-```
-
-The binary is installed as `/usr/bin/lldb-dap-23`. Either add it to your `PATH` as
-`lldb-dap`, or symlink it so the plugin finds it automatically:
-
-```bash
-sudo ln -s /usr/bin/lldb-dap-23 /usr/bin/lldb-dap
-```
-
-#### Linux — Fedora / RHEL / Rocky
-
-Crystal is not in the official Fedora repositories yet (native packaging is in
-progress) — follow the [official install guide](https://crystal-lang.org/install/).
-
-For the debugger:
-
-```bash
-sudo dnf install lldb
-```
-
-#### Linux — openSUSE
-
-Crystal requires the OBS `devel:languages:crystal` repository:
-
-```bash
-sudo zypper ar -f https://download.opensuse.org/repositories/devel:/languages:/crystal/openSUSE_Tumbleweed/devel:languages:crystal.repo
-sudo zypper --gpg-auto-import-keys install crystal
-```
-
-For the debugger:
-
-```bash
-sudo zypper install lldb
-```
-
-#### macOS
-
-Crystal and LLDB via Homebrew (recommended). Note: Homebrew split LLDB out of
-the `llvm` formula, so `llvm` alone no longer provides `lldb-dap`:
-
-```bash
-brew install crystal lldb
-```
-
-If `lldb-dap` is not on your `PATH` afterwards, symlink it so the plugin finds
-it automatically (works on both Intel and Apple Silicon):
-
-```bash
-sudo ln -s "$(brew --prefix lldb)/bin/lldb-dap" /usr/local/bin/lldb-dap
-```
-
-The system `lldb` from Xcode Command Line Tools (`xcode-select --install`) also
-provides `lldb-dap` (`xcrun -f lldb-dap`); Homebrew is the more predictable
-option across macOS versions.
-
-#### Windows
-
-> Native Windows support is a work in progress. WSL2 is currently the most
-> reliable option — follow the Debian/Ubuntu instructions above inside WSL.
-
-For native installs (MSVC toolchain):
-
-**1. Microsoft Visual C++ Build Tools**
-
-Crystal on Windows requires the MSVC toolchain. Download the
-[Visual Studio Build Tools installer](https://aka.ms/vs/17/release/vs_BuildTools.exe)
-and select either:
-
-- Workload: *Desktop development with C++*, or
-- Individual component: *MSVC v143 - VS 2022 C++ x64/x86 build tools* plus
-  *Windows 10 SDK* (or newer)
-
-**2. Crystal**
-
-Download a `*-windows-x86_64-msvc-*` build from the
-[Crystal releases page](https://github.com/crystal-lang/crystal/releases/latest):
-
-- `crystal-<version>-windows-x86_64-msvc-unsupported.exe` — GUI installer, adds Crystal to `PATH` automatically (recommended)
-- `crystal-<version>-windows-x86_64-msvc-unsupported.zip` — portable archive
-
-For a MinGW-w64-based alternative, see the
-[official Crystal Windows guide](https://crystal-lang.org/install/on_windows/).
-
-**3. LLDB DAP (for debugging)**
-
-Download the latest LLVM Windows installer from the
-[LLVM releases page](https://github.com/llvm/llvm-project/releases/latest):
-
-- `LLVM-<VERSION>-win64.exe`
-
-During installation, enable **"Add LLVM to the system PATH for all users"** so
-`lldb-dap.exe` is discoverable by the plugin.
-
-#### Verifying the installation
-
-```bash
-crystal --version
-lldb-dap --help
-```
-
-If both commands work from a fresh shell, the plugin will pick up the toolchain
-automatically.
-
-### From JetBrains Marketplace
-
-> **Note:** the Marketplace listing for Fast Crystal is pending publication. Until then, install from source below.
-
-1. In your IDE, open *Settings → Plugins → Marketplace*
-2. Search for **Fast Crystal**
-3. Click **Install** and restart the IDE
-
-### From Source
+The plugin is not on JetBrains Marketplace yet. Build it and install the ZIP from disk:
 
 ```bash
 git clone https://github.com/unurgunite/fast-intellij-crystal.git
@@ -259,13 +64,72 @@ cd fast-intellij-crystal
 ./gradlew buildPlugin
 ```
 
-The plugin ZIP will be at `build/distributions/`. Install via *Settings → Plugins → Install Plugin from Disk*.
+`build/distributions/` will contain the installable ZIP — *Settings → Plugins → Install Plugin from Disk*. Use `./gradlew runIde` if you would rather launch a throwaway IDE with the plugin loaded.
 
-To run a development IDE instance:
+### The debugger's `lldb-dap`
+
+`crystal` is found through `PATH`. `lldb-dap` is **not** — the plugin tries a fixed list and gives up if none of it is executable, so a working `lldb-dap` on `PATH` is still invisible to it:
+
+| Platform | Directories checked |
+|---|---|
+| macOS, Linux | `/usr/bin`, `/usr/local/bin` |
+| Windows | `C:\Program Files\LLVM\bin`, `C:\Program Files (x86)\LLVM\bin` |
+
+The legacy `lldb-vscode` name is accepted too. If your package manager installed the binary somewhere else, symlink it.
+
+**Arch / Manjaro / EndeavourOS / CachyOS**
 
 ```bash
-./gradlew runIde
+sudo pacman -S crystal shards lldb   # lldb ships lldb-dap
 ```
+
+**Debian / Ubuntu / Mint / Pop!_OS**
+
+```bash
+curl -fsSL https://crystal-lang.org/install.sh | sudo bash
+```
+
+The distro `lldb` is often too old or does not ship `lldb-dap`. Install a current LLVM and link it:
+
+```bash
+wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+sudo ./llvm.sh 23
+sudo apt install lldb-23
+sudo ln -s /usr/bin/lldb-dap-23 /usr/bin/lldb-dap
+```
+
+**Fedora / RHEL / Rocky** — Crystal is not packaged yet; use the [official install guide](https://crystal-lang.org/install/). Debugger: `sudo dnf install lldb`.
+
+**openSUSE**
+
+```bash
+sudo zypper ar -f https://download.opensuse.org/repositories/devel:/languages:/crystal/openSUSE_Tumbleweed/devel:languages:crystal.repo
+sudo zypper --gpg-auto-import-keys install crystal lldb
+```
+
+**macOS** — Homebrew split LLDB out of the `llvm` formula, so `llvm` alone no longer provides `lldb-dap`:
+
+```bash
+brew install crystal lldb
+sudo ln -s "$(brew --prefix lldb)/bin/lldb-dap" /usr/local/bin/lldb-dap
+```
+
+The `lldb` bundled with Xcode Command Line Tools (`xcode-select --install`) also works — `xcrun -f lldb-dap` prints its path. Homebrew is more predictable across macOS versions.
+
+**Windows** — native support is in progress; WSL2 plus the Ubuntu steps above is the safer bet. For a native install you need three things:
+
+1. **MSVC toolchain** — [Visual Studio Build Tools](https://aka.ms/vs/17/release/vs_BuildTools.exe) with the *Desktop development with C++* workload, or the *MSVC v143* component plus the *Windows 10 SDK*.
+2. **Crystal** — a `*-windows-x86_64-msvc-*` build from the [releases page](https://github.com/crystal-lang/crystal/releases/latest): the `.exe` installer adds Crystal to `PATH`, the `.zip` is portable. MinGW-w64 users should read the [Windows guide](https://crystal-lang.org/install/on_windows/).
+3. **LLDB DAP** — the LLVM Windows installer from the [LLVM releases page](https://github.com/llvm/llvm-project/releases/latest), installed to its default directory so `lldb-dap.exe` lands in `C:\Program Files\LLVM\bin`.
+
+**Checking it worked**
+
+```bash
+crystal --version               # formatting, running, rename verification
+ls /usr/bin/lldb-dap            # debugging (or /usr/local/bin, or the LLVM dir on Windows)
+```
+
+The second command is the one that matters for the debugger — `lldb-dap --help` succeeding proves nothing if the binary is not in a directory above.
 
 ## Architecture
 
@@ -277,38 +141,36 @@ type/                    →  Type kernel (inference + resolvers; leaf for compl
 editor/                  →  Editor behaviors (enter/brace/folding, commenter, typed)
 ```
 
+Runtime lookups never walk the project: they are StubIndex queries, with the stdlib reached through a bounded per-file fallback. That constraint is what keeps a 522-file project from stalling.
+
 ![Package architecture](docs/diagrams/architecture.svg)
 
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Module map, resolution pipelines, and the dependency-direction rule: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Development
+## Building
 
 ```bash
 ./gradlew build          # Compile + tests (no distributable ZIP)
-./gradlew buildPlugin    # Build installable plugin ZIP (build/distributions/)
-./gradlew generateLexer  # Regenerate lexer from Crystal.flex
-./gradlew generateParser # Regenerate parser from Crystal.bnf
-./gradlew runIde         # Launch development IDE
+./gradlew buildPlugin    # Installable ZIP in build/distributions/
+./gradlew runIde         # Development IDE with the plugin loaded
+./gradlew generateLexer  # Regenerate from Crystal.flex
+./gradlew generateParser # Regenerate from Crystal.bnf
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow and conventions.
+JDK 21 is required. `src/main/gen/` is committed, so a grammar change means regenerating and committing the output.
+
+Workflow, commit format (`[1.2.2] …`), release rules: [CONTRIBUTING.md](CONTRIBUTING.md). Test conventions and the traps behind them: [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Contributing
 
-Issues and pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md)
-before opening an issue — it explains the three issue types and what
-information we need.
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first — it explains the three issue types and asks for a minimal reproduction with current and expected behavior; that is what makes an issue actionable.
 
-- [Report a bug](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — something doesn't work as expected
-- [Request a feature](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that isn't supported yet
-- [Report a UX issue](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — something works but feels clunky
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to report issues and contribute.
+- [Report a bug](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — wrong behavior, parse error, crash, false-positive inspection, broken navigation
+- [Request a feature](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — a Crystal construct or IDE feature that is not supported yet
+- [Report a UX issue](https://github.com/unurgunite/fast-intellij-crystal/issues/new/choose) — it works, but the workflow is clunky
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE).
 
-This project includes **Crystal LLDB Formatters** (`src/main/resources/debugger/crystal_formatters.py`)
-from the [Crystal Programming Language](https://github.com/crystal-lang/crystal),
-licensed under the [Apache License 2.0](https://github.com/crystal-lang/crystal/blob/master/etc/lldb/crystal_formatters.py).
+The bundled LLDB formatters (`src/main/resources/debugger/crystal_formatters.py`) come from the [Crystal Programming Language](https://github.com/crystal-lang/crystal) and are licensed under the [Apache License 2.0](https://github.com/crystal-lang/crystal/blob/master/etc/lldb/crystal_formatters.py).
