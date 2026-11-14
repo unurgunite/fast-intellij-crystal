@@ -6,6 +6,8 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 
 ### Changed
 
+- **The overload candidate cache now belongs to the project instead of the process.** It was a static map with no size limit that held PSI elements, so it kept parsed files alive after their project was closed, and it was cleared wholesale on any PSI change — which during on-the-fly analysis meant it almost always missed. It is now a project `CachedValue` invalidated on the same modification count, dropped together with the project.
+- **Type-alias targets are memoized per project and file.** Every qualified type reference in a file used to walk the alias index, and a file-owned alias shadows a same-named one from a dependency, so the memo is keyed by both.
 - **Call return-type lookups are memoized per project**, so analysing one file no longer gets slower as the project grows. Each bare call used to query the project-wide method index and materialize every same-named overload, so the cost of one file scaled with the number of same-named methods anywhere in the project: reading one name went from 100 µs with a single defining file to 1187 µs with a thousand, and a call-dense 74-line file ended up taking 96 seconds per highlighting pass once indexing was warm. Both the name lookup and the receiver-class lookup now cache the resulting type string, never PSI, so the memo cannot pin elements or go stale.
 - **The Marketplace description no longer calls the plugin an early beta.** The README stopped saying so some releases ago; the plugin descriptor every IDE and store page renders still did, which reads as a warning rather than an introduction. The issue link stays, without the framing that finding a bug is expected.
 
