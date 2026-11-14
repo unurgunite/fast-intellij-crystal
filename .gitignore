@@ -21,3 +21,9 @@ bin/
 # Diagram PNGs are a local convenience (render.sh writes them); the committed
 # renders are the SVGs next to the .mmd sources.
 /docs/diagrams/*.png
+
+# Inspection exports are machine output: absolute paths into whichever project
+# was analysed, plus IDE settings dumps. The findings live in
+# docs/reports/inspection-export-triage.md instead.
+/docs/reports/*.xml
+/docs/reports/.*.xml
