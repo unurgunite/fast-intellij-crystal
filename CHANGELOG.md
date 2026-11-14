@@ -2,6 +2,12 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
+## [1.3.1] — Unreleased
+
+### Changed
+
+- **The Marketplace description no longer calls the plugin an early beta.** The README stopped saying so some releases ago; the plugin descriptor every IDE and store page renders still did, which reads as a warning rather than an introduction. The issue link stays, without the framing that finding a bug is expected.
+
 ## [1.3.0] — 2026-11-14
 
 ### Fixed

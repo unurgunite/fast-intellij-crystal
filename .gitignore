@@ -17,3 +17,7 @@ bin/
 
 # Generated stdlib measurement artifacts (see stdlibParseErrors/stdlibBuildGraph tasks)
 /stdlib-graph/
+
+# Diagram PNGs are a local convenience (render.sh writes them); the committed
+# renders are the SVGs next to the .mmd sources.
+/docs/diagrams/*.png
