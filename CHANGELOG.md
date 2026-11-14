@@ -7,6 +7,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 ### Changed
 
 - **Inspection-export findings are written down instead of shipped as raw XML.** A run of the three inspections over a large project left machine output in `docs/reports/`: absolute paths into that project, plus an unrelated IDE settings dump. The exports are now ignored by git and their findings recorded in `docs/reports/inspection-export-triage.md`, split into what is already fixed and pinned by a test, and what is open — with the reason each open item is open.
+- **Call return-type lookups are memoized per project**, so analysing one file no longer gets slower as the project grows. Each bare call used to query the project-wide method index and materialize every same-named overload, so the cost of one file scaled with the number of same-named methods anywhere in the project: reading one name went from 100 µs with a single defining file to 1187 µs with a thousand, and a call-dense 74-line file ended up taking 96 seconds per highlighting pass once indexing was warm. Both the name lookup and the receiver-class lookup now cache the resulting type string, never PSI, so the memo cannot pin elements or go stale.
 - **The Marketplace description no longer calls the plugin an early beta.** The README stopped saying so some releases ago; the plugin descriptor every IDE and store page renders still did, which reads as a warning rather than an introduction. The issue link stays, without the framing that finding a bug is expected.
 
 ## [1.3.0] — 2026-11-14
