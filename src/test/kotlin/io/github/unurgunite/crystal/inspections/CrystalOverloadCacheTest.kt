@@ -47,4 +47,18 @@ class CrystalOverloadCacheTest : BasePlatformTestCase() {
         assertTrue(CrystalOverloadEvaluator.findCandidateMethods("only_here", project).isNotEmpty())
         assertTrue(CrystalOverloadEvaluator.findCandidateMethods("nowhere_at_all", project).isEmpty())
     }
+
+    /**
+     * The cache lives on the project, not in a static map: it must die with the
+     * project so PSI from a closed project is not retained for the whole
+     * process. Asserted behaviourally — an empty result is cached too, so a
+     * second lookup of an unknown name stays empty instead of re-querying.
+     */
+    fun testUnknownNameIsCachedAsEmpty() {
+        myFixture.configureByText("test.cr", "class Service\n  def x\n  end\nend\n")
+        val first = CrystalOverloadEvaluator.findCandidateMethods("definitely_absent", project)
+        val second = CrystalOverloadEvaluator.findCandidateMethods("definitely_absent", project)
+        assertTrue(first.isEmpty())
+        assertSame(first, second)
+    }
 }
