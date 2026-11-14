@@ -19,6 +19,78 @@ env:
   JAVA_VERSION: 21
 
 jobs:
+  versions:
+    # Kept out of `lint` on purpose: these checks read the commit subject and
+    # the branch name, and used to run as the first step of `lint`, so a
+    # commit-message slip skipped formatting and static analysis entirely —
+    # the two things a contributor actually wants feedback on. Nothing is
+    # checked out, so this finishes in seconds.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Enough history to reach the merge base of the PR.
+          fetch-depth: 0
+
+      - name: Check version consistency
+        run: |
+          set -euo pipefail
+
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+
+          # Infrastructure branches bump nothing.
+          if [[ "${GITHUB_HEAD_REF}" == system/* ]]; then
+            echo "Skipping version checks for system/ branch"
+            exit 0
+          fi
+
+          # The released version lives here; every check derives from it.
+          PROP_VERSION=$(sed -n 's/^version[[:space:]]*=[[:space:]]*//p' gradle.properties | tr -d '[:space:]')
+          if [[ -z "$PROP_VERSION" ]]; then
+            echo "::error::gradle.properties has no version"
+            exit 1
+          fi
+          echo "gradle.properties version: $PROP_VERSION"
+
+          # A version branch and its gradle.properties must agree, otherwise
+          # the release would be tagged with a number the build never saw.
+          BASE_BRANCH="${GITHUB_BASE_REF}"
+          if [[ "$BASE_BRANCH" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            if [[ "${BASE_BRANCH#v}" != "$PROP_VERSION" ]]; then
+              echo "::error::Merging into $BASE_BRANCH, but gradle.properties says $PROP_VERSION"
+              exit 1
+            fi
+            echo "Base branch $BASE_BRANCH matches gradle.properties"
+          else
+            echo "Skipping branch check: base branch '$BASE_BRANCH' is not a version branch"
+          fi
+
+          # Every release note has a section the release tooling renders.
+          if ! grep -qF "## [$PROP_VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$PROP_VERSION]' section"
+            exit 1
+          fi
+          echo "CHANGELOG.md has a [$PROP_VERSION] section"
+
+          # A version tag in a commit subject is a note about the commit, not a
+          # contract: reject only a tag that contradicts gradle.properties.
+          # Requiring one on every branch head forced a retitle after every
+          # merge, which is what used to fail here. Only this PR's commits are
+          # inspected — history before the merge base carries older versions.
+          BAD_TAGS=$(git log --format=%s "$BASE_SHA..$HEAD_SHA" \
+            | grep -oE '^\[[0-9]+\.[0-9]+\.[0-9]+\]' \
+            | tr -d '[]' \
+            | grep -vx "$PROP_VERSION" || true)
+          if [[ -n "$BAD_TAGS" ]]; then
+            echo "::error::Commit subjects mention a version other than $PROP_VERSION: $(echo "$BAD_TAGS" | sort -u | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "No commit subject contradicts $PROP_VERSION"
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -43,48 +115,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Check version consistency
-        run: |
-          HEAD_BRANCH="${{ github.head_ref }}"
-          if echo "$HEAD_BRANCH" | grep -q '^system/'; then
-            echo "Skipping version checks for system/ branch"
-            exit 0
-          fi
-
-          COMMIT_MSG=$(git log -1 --format=%s)
-          MSG_VERSION=$(echo "$COMMIT_MSG" | grep -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' | tr -d '[]' || true)
-          PROP_VERSION=$(grep -E '^version *=' gradle.properties | cut -d= -f2 | tr -d ' ')
-          BASE_BRANCH="${{ github.base_ref }}"
-
-          if [ -z "$MSG_VERSION" ]; then
-            echo "Commit message must contain version tag, e.g. [1.0.0]"
-            echo "  Got: $COMMIT_MSG"
-            exit 1
-          fi
-          if [ "$MSG_VERSION" != "$PROP_VERSION" ]; then
-            echo "Version mismatch: commit says [$MSG_VERSION], gradle.properties says $PROP_VERSION"
-            exit 1
-          fi
-          echo "$MSG_VERSION = gradle.properties"
-
-          if echo "$BASE_BRANCH" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            BRANCH_VERSION=$(echo "$BASE_BRANCH" | tr -d 'v')
-            if [ "$BRANCH_VERSION" != "$PROP_VERSION" ]; then
-              echo "Branch version mismatch: merging into $BASE_BRANCH but version is $PROP_VERSION"
-              exit 1
-            fi
-            echo "$BASE_BRANCH = version"
-          else
-            echo "Skipping branch check: base branch is '$BASE_BRANCH' (not a version branch)"
-          fi
-
-          if ! grep -q "## \[$PROP_VERSION\]" CHANGELOG.md; then
-            echo "Missing ## [$PROP_VERSION] section in CHANGELOG.md"
-            exit 1
-          fi
-          echo "CHANGELOG has [$PROP_VERSION]"
-          echo "All version checks passed"
 
       - name: Check formatting
         run: ./gradlew spotlessCheck
@@ -180,7 +210,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [lint, test]
+    needs: [versions, lint, test]
 
     steps:
       - uses: actions/checkout@v4
