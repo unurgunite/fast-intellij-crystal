@@ -95,26 +95,38 @@ internal object CrystalOverloadEvaluator {
     fun findCandidateMethods(
         methodName: String,
         project: com.intellij.openapi.project.Project,
-    ): List<CrystalMethodDefinition> {
-        val stamp =
-            com.intellij.psi.util.PsiModificationTracker
-                .getInstance(project)
-                .modificationCount
-        val key = project.basePath + "#" + methodName
-        synchronized(cacheLock) {
-            if (cacheStamp != stamp) {
-                cache.clear()
-                cacheStamp = stamp
+    ): List<CrystalMethodDefinition> =
+        com.intellij.psi.util.CachedValuesManager
+            .getManager(project)
+            .getCachedValue(
+                project,
+                CANDIDATE_METHODS_KEY,
+                {
+                    com.intellij.psi.util.CachedValueProvider.Result.create(
+                        HashMap<String, List<CrystalMethodDefinition>>(),
+                        com.intellij.psi.util.PsiModificationTracker.MODIFICATION_COUNT,
+                    )
+                },
+                false,
+            ).let { cache ->
+                cache.getOrPut(methodName) { lookupCandidateMethods(methodName, project) }
             }
-            cache[key]?.let { return it }
-        }
-        val result = lookupCandidateMethods(methodName, project)
-        synchronized(cacheLock) {
-            // Re-check: a PSI change during the lookup makes the result stale.
-            if (cacheStamp == stamp) cache[key] = result
-        }
-        return result
-    }
+
+    /**
+     * Project-scoped holder for the per-name candidate lists.
+     *
+     * Was a companion-level [HashMap] guarded by a manual lock and a single
+     * global stamp: unbounded in size, kept `PsiElement`s alive for the life
+     * of the process (a leak across closed projects), and cleared wholesale on
+     * any PSI change, so it missed constantly during on-the-fly analysis.
+     * A project `CachedValue` bounds it to the project, drops it with the
+     * project, and invalidates on the same `MODIFICATION_COUNT` the manual
+     * stamp compared against.
+     */
+    private val CANDIDATE_METHODS_KEY =
+        com.intellij.openapi.util.Key.create<
+            com.intellij.psi.util.CachedValue<MutableMap<String, List<CrystalMethodDefinition>>>,
+        >("crystal.overload.candidates")
 
     private fun lookupCandidateMethods(
         methodName: String,
@@ -290,8 +302,4 @@ internal object CrystalOverloadEvaluator {
         }
         return namedArgNames
     }
-
-    private val cache = HashMap<String, List<CrystalMethodDefinition>>()
-    private val cacheLock = Any()
-    private var cacheStamp = -1L
 }

@@ -230,9 +230,40 @@ object CrystalTypeCompatibility {
         argBase: String,
     ): Boolean {
         if (paramBase == argBase) return true
+        // A parameter written with its namespace and an argument written
+        // without it (or the reverse) are the same class: `App::Metadata`
+        // accepts `Metadata(Int32)`. Compared on the last segment only, so
+        // `Other::Metadata` still differs from `App::Metadata`.
+        if (isSameClassByNamespace(paramBase, argBase)) return true
         if (GENERIC_ALIAS_BASES[paramBase] == argBase) return true
         if (GENERIC_ALIAS_BASES[argBase] == paramBase) return true
         return false
+    }
+
+    /**
+     * True when one name is unqualified and the other's trailing segments
+     * spell it out: `Metadata` vs `App::Metadata` yes. Two *differently*
+     * qualified names are never the same class here (`App::Metadata` vs
+     * `Other::Metadata` no), and neither is a suffix that is not the whole
+     * short name (`Metadata` vs `App::MetadataExtra` no).
+     *
+     * Only one side may be qualified — without the file's import list there
+     * is no way to prove two different namespaces are the same class, and a
+     * wrong "compatible" hides a real mismatch.
+     */
+    private fun isSameClassByNamespace(
+        a: String,
+        b: String,
+    ): Boolean {
+        if (a.isEmpty() || b.isEmpty()) return false
+        val aParts = a.split("::")
+        val bParts = b.split("::")
+        if (aParts.size == 1 && bParts.size == 1) return a == b
+        if (aParts.size > 1 && bParts.size > 1) return aParts == bParts
+        val short = if (aParts.size == 1) aParts else bParts
+        val qualified = if (aParts.size == 1) bParts else aParts
+        if (short.size != 1) return false
+        return qualified.last() == short.last()
     }
 
     /**
