@@ -5,6 +5,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
+import com.intellij.psi.util.CachedValue
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import io.github.unurgunite.crystal.psi.CrystalExpression
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
@@ -113,20 +117,61 @@ object CrystalCallReturnTypeResolver {
         // first unannotated overload it meets (`ENV.fetch(...).to_i` typed
         // as String instead of Int32).
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = CrystalSearchScopes.project(project)
-        val methods =
-            StubIndex.getElements(
-                CrystalMethodIndex.KEY,
-                methodName,
-                project,
-                scope,
-                CrystalMethodDefinition::class.java,
-            )
-        for (method in methods) {
-            firstAnnotatedReturnType(method)?.let { return it }
-        }
-        return null
+        val indexes = projectReturnTypes(project)
+        if (indexes.byName.containsKey(methodName)) return indexes.byName[methodName]
+        val computed =
+            StubIndex
+                .getElements(
+                    CrystalMethodIndex.KEY,
+                    methodName,
+                    project,
+                    CrystalSearchScopes.project(project),
+                    CrystalMethodDefinition::class.java,
+                ).firstNotNullOfOrNull { firstAnnotatedReturnType(it) }
+        indexes.byName[methodName] = computed
+        return computed
     }
+
+    /**
+     * Per-project memo of [lookupReturnType] / [lookupReturnTypeInClass]
+     * results.
+     *
+     * Uncached, each call ran a project-wide `CrystalMethodIndex` query and
+     * materialised PSI for *every* same-named overload, so a single file's
+     * analysis cost grew with the number of same-named methods anywhere in
+     * the project — measured 12x from 1 to 1001 files for one name, and a
+     * 74-line file took 96s per highlighting pass once the index was warm.
+     *
+     * Only the resulting type string is stored (never PSI), so the memo
+     * cannot pin or go stale, and one index walk per name serves every call
+     * site. Misses are cached too: the negative case is the common one.
+     * Map is mutable and filled lazily, so a cold start does not pay for
+     * method names nothing ever asks about.
+     */
+    private fun projectReturnTypes(project: Project): ReturnTypeIndexes =
+        CachedValuesManager.getManager(project).getCachedValue(
+            project,
+            RETURN_TYPE_INDEXES_KEY,
+            {
+                CachedValueProvider.Result.create(
+                    ReturnTypeIndexes(HashMap(), HashMap()),
+                    PsiModificationTracker.MODIFICATION_COUNT,
+                )
+            },
+            false,
+        )
+
+    private data class ReturnTypeIndexes(
+        /** Method name → annotated return type, null when none found. */
+        val byName: MutableMap<String, String?>,
+        /** `ClassName#methodName` → annotated return type in that class. */
+        val byClass: MutableMap<String, String?>,
+    )
+
+    private val RETURN_TYPE_INDEXES_KEY =
+        com.intellij.openapi.util.Key.create<CachedValue<ReturnTypeIndexes>>(
+            "crystal.call.return.types",
+        )
 
     /**
      * Conversion methods with a fixed yield regardless of receiver
@@ -170,7 +215,9 @@ object CrystalCallReturnTypeResolver {
         project: Project,
     ): String? {
         FIXED_RETURN_TYPES[methodName]?.let { return it }
-        val scope = CrystalSearchScopes.project(project)
+        val indexes = projectReturnTypes(project)
+        val key = "$className#$methodName"
+        if (indexes.byClass.containsKey(key)) return indexes.byClass[key]
         val short = className.substringAfterLast("::")
         val methods =
             StubIndex
@@ -178,21 +225,16 @@ object CrystalCallReturnTypeResolver {
                     io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex.KEY,
                     short,
                     project,
-                    scope,
+                    CrystalSearchScopes.project(project),
                     CrystalMethodDefinition::class.java,
                 ).filter { it.name == methodName }
-        if (methods.isEmpty()) return null
         // Qualified scope first (`HTTP::Params.parse` must take Params under
-        // HTTP, not another `Params.parse` elsewhere).
-        if (className.contains("::")) {
-            methods.firstOrNull { ownerQualifiedOf(it) == className }?.let {
-                firstAnnotatedReturnType(it)?.let { type -> return type }
-            }
-        }
-        for (method in methods) {
-            firstAnnotatedReturnType(method)?.let { return it }
-        }
-        return null
+        // HTTP, not another `Params.parse` elsewhere), then any same-named
+        // definition of that class.
+        val ordered = if (className.contains("::")) methods.sortedBy { ownerQualifiedOf(it) != className } else methods
+        val resolved = ordered.firstNotNullOfOrNull { firstAnnotatedReturnType(it) }
+        indexes.byClass[key] = resolved
+        return resolved
     }
 
     /** Qualified enclosing type of a method via its stub tree (null when stub-less/top-level). */
