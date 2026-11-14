@@ -6,6 +6,7 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 
 ### Changed
 
+- **Inspection-export findings are written down instead of shipped as raw XML.** A run of the three inspections over a large project left machine output in `docs/reports/`: absolute paths into that project, plus an unrelated IDE settings dump. The exports are now ignored by git and their findings recorded in `docs/reports/inspection-export-triage.md`, split into what is already fixed and pinned by a test, and what is open — with the reason each open item is open.
 - **The Marketplace description no longer calls the plugin an early beta.** The README stopped saying so some releases ago; the plugin descriptor every IDE and store page renders still did, which reads as a warning rather than an introduction. The issue link stays, without the framing that finding a bug is expected.
 
 ## [1.3.0] — 2026-11-14
