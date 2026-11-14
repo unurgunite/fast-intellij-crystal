@@ -6,6 +6,8 @@ All notable changes to Fast Crystal for JetBrains IDEs will be documented in thi
 
 ### Changed
 
+- **A specialised type now fits a parameter written with its namespace.** `App::Metadata` refused an `App::Metadata(Int32)` argument because generic bases were compared by exact text, so `Metadata(Int32)` and `App::Metadata` looked like different classes. One side being unqualified is now resolved against the other's trailing segment; two differently-namespaced names still stay apart. `Other::Metadata(Int32)` is still not accepted for `App::Metadata(Int32)`.
+- **A parameterised type is recognized as its bare class**, so `App::Metadata(Int32)` satisfies a `metadata : App::Metadata` parameter and the type argument is still compared when the parameter states one.
 - **The Marketplace description no longer calls the plugin an early beta.** The README stopped saying so some releases ago; the plugin descriptor every IDE and store page renders still did, which reads as a warning rather than an introduction. The issue link stays, without the framing that finding a bug is expected.
 
 ## [1.3.0] — 2026-11-14
