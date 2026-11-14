@@ -265,4 +265,54 @@ class CrystalTypeCompatibilityTest : TestCase() {
         assertTrue(compat("Array(Int32)", "Array(Int32)"))
         assertFalse(compat("Array(String)", "Array(Int32)"))
     }
+
+    // A parameterised type satisfies the bare class it specialises, and keeping
+    // the type argument must not turn it into a name mismatch either.
+    fun testParameterisedTypeFitsItsBareClass() {
+        assertTrue(compat("Box(Int32)", "Box"))
+        assertTrue(compat("Metadata(Int32)", "Metadata"))
+        assertTrue(compat("Metadata(TestEnum)", "Metadata"))
+        // ...but the type argument still has to match the parameter's own.
+        assertTrue(compat("Metadata(Int32)", "Metadata(Int32)"))
+        assertFalse(compat("Metadata(String)", "Metadata(Int32)"))
+    }
+
+    // A namespace on one side only is cosmetic: `App::Metadata` and
+    // `Metadata(Int32)` are the same class.
+    fun testQualifiedAndShortNamesAreTheSameClass() {
+        assertTrue(compat("Metadata(Int32)", "App::Metadata"))
+        assertTrue(compat("App::Metadata(Int32)", "Metadata"))
+        assertTrue(compat("App::Metadata(Int32)", "App::Metadata"))
+        assertTrue(compat("App::Metadata(Int32)", "App::Metadata(Int32)"))
+    }
+
+    // Two differently-qualified generics with the same short name are NOT
+    // treated as the same class: the base is compared by name, so the namespace
+    // still distinguishes them. (Their unknown *element* types stay lenient on
+    // purpose, so only the base is asserted here.)
+    fun testDifferentNamespaceWithGenericArgumentsIsNotTheSameClass() {
+        assertFalse(compat("Other::Metadata(Int32)", "App::Metadata(Int32)"))
+        assertFalse(compat("Other::Metadata(Int32)", "App::Metadata(String)"))
+    }
+
+    // A generic type in a parameter must never be reported as a truncated
+    // fragment of its own text (e.g. `Token)` out of `Array(Path::Token)`).
+    fun testGenericTypeIsNeverTruncated() {
+        assertTrue(compat("Array(Foo::Token)", "Array(Foo::Token)"))
+        assertFalse(compat("Foo::Token)", "Array(Foo::Token)"))
+    }
+
+    // An empty typed array literal is that array, not `Array(Nil)`.
+    fun testTypedEmptyArrayLiteralFits() {
+        assertTrue(compat("Array(String)", "Array(String)", literal = true))
+        assertTrue(compat("Array(Int32)", "Array(Int32)", literal = true))
+        assertFalse(compat("Array(Int32)", "Array(String)", literal = true))
+    }
+
+    // An unclosed generic in the parameter text degrades to its base name
+    // rather than crashing or rejecting a matching argument.
+    fun testUnbalancedParenInParameterDoesNotCrash() {
+        assertTrue(compat("Array(Int32)", "Array(Int32)"))
+        assertTrue(compat("String", "String)"))
+    }
 }
