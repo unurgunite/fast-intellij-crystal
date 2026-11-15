@@ -1,9 +1,12 @@
 # Architecture — Fast Crystal (`io.github.unurgunite.crystal`)
 
 Module map and key pipelines. Behavioral specs live in `docs/specs/`
-([index](specs/README.md)); point-in-time grammar reports in `docs/reports/`;
-diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` rendered — re-render with
-`bash docs/diagrams/render.sh`, needs `mermaid-cli` + Chromium).
+([index](specs/README.md)); point-in-time grammar reports in `docs/reports/`
+(inspection-export findings: [triage](reports/inspection-export-triage.md));
+diagrams in `docs/diagrams/` (`.mmd` sources, `.svg` committed — re-render with
+`bash docs/diagrams/render.sh`, needs `mermaid-cli` + Chromium). The same script
+also writes `.png` next to each source when you need a raster copy locally; those
+are not committed.
 
 ## Module map (`src/main/kotlin/.../crystal/`)
 

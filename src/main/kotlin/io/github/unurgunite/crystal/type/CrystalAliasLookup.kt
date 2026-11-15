@@ -37,6 +37,36 @@ internal object CrystalAliasLookup {
         project: Project,
         currentFile: PsiFile?,
     ): String? {
+        // Keyed by file as well as name: a file-owned alias shadows a shard's
+        // same-named one, so the answer differs per calling file. Aliases are
+        // immutable until the next PSI change, and the index walk otherwise
+        // runs on every qualified type reference in the file.
+        val cache =
+            com.intellij.psi.util.CachedValuesManager
+                .getManager(project)
+                .getCachedValue(
+                    project,
+                    ALIAS_TARGETS_KEY,
+                    {
+                        com.intellij.psi.util.CachedValueProvider.Result.create(
+                            HashMap<String, String?>(),
+                            com.intellij.psi.util.PsiModificationTracker.MODIFICATION_COUNT,
+                        )
+                    },
+                    false,
+                )
+        val key = (currentFile?.virtualFile?.path ?: "") + "#" + name
+        if (cache.containsKey(key)) return cache[key]
+        val resolved = lookupTarget(name, project, currentFile)
+        cache[key] = resolved
+        return resolved
+    }
+
+    private fun lookupTarget(
+        name: String,
+        project: Project,
+        currentFile: PsiFile?,
+    ): String? {
         val hits =
             StubIndex.getElements(
                 CrystalAliasIndex.KEY,
@@ -51,6 +81,11 @@ internal object CrystalAliasLookup {
         val target = alias?.typeReferenceList?.firstOrNull()?.text ?: return null
         return target.ifEmpty { null }
     }
+
+    private val ALIAS_TARGETS_KEY =
+        com.intellij.openapi.util.Key.create<
+            com.intellij.psi.util.CachedValue<MutableMap<String, String?>>,
+        >("crystal.alias.targets")
 
     /** The aliased target of a concrete reference, for tests and diagnostics. */
     fun targetOf(reference: CrystalTypeReference?): String? = reference?.text
