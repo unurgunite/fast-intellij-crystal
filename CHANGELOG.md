@@ -2,7 +2,13 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.3.1] — Unreleased
+## [1.4.0] — Unreleased
+
+### Fixed
+
+- **A brace literal followed by a call was treated as a block body.** `JSON.parse({...}.to_json)` passed an argument that the inspection did not count: the leading `{` made it look like a `do ... end` block, so arity accounting skipped it and the call was reported as missing a required argument. A trailing dot-call makes the braces the receiver of that call, so the argument is now counted as positional. `File.write(path, {...})` spanning several lines keeps working.
+
+## [1.3.1] — 2026-11-15
 
 ### Changed
 

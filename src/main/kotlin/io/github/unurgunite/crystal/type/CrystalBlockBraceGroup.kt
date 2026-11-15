@@ -24,6 +24,11 @@ import io.github.unurgunite.crystal.psi.util.CrystalPsiUtils
 internal fun isBareBlockTuple(arg: PsiElement): Boolean {
     // Splats (`foo(*args)`) are never brace groups — never a block body.
     if (arg.node.findChildByType(CrystalTypes.STAR) != null) return false
+    // A brace group with a trailing dot-call (`JSON.parse({...}.to_json)`) is a
+    // value expression: the braces are its receiver, so it is a positional
+    // argument. Without this the argument counts as a block body and the call
+    // looks like it is missing an argument.
+    if (PsiTreeUtil.findChildOfType(arg, CrystalDotCallAccess::class.java) != null) return false
     // A brace group is a TUPLE_LITERAL (`{...}`) or an empty HASH_LITERAL.
     // A parenthesised argument (`raise(Foo.new(x))`) has neither, so it is a
     // real positional argument, never a block body.
