@@ -418,6 +418,11 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   "sizeof"             { return track(CrystalTypes.SIZEOF); }
   "struct"             { return track(CrystalTypes.STRUCT); }
   "super"              { return track(CrystalTypes.SUPER); }
+  // `record` is a macro, not a reserved word: `record(x)` is a legal call
+  // wherever a definition cannot start (method bodies). The definition arm
+  // needs the keyword, so only the `(` form is demoted to an identifier —
+  // `record Foo(...)` keeps RECORD. Verified with crystal 1.22.3.
+  "record" / [ \t]* "("  { return track(CrystalTypes.IDENTIFIER); }
   "record"             { return track(CrystalTypes.RECORD); }
   "then"               { return track(CrystalTypes.THEN); }
   "true"               { return track(CrystalTypes.TRUE); }
