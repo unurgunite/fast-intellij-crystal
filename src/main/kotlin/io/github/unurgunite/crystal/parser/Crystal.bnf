@@ -1,6 +1,9 @@
 {
   parserClass="io.github.unurgunite.crystal.parser.CrystalParser"
 
+  // External rules and the parser base helpers live here.
+  parserUtilClass="io.github.unurgunite.crystal.parser.CrystalParserUtil"
+
   extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
 
   psiClassPrefix="Crystal"
@@ -1226,7 +1229,16 @@ dot_space_statement ::= variable_reference DOT (IDENTIFIER | CONSTANT | keyword_
 // Macro-suffixed method segment (`LibLLVM.build_{{name}}2(...)` — llvm/builder.cr):
 // IDENTIFIER + interpolation + optional trailing segment. PEG first (longer than
 // bare IDENTIFIER); fails fast when no `{{` follows the identifier.
-private interpolated_method_segment ::= IDENTIFIER macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
+// External rule: the current `{{` must touch the previous token.
+external gluedInterpolation ::= parseGluedInterpolation
+
+// The interpolation must be GLUED to the name: Crystal splices a macro name only
+// when the tokens touch (`build_{{name}}2`). A spaced `{{...}}` is an ordinary
+// argument, and whitespace is skipped between rules, so adjacency is checked on
+// the raw token stream (`parseGluedInterpolation`). Without it `obj.new {{x}}, 1`
+// read `new {{x}}` as one name, left the call with no argument list and reported
+// the remaining comma as a parse error.
+private interpolated_method_segment ::= IDENTIFIER gluedInterpolation macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
 
 // (REMOVED dot_space_call/space_paren_scan/for_like_tail_arg — replaced by
 // dot_space_statement above. Trap record: (1) a COMMA-inside-parens scan

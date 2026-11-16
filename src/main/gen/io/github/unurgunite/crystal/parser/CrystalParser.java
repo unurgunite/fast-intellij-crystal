@@ -4,7 +4,7 @@ package io.github.unurgunite.crystal.parser;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
 import static io.github.unurgunite.crystal.psi.CrystalTypes.*;
-import static com.intellij.lang.parser.GeneratedParserUtilBase.*;
+import static io.github.unurgunite.crystal.parser.CrystalParserUtil.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.lang.ASTNode;
 import com.intellij.psi.tree.TokenSet;
@@ -7374,29 +7374,30 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // IDENTIFIER macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
+  // IDENTIFIER gluedInterpolation macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
   static boolean interpolated_method_segment(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "interpolated_method_segment")) return false;
     if (!nextTokenIs(builder_, IDENTIFIER)) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = consumeToken(builder_, IDENTIFIER);
+    result_ = result_ && parseGluedInterpolation(builder_, level_ + 1);
     result_ = result_ && macro_interpolation(builder_, level_ + 1);
-    result_ = result_ && interpolated_method_segment_2(builder_, level_ + 1);
+    result_ = result_ && interpolated_method_segment_3(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
   // (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
-  private static boolean interpolated_method_segment_2(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "interpolated_method_segment_2")) return false;
-    interpolated_method_segment_2_0(builder_, level_ + 1);
+  private static boolean interpolated_method_segment_3(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "interpolated_method_segment_3")) return false;
+    interpolated_method_segment_3_0(builder_, level_ + 1);
     return true;
   }
 
   // IDENTIFIER | CONSTANT | INTEGER_LITERAL
-  private static boolean interpolated_method_segment_2_0(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "interpolated_method_segment_2_0")) return false;
+  private static boolean interpolated_method_segment_3_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "interpolated_method_segment_3_0")) return false;
     boolean result_;
     result_ = consumeToken(builder_, IDENTIFIER);
     if (!result_) result_ = consumeToken(builder_, CONSTANT);
