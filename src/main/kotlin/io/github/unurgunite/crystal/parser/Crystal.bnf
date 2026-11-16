@@ -1825,10 +1825,22 @@ private bare_arg_name ::= IDENTIFIER | keyword_as_record_field
 private decl_bare_type_value ::= decl_bare_complex_scan type_reference &decl_bare_end
 // Same no-NLS discipline as decl_paren_end above (the `&(NLS MARKER)` trap
 // bites here hardest: bare values END at newlines by definition).
+// An assign op terminates a bare typed value too: `named_bare_argument` carries
+// an `[ASSIGN bare_expression]` default tail, so a typed label with a default
+// (`routes rules, path : Regex? = nil` — macro DSL call sites) must hand
+// control back on `=` instead of falling through the type arm.
 private decl_bare_end ::= COMMA | NEWLINE | SEMICOLON | DO | LBRACE | IF | UNLESS | WHILE | UNTIL | RESCUE | RPAREN | END
+                        | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                        | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                        | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN | DOUBLE_SLASH_ASSIGN
 // Same concrete-token discipline as decl_complex_scan above (loop tokens +
-// markers, `&(...)` wrapper, caller references the scan BARE).
-private decl_bare_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
+// markers, `&(...)` wrapper, caller references the scan BARE). The assign ops
+// are markers here for the same reason as in decl_complex_scan: they prove a
+// default value follows.
+private decl_bare_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+                                | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                                | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                                | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN | DOUBLE_SLASH_ASSIGN))
 
 // Bare expression: same as expression but does not consume blocks or assignments
 // This prevents the bare argument from eating the 'do' that belongs to the outer method call
