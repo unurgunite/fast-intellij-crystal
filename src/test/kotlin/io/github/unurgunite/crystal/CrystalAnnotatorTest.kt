@@ -323,6 +323,25 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         assertTrue("Complete heredoc should not report missing delimiter", heredocErrors.isEmpty())
     }
 
+    fun testHeredocRepeatedDelimiterNeedsOneEndPerOpener() {
+        // Two openers may share a delimiter, but one end marker closes only the
+        // oldest of them — the second body runs on, as it does when compiling.
+        val code = "x = {<<-ONE, <<-ONE\n  a\n ONE\n}"
+        myFixture.configureByText("test.cr", code)
+        val errors = heredocMissingEndErrors()
+        assertEquals("The second opener has no end. Got: ${errors.map { it.description }}", 1, errors.size)
+        assertEquals("Must mark the second opener", code.lastIndexOf("<<-ONE"), errors.first().startOffset)
+
+        myFixture.configureByText("test.cr", "x = {<<-ONE, <<-ONE\n  a\n ONE\n  b\n ONE\n}")
+        assertEquals("One marker per opener. Got: ${heredocMissingEndErrors().map { it.description }}", 0, heredocMissingEndErrors().size)
+    }
+
+    private fun heredocMissingEndErrors() =
+        myFixture.doHighlighting().filter {
+            it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR &&
+                it.description?.contains("Missing heredoc end delimiter") == true
+        }
+
     fun testHeredocEndBeforeStartDoesNotCount() {
         // An end delimiter lexically before the start must not satisfy it:
         // the second heredoc has no closing TEST of its own.

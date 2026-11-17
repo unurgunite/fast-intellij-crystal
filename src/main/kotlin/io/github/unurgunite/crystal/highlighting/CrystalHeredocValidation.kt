@@ -28,7 +28,7 @@ internal object CrystalHeredocValidation {
         val delimiter = extractHeredocDelimiter(element.text) ?: return
         val file = element.containingFile ?: return
 
-        if (!heredocIndexOf(file).hasEndAfter(element.textOffset, delimiter)) {
+        if (element.textOffset in heredocIndexOf(file).unclosedStarts) {
             holder
                 .newAnnotation(HighlightSeverity.ERROR, "Missing heredoc end delimiter '$delimiter'")
                 .range(element)
@@ -65,8 +65,8 @@ internal object CrystalHeredocValidation {
     }
 
     /**
-     * Heredoc facts of one file version: ends for the missing-end check, bodies
-     * for the indent check.
+     * Heredoc facts of one file version: the starts no end delimiter closes, and
+     * the bodies that do have one.
      *
      * Built once per file version (dropped on any PSI change): the old code
      * walked the whole file on EVERY heredoc start the annotator visited,
@@ -82,12 +82,13 @@ internal object CrystalHeredocValidation {
      * One pass over [file] pairing openers with ends in document order, the way
      * the lexer does: with `{<<-ONE, <<-TWO` both bodies follow the openers, so
      * the first end belongs to the first opener regardless of where the literals
-     * sit in the tree.
+     * sit in the tree. Only the oldest open opener can be closed — an end whose
+     * delimiter does not match it stays body text, exactly as when lexing.
      */
     private fun buildHeredocIndex(file: PsiFile): HeredocIndex {
-        val ends = ArrayList<HeredocEnd>()
+        val unclosed = LinkedHashSet<Int>()
         val bodies = HashMap<Int, HeredocBody>()
-        val pending = ArrayDeque<String>()
+        val pending = ArrayDeque<HeredocStart>()
         val content = StringBuilder()
 
         file.accept(
@@ -95,7 +96,10 @@ internal object CrystalHeredocValidation {
                 override fun visitElement(element: PsiElement) {
                     when (element.node?.elementType) {
                         CrystalTypes.HEREDOC_START, CrystalTypes.HEREDOC_START_STACKED -> {
-                            extractHeredocDelimiter(element.text)?.let(pending::addLast)
+                            extractHeredocDelimiter(element.text)?.let {
+                                pending.addLast(HeredocStart(element.textOffset, it))
+                                unclosed.add(element.textOffset)
+                            }
                             content.setLength(0)
                         }
 
@@ -105,11 +109,10 @@ internal object CrystalHeredocValidation {
 
                         CrystalTypes.HEREDOC_END -> {
                             val delimiter = element.text.trim()
-                            ends.add(HeredocEnd(element.textOffset, delimiter))
                             // A mismatched opener means an end delimiter is missing;
                             // that error already covers the pair, so skip the indent check.
-                            if (pending.firstOrNull() == delimiter) {
-                                pending.removeFirst()
+                            if (pending.firstOrNull()?.delimiter == delimiter) {
+                                unclosed.remove(pending.removeFirst().offset)
                                 bodies[element.textOffset] =
                                     HeredocBody(delimiter, indentOf(element.text), contentLines(content.toString()))
                             }
@@ -120,7 +123,7 @@ internal object CrystalHeredocValidation {
                 }
             },
         )
-        return HeredocIndex(ends, bodies)
+        return HeredocIndex(unclosed, bodies)
     }
 
     /** Indent of every content line; the last one is the empty tail after the final newline. */
@@ -128,24 +131,14 @@ internal object CrystalHeredocValidation {
 
     private fun indentOf(line: String): Int = line.takeWhile { it == ' ' || it == '\t' }.length
 
-    /** Cached heredoc facts; ends are in document order. */
+    /** Cached heredoc facts: offsets of starts no end closes, bodies by end offset. */
     private class HeredocIndex(
-        private val ends: List<HeredocEnd>,
+        val unclosedStarts: Set<Int>,
         val bodies: Map<Int, HeredocBody>,
-    ) {
-        /**
-         * True when a HEREDOC_END with [delimiter] sits after [startOffset].
-         * Ends before the start do not count — an end delimiter closes the
-         * nearest preceding unmatched start.
-         */
-        fun hasEndAfter(
-            startOffset: Int,
-            delimiter: String,
-        ): Boolean = ends.any { it.offset > startOffset && it.delimiter == delimiter }
-    }
+    )
 
-    /** One heredoc end delimiter: document offset plus delimiter text. */
-    private data class HeredocEnd(
+    /** One opened heredoc: where it starts and which delimiter it expects. */
+    private data class HeredocStart(
         val offset: Int,
         val delimiter: String,
     )
