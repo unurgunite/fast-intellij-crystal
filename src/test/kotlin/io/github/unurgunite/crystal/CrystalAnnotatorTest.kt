@@ -365,8 +365,12 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         val missingEnd = errors.find { it.description?.contains("Missing heredoc end") == true }
         assertNull("End delimiter should be found", missingEnd)
 
-        val indentError = errors.find { it.description?.contains("indented too deeply") == true }
-        assertNotNull("Should report end delimiter indent too deep. Got: ${errors.map { it.description }}", indentError)
+        val indentError = errors.find { it.description?.contains("indented less than its end delimiter") == true }
+        assertNotNull("Should report the shallow line. Got: ${errors.map { it.description }}", indentError)
+        assertTrue(
+            "The error must name the shallow line. Got: ${indentError!!.description}",
+            indentError.description?.contains("line 2") == true,
+        )
     }
 
     fun testHeredocEndDelimiterIndentMatchesMinimumContent() {
@@ -374,7 +378,7 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText("test.cr", "a = <<-TEST\n  line1\n   line2\n  TEST")
         val highlights = myFixture.doHighlighting()
         val errors = highlights.filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
-        val indentError = errors.find { it.description?.contains("indented too deeply") == true }
+        val indentError = errors.find { it.description?.contains("indented less than its end delimiter") == true }
         assertNull(
             "End delimiter at same indent as minimum content line should be valid. Got: ${errors.map { it.description }}",
             indentError,
@@ -387,9 +391,58 @@ class CrystalAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText("test.cr", "a = <<-TEST\n  hello #{name} world\n  TEST")
         val highlights = myFixture.doHighlighting()
         val errors = highlights.filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
-        val indentError = errors.find { it.description?.contains("indented too deeply") == true }
+        val indentError = errors.find { it.description?.contains("indented less than its end delimiter") == true }
         assertNull("Heredoc with interpolation should not report indent error. Got: ${errors.map { it.description }}", indentError)
     }
+
+    fun testHeredocIndentCheckedInsideCallArgument() {
+        // The body arrives after the call's closer line, so the check must not
+        // depend on the literal owning its body.
+        myFixture.configureByText("test.cr", "def foo(s : String)\n  s\nend\nfoo(<<-TXT)\n  body\n    TXT\n")
+        val errors = heredocIndentErrors()
+        assertEquals("Should report the shallow line. Got: ${errors.map { it.description }}", 1, errors.size)
+        assertTrue("Must name the body line. Got: ${errors.first().description}", errors.first().description?.contains("line 5") == true)
+    }
+
+    fun testHeredocIndentCheckedInsideBraceLiteral() {
+        myFixture.configureByText("test.cr", "x = {<<-TEST, 1}\n  body\n   TEST")
+        val errors = heredocIndentErrors()
+        assertEquals("Should report the shallow line. Got: ${errors.map { it.description }}", 1, errors.size)
+        assertTrue("Must name the body line. Got: ${errors.first().description}", errors.first().description?.contains("line 2") == true)
+    }
+
+    fun testHeredocIndentCheckedForStackedOpeners() {
+        // Two openers on one line: the second body is the shallow one, and the
+        // first body must not be measured against the second delimiter.
+        myFixture.configureByText("test.cr", "x = {<<-ONE, <<-TWO\n  a\n ONE\n  b\n   TWO\n}")
+        val errors = heredocIndentErrors()
+        assertEquals("Should report the shallow line. Got: ${errors.map { it.description }}", 1, errors.size)
+        assertTrue("Must name the body line. Got: ${errors.first().description}", errors.first().description?.contains("line 4") == true)
+    }
+
+    fun testHeredocBlankLinesAndTabsFollowCompilerRules() {
+        // Blank and whitespace-only lines may be shallower than the delimiter.
+        myFixture.configureByText("test.cr", "a = <<-TEST\n    a\n\n    b\n    TEST")
+        assertEquals(
+            "Blank lines must not be measured. Got: ${heredocIndentErrors().map { it.description }}",
+            0,
+            heredocIndentErrors().size,
+        )
+
+        // A tab counts as one character, so two spaces are deeper than one tab.
+        myFixture.configureByText("test.cr", "a = <<-TEST\n  a\n\tTEST")
+        assertEquals(
+            "A tab must count as one character. Got: ${heredocIndentErrors().map { it.description }}",
+            0,
+            heredocIndentErrors().size,
+        )
+    }
+
+    private fun heredocIndentErrors() =
+        myFixture.doHighlighting().filter {
+            it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR &&
+                it.description?.contains("indented less than its end delimiter") == true
+        }
 
     // ==================== Single-quote string validation ====================
 
