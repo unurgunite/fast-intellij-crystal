@@ -143,6 +143,7 @@ class CrystalSyntaxHighlighter : SyntaxHighlighterBase() {
                 )
             for (type in stringish) put(type, STRING_KEYS)
             put(CrystalTypes.HEREDOC_START, HEREDOC_DELIMITER_KEYS)
+            put(CrystalTypes.HEREDOC_START_STACKED, HEREDOC_DELIMITER_KEYS)
             put(CrystalTypes.HEREDOC_END, HEREDOC_DELIMITER_KEYS)
             // Escaped macro delimiter (`\{%`, `\{{`): the backslash is body
             // text, highlighted with the macro body around it.

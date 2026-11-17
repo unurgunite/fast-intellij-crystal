@@ -93,6 +93,7 @@
     REGEX_LITERAL="REGEX_LITERAL"
     SYMBOL_LITERAL="SYMBOL_LITERAL"
     HEREDOC_START="HEREDOC_START"
+    HEREDOC_START_STACKED="HEREDOC_START_STACKED"
     HEREDOC_CONTENT="HEREDOC_CONTENT"
     HEREDOC_END="HEREDOC_END"
     STRING_ESCAPE="STRING_ESCAPE"
@@ -529,7 +530,7 @@ private macro_body_element ::= MACRO_BODY_CONTENT
 // push real states (balanced by their ENDs via macro_control /
 // macro_interpolation recursion). Deliberately NOT reusing
 // macro_control_content (which requires structured interpolations).
-private macro_escaped_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
+private macro_escaped_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
                              // Generated-code fragments the MACRO_BODY lexer
                              // leaves as structured tokens (they sit INSIDE
                              // macro text, so real crystal would reject them
@@ -596,7 +597,7 @@ escaped_macro_statement ::= BACKSLASH macro_control
 // (`new(x: {% if a %} 1 {% else %} 2 {% end %})` — status.cr) via expression.
 private macro_if_expression ::= &(MACRO_CONTROL_BEGIN (IF | UNLESS)) macro_control expression (macro_control expression)* macro_control
 
-private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
+private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
                               | for_statement
 
 // Escaped-nested `{{...}}` inside macro code (`\{% if Int{{n}} == X %}` —
@@ -1541,7 +1542,7 @@ private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL |
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
                                | LPAREN | LBRACKET | LBRACE
                                | PERCENT_LITERAL_BEGIN | PERCENT_SYMBOL_BEGIN
-                               | HEREDOC_START | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN)
+                               | HEREDOC_START | HEREDOC_START_STACKED | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN)
 
 // Implicit object call: .method, .method(args), or .[index] (used in &.foo shorthand and case/when patterns).
 // `&.` may also carry bare-style trailing arguments (`each &.to_www_form builder, name`),
@@ -2037,7 +2038,12 @@ command_expression ::= COMMAND_BEGIN (COMMAND_LITERAL | STRING_ESCAPE | STRING_I
 // later line (`eq({<<-A, <<-B` ... `})`). Every list rule that can end after a
 // heredoc therefore accepts bodies on both sides of its closer, and `*`
 // because one line can open several heredocs with one body each.
+// Only the EARLIEST opener on the line can own a body contiguously: when
+// another opener is still queued (`{<<-A, <<-B`), the tokens that follow belong
+// to that earlier heredoc, so the lexer marks this opener STACKED and it stays
+// an empty literal while both bodies are deferred to the enclosing list.
 heredoc_literal ::= HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+                  | HEREDOC_START_STACKED
 heredoc_deferred_body ::= (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END
 
 percent_literal ::= PERCENT_LITERAL_BEGIN percent_literal_content* PERCENT_LITERAL_END

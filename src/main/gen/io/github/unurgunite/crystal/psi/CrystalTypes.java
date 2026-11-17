@@ -195,6 +195,7 @@ public interface CrystalTypes {
   IElementType HEREDOC_CONTENT = new CrystalTokenType("HEREDOC_CONTENT");
   IElementType HEREDOC_END = new CrystalTokenType("HEREDOC_END");
   IElementType HEREDOC_START = new CrystalTokenType("HEREDOC_START");
+  IElementType HEREDOC_START_STACKED = new CrystalTokenType("HEREDOC_START_STACKED");
   IElementType IDENTIFIER = new CrystalTokenType("IDENTIFIER");
   IElementType IF = new CrystalTokenType("IF");
   IElementType IN = new CrystalTokenType("IN");

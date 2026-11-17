@@ -5,6 +5,8 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.ParsingTestCase
 import io.github.unurgunite.crystal.CrystalParserDefinition
+import io.github.unurgunite.crystal.psi.CrystalHeredocDeferredBody
+import io.github.unurgunite.crystal.psi.CrystalHeredocLiteral
 import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
@@ -108,5 +110,24 @@ class CrystalHeredocTest : ParsingTestCase("", "cr", CrystalParserDefinition()) 
                 .collectElementsOfType(myFile, LeafPsiElement::class.java)
                 .filter { it.elementType == CrystalTypes.HEREDOC_END }
         assertEquals(2, ends.size)
+    }
+
+    /**
+     * A body follows its opener's line, so with two openers on that line BOTH
+     * bodies arrive after the second one. Only the first opener may claim a
+     * body contiguously: the later one used to swallow the first heredoc's
+     * text, leaving its own body attached to the enclosing list.
+     */
+    fun testStackedHeredocBodyStaysWithTheEarliestOpener() {
+        myFile = createPsiFile("a.cr", "x = {<<-ONE, <<-TWO\n  first\n  ONE\n  second\n  TWO\n}\n")
+        ensureParsed(myFile)
+
+        val literals = PsiTreeUtil.findChildrenOfType(myFile, CrystalHeredocLiteral::class.java).toList()
+        assertEquals(listOf("<<-ONE", "<<-TWO"), literals.map { it.text })
+
+        val bodies = PsiTreeUtil.findChildrenOfType(myFile, CrystalHeredocDeferredBody::class.java).toList()
+        assertEquals(2, bodies.size)
+        assertTrue(bodies[0].text.contains("first") && bodies[0].text.contains("ONE"))
+        assertTrue(bodies[1].text.contains("second") && bodies[1].text.contains("TWO"))
     }
 }

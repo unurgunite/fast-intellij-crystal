@@ -1403,6 +1403,14 @@ class CrystalLexer implements FlexLexer {
     syncHeredoc();
   }
 
+  // True when an earlier opener on this line has not closed yet, so its body
+  // reaches the parser before this one's. The literal of such an opener must
+  // not claim that body (`{<<-PRE, <<-POST}`): it gets its own token type and
+  // waits for a deferred body like any other list element.
+  private boolean heredocBodyPending() {
+    return !heredocQueue.isEmpty();
+  }
+
   // Drops the closed heredoc. Returns true when another body starts right
   // away, so the caller must stay in the body state instead of returning to
   // code.
@@ -2824,9 +2832,10 @@ class CrystalLexer implements FlexLexer {
           case 390: break;
           case 167:
             { String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(3), true, false);
                          yybegin(HEREDOC_START_LINE);
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
             }
           // fall through
           case 391: break;
@@ -2933,9 +2942,10 @@ class CrystalLexer implements FlexLexer {
           case 404: break;
           case 181:
             { String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(3), true, false);
                          macroHeredocPending = true;
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
             }
           // fall through
           case 405: break;
@@ -3011,9 +3021,10 @@ class CrystalLexer implements FlexLexer {
           case 419: break;
           case 196:
             { String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(4, text.length() - 1), true, true);
                          yybegin(HEREDOC_START_LINE);
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
             }
           // fall through
           case 420: break;
@@ -3079,9 +3090,10 @@ class CrystalLexer implements FlexLexer {
           case 432: break;
           case 209:
             { String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(4, text.length() - 1), true, true);
                          macroHeredocPending = true;
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
             }
           // fall through
           case 433: break;
