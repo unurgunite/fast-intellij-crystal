@@ -6095,7 +6095,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   //                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
   //                                | LPAREN | LBRACKET | LBRACE
   //                                | PERCENT_LITERAL_BEGIN | PERCENT_SYMBOL_BEGIN
-  //                                | HEREDOC_START | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN
+  //                                | HEREDOC_START | HEREDOC_START_STACKED | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN
   static boolean expression_start_lookahead(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "expression_start_lookahead")) return false;
     boolean result_;
@@ -6121,6 +6121,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = consumeToken(builder_, PERCENT_LITERAL_BEGIN);
     if (!result_) result_ = consumeToken(builder_, PERCENT_SYMBOL_BEGIN);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_START);
+    if (!result_) result_ = consumeToken(builder_, HEREDOC_START_STACKED);
     if (!result_) result_ = consumeToken(builder_, COMMAND_BEGIN);
     if (!result_) result_ = consumeToken(builder_, REGEX_BEGIN);
     if (!result_) result_ = consumeToken(builder_, MACRO_INTERPOLATION_BEGIN);
@@ -6930,44 +6931,56 @@ public class CrystalParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+  //                   | HEREDOC_START_STACKED
   public static boolean heredoc_literal(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "heredoc_literal")) return false;
-    if (!nextTokenIs(builder_, HEREDOC_START)) return false;
+    if (!nextTokenIs(builder_, "<heredoc literal>", HEREDOC_START, HEREDOC_START_STACKED)) return false;
+    boolean result_;
+    Marker marker_ = enter_section_(builder_, level_, _NONE_, HEREDOC_LITERAL, "<heredoc literal>");
+    result_ = heredoc_literal_0(builder_, level_ + 1);
+    if (!result_) result_ = consumeToken(builder_, HEREDOC_START_STACKED);
+    exit_section_(builder_, level_, marker_, result_, false, null);
+    return result_;
+  }
+
+  // HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+  private static boolean heredoc_literal_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "heredoc_literal_0")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = consumeToken(builder_, HEREDOC_START);
-    result_ = result_ && heredoc_literal_1(builder_, level_ + 1);
-    result_ = result_ && heredoc_literal_2(builder_, level_ + 1);
-    exit_section_(builder_, marker_, HEREDOC_LITERAL, result_);
+    result_ = result_ && heredoc_literal_0_1(builder_, level_ + 1);
+    result_ = result_ && heredoc_literal_0_2(builder_, level_ + 1);
+    exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
   // (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)*
-  private static boolean heredoc_literal_1(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "heredoc_literal_1")) return false;
+  private static boolean heredoc_literal_0_1(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "heredoc_literal_0_1")) return false;
     while (true) {
       int pos_ = current_position_(builder_);
-      if (!heredoc_literal_1_0(builder_, level_ + 1)) break;
-      if (!empty_element_parsed_guard_(builder_, "heredoc_literal_1", pos_)) break;
+      if (!heredoc_literal_0_1_0(builder_, level_ + 1)) break;
+      if (!empty_element_parsed_guard_(builder_, "heredoc_literal_0_1", pos_)) break;
     }
     return true;
   }
 
   // HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END
-  private static boolean heredoc_literal_1_0(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "heredoc_literal_1_0")) return false;
+  private static boolean heredoc_literal_0_1_0(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "heredoc_literal_0_1_0")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = consumeToken(builder_, HEREDOC_CONTENT);
     if (!result_) result_ = consumeToken(builder_, STRING_ESCAPE);
-    if (!result_) result_ = heredoc_literal_1_0_2(builder_, level_ + 1);
+    if (!result_) result_ = heredoc_literal_0_1_0_2(builder_, level_ + 1);
     exit_section_(builder_, marker_, null, result_);
     return result_;
   }
 
   // STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END
-  private static boolean heredoc_literal_1_0_2(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "heredoc_literal_1_0_2")) return false;
+  private static boolean heredoc_literal_0_1_0_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "heredoc_literal_0_1_0_2")) return false;
     boolean result_;
     Marker marker_ = enter_section_(builder_);
     result_ = consumeToken(builder_, STRING_INTERPOLATION_BEGIN);
@@ -6978,8 +6991,8 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   // HEREDOC_END?
-  private static boolean heredoc_literal_2(PsiBuilder builder_, int level_) {
-    if (!recursion_guard_(builder_, level_, "heredoc_literal_2")) return false;
+  private static boolean heredoc_literal_0_2(PsiBuilder builder_, int level_) {
+    if (!recursion_guard_(builder_, level_, "heredoc_literal_0_2")) return false;
     consumeToken(builder_, HEREDOC_END);
     return true;
   }
@@ -8318,7 +8331,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
+  // macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
   //                               | for_statement
   static boolean macro_control_content(PsiBuilder builder_, int level_) {
     if (!recursion_guard_(builder_, level_, "macro_control_content")) return false;
@@ -8329,6 +8342,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = macro_escaped_interpolation(builder_, level_ + 1);
     if (!result_) result_ = macro_percent_literal(builder_, level_ + 1);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_START);
+    if (!result_) result_ = consumeToken(builder_, HEREDOC_START_STACKED);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_CONTENT);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_END);
     if (!result_) result_ = consumeToken(builder_, STRING_ESCAPE);
@@ -8577,7 +8591,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
+  // macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
   //                              // Generated-code fragments the MACRO_BODY lexer
   //                              // leaves as structured tokens (they sit INSIDE
   //                              // macro text, so real crystal would reject them
@@ -8600,6 +8614,7 @@ public class CrystalParser implements PsiParser, LightPsiParser {
     if (!result_) result_ = macro_escaped_interpolation(builder_, level_ + 1);
     if (!result_) result_ = macro_percent_literal(builder_, level_ + 1);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_START);
+    if (!result_) result_ = consumeToken(builder_, HEREDOC_START_STACKED);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_CONTENT);
     if (!result_) result_ = consumeToken(builder_, HEREDOC_END);
     if (!result_) result_ = consumeToken(builder_, STRING_ESCAPE);

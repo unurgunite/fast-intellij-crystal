@@ -89,7 +89,7 @@ class CrystalHighlightErrorFilter : HighlightErrorFilter() {
         var sibling = parent.firstChild
         while (sibling != null) {
             val type = sibling.node?.elementType
-            if (type == CrystalTypes.HEREDOC_START) hasHeredocStart = true
+            if (type == CrystalTypes.HEREDOC_START || type == CrystalTypes.HEREDOC_START_STACKED) hasHeredocStart = true
             if (type == CrystalTypes.HEREDOC_END) hasHeredocEnd = true
             sibling = sibling.nextSibling
         }

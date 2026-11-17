@@ -149,13 +149,16 @@ internal object CrystalHeredocValidation {
      * enclosing block, sandbox (DUMMY_BLOCK) or file. Scanning that parent mixes
      * unrelated lines into the indent calculation and reports a bogus "indented
      * too deeply".
+     *
+     * A stacked start (`{<<-A, <<-B` — its body belongs to the earlier opener)
+     * counts as a start here: it never owns content, it only carries a delimiter.
      */
     private fun ownsHeredoc(
         parent: PsiElement,
         delimiter: String,
     ): Boolean {
         val children = parent.node.getChildren(null)
-        return children.any { it.elementType == CrystalTypes.HEREDOC_START } &&
+        return children.any { it.elementType == CrystalTypes.HEREDOC_START || it.elementType == CrystalTypes.HEREDOC_START_STACKED } &&
             children.any { it.elementType == CrystalTypes.HEREDOC_END && it.text.trim() == delimiter }
     }
 

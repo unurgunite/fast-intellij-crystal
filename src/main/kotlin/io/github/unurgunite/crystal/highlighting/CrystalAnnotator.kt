@@ -124,6 +124,9 @@ class CrystalAnnotator : Annotator {
             CrystalTypes.HEREDOC_START to { element, holder ->
                 CrystalHeredocValidation.validateHeredocStart(element, holder)
             },
+            CrystalTypes.HEREDOC_START_STACKED to { element, holder ->
+                CrystalHeredocValidation.validateHeredocStart(element, holder)
+            },
             // Validate heredoc end delimiter indent
             CrystalTypes.HEREDOC_END to { element, holder ->
                 CrystalHeredocValidation.validateHeredocEnd(element, holder)

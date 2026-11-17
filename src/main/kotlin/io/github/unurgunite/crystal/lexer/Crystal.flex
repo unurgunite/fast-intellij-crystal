@@ -193,6 +193,14 @@ import com.intellij.psi.TokenType;
     syncHeredoc();
   }
 
+  // True when an earlier opener on this line has not closed yet, so its body
+  // reaches the parser before this one's. The literal of such an opener must
+  // not claim that body (`{<<-PRE, <<-POST}`): it gets its own token type and
+  // waits for a deferred body like any other list element.
+  private boolean heredocBodyPending() {
+    return !heredocQueue.isEmpty();
+  }
+
   // Drops the closed heredoc. Returns true when another body starts right
   // away, so the caller must stay in the body state instead of returning to
   // code.
@@ -503,15 +511,17 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // Heredoc start: <<-IDENTIFIER or <<-'IDENTIFIER'
   "<<-'" [A-Za-z_][A-Za-z0-9_]* "'"  {
                          String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(4, text.length() - 1), true, true);
                          yybegin(HEREDOC_START_LINE);
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
                        }
   "<<-" [A-Za-z_][A-Za-z0-9_]*       {
                          String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(3), true, false);
                          yybegin(HEREDOC_START_LINE);
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
                        }
 
   // `\{%` / `\{{` anywhere: escaped delimiters that push the matching macro
@@ -1360,15 +1370,17 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // ident-start, so that stays LSHIFT + MINUS + INTEGER).
   "<<-'" [A-Za-z_][A-Za-z0-9_]* "'"  {
                          String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(4, text.length() - 1), true, true);
                          macroHeredocPending = true;
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
                        }
   "<<-" [A-Za-z_][A-Za-z0-9_]*       {
                          String text = yytext().toString();
+                         boolean stacked = heredocBodyPending();
                          openHeredoc(text.substring(3), true, false);
                          macroHeredocPending = true;
-                         return track(CrystalTypes.HEREDOC_START);
+                         return track(stacked ? CrystalTypes.HEREDOC_START_STACKED : CrystalTypes.HEREDOC_START);
                        }
   "//"                 { return track(CrystalTypes.DOUBLE_SLASH); }
   {NEWLINE}            {

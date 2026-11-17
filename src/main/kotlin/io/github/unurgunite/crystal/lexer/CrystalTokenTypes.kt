@@ -94,6 +94,7 @@ object CrystalTokenTypes {
             CrystalTypes.COMMAND_LITERAL,
             CrystalTypes.HEREDOC_CONTENT,
             CrystalTypes.HEREDOC_START,
+            CrystalTypes.HEREDOC_START_STACKED,
             CrystalTypes.HEREDOC_END,
             CrystalTypes.PERCENT_LITERAL_BEGIN,
             CrystalTypes.PERCENT_LITERAL_END,
