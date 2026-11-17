@@ -1,9 +1,11 @@
 package io.github.unurgunite.crystal.parser
 
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.ParsingTestCase
 import io.github.unurgunite.crystal.CrystalParserDefinition
+import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
  * Squiggly heredocs (`<<-NAME`) allow the terminator to be indented to match the
@@ -65,4 +67,46 @@ class CrystalHeredocTest : ParsingTestCase("", "cr", CrystalParserDefinition()) 
             "def foo(a : String, b : String)\nend\n" +
                 "foo(<<-ONE, <<-TWO)\n  first\n  ONE\n  second\n  TWO\n",
         )
+
+    /**
+     * The body of a heredoc starts after its opener's line, so it reaches the
+     * parser BEFORE any bracket that closes on a later line. Both sides of the
+     * closer have to accept it, otherwise every `.lines`-style heredoc argument
+     * reported `RPAREN expected` on the body's last line.
+     */
+    fun testHeredocWithDotCallClosedOnLaterLine() = assertParses("a.cr", "foo(<<-TXT.lines\n  body\n  TXT\n)\n")
+
+    fun testTwoHeredocsClosedOnLaterLine() =
+        assertParses(
+            "a.cr",
+            "subject.should eq({<<-PRE.lines, <<-POST.lines\n" +
+                "      before\n" +
+                "    PRE\n" +
+                "      after\n" +
+                "    POST\n" +
+                "  })\n",
+        )
+
+    fun testTwoHeredocsInHashAndArrayClosedOnLaterLine() =
+        assertParses(
+            "a.cr",
+            "h = {first: <<-PRE, second: <<-POST\n  a\nPRE\n  b\nPOST\n}\n" +
+                "x = [<<-ONE, <<-TWO\n  c\nONE\n  d\nTWO\n]\n",
+        )
+
+    fun testTwoHeredocsAssignedThenTheirsEndMarkers() = assertParses("a.cr", "x = [<<-PRE.lines, <<-POST.lines\n  a\nPRE\n  b\nPOST\n]\n")
+
+    /**
+     * Each opener owns exactly one end marker. With one shared slot the first
+     * body ran until the SECOND marker, reporting a missing delimiter.
+     */
+    fun testTwoHeredocsPairTheirOwnEndMarkers() {
+        myFile = createPsiFile("a.cr", "foo(<<-ONE, <<-TWO)\n  first\n  ONE\n  second\n  TWO\n")
+        ensureParsed(myFile)
+        val ends =
+            PsiTreeUtil
+                .collectElementsOfType(myFile, LeafPsiElement::class.java)
+                .filter { it.elementType == CrystalTypes.HEREDOC_END }
+        assertEquals(2, ends.size)
+    }
 }

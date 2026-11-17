@@ -811,7 +811,7 @@ statement ::= !WHEN (if_statement
             | method_definition
             | macro_definition
             | macro_definition_open
-            | expression_statement) heredoc_deferred_body?
+            | expression_statement) heredoc_deferred_body*
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
 
@@ -1576,8 +1576,8 @@ implicit_object_call ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference
                        | DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
 
-call_args ::= LPAREN NLS argument_list NLS RPAREN
-            | LPAREN NLS RPAREN
+call_args ::= LPAREN NLS argument_list NLS heredoc_deferred_body* NLS RPAREN
+            | LPAREN NLS heredoc_deferred_body* NLS RPAREN
 
 argument_list ::= (macro_arg_splice | argument | macro_control) (NLS COMMA NLS (macro_arg_splice | argument | macro_control))* [NLS COMMA]
 
@@ -2030,6 +2030,13 @@ command_expression ::= COMMAND_BEGIN (COMMAND_LITERAL | STRING_ESCAPE | STRING_I
 // body (`foo(<<-TXT)`), so START and the body are NOT contiguous: the lexer
 // emits the tail line normally and opens the body after its newline. The
 // trailing heredoc_body arm accepts that deferred shape.
+// A heredoc opener line ends before its body, so the deferred body shows up
+// wherever the opener's line ends: after the whole statement (`x = <<-TXT`),
+// after the closing bracket when that bracket shares the opener's line
+// (`foo(<<-TXT)`), and BEFORE the closing bracket when the bracket is on a
+// later line (`eq({<<-A, <<-B` ... `})`). Every list rule that can end after a
+// heredoc therefore accepts bodies on both sides of its closer, and `*`
+// because one line can open several heredocs with one body each.
 heredoc_literal ::= HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
 heredoc_deferred_body ::= (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END
 
@@ -2069,7 +2076,7 @@ symbol_string_expression ::= SYMBOL_COLON (STRING_LITERAL | STRING_ESCAPE | STRI
 // brackets; the rest are plain `name : Type` pairs (real shape). No new PSI
 // type: label leaves sit directly in ARRAY_LITERAL; getExpressionList() is
 // empty for label arrays (the resolver already returns null on empty).
-array_literal ::= LBRACKET NLS [expression_list] NLS RBRACKET [OF type_reference array_of_tail?]
+array_literal ::= LBRACKET NLS [expression_list] NLS heredoc_deferred_body* NLS RBRACKET [OF type_reference array_of_tail?] heredoc_deferred_body*
                 | LBRACKET NLS bare_arg_name COLON type_reference (NLS COMMA NLS bare_arg_name COLON type_reference)* [NLS COMMA] NLS RBRACKET
 array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 
@@ -2090,7 +2097,7 @@ array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 // to the choice point, so keywords/operators still fall through to tokens.
 macro_array_tail ::= LBRACKET NLS &MACRO_CONTROL_BEGIN (!RBRACKET (yield_bare_multiarg | yield_paren_expression | macro_control | macro_interpolation | expression | macro_control_token | COMMA | NEWLINE))+ NLS RBRACKET [OF type_reference array_of_tail?]
 
-hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body?
+hash_literal ::= LBRACE NLS [hash_entry_list] NLS heredoc_deferred_body* NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body*
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens.
@@ -2098,7 +2105,7 @@ hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUB
 // covered by the `{% begin %}`-macro_control_in_expression path — no dedicated
 // tuple alternative (an inline flat alternative makes GrammarKit emit a
 // duplicate getExpressionList() overload pair that breaks javac — verified).
-tuple_literal ::= LBRACE NLS expression_list NLS RBRACE heredoc_deferred_body?
+tuple_literal ::= LBRACE NLS expression_list NLS heredoc_deferred_body* NLS RBRACE heredoc_deferred_body*
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens, so

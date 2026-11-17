@@ -33,4 +33,10 @@ public class CrystalCallArgsImpl extends ASTWrapperPsiElement implements Crystal
     return PsiTreeUtil.getChildOfType(this, CrystalArgumentList.class);
   }
 
+  @Override
+  @NotNull
+  public List<CrystalHeredocDeferredBody> getHeredocDeferredBodyList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalHeredocDeferredBody.class);
+  }
+
 }

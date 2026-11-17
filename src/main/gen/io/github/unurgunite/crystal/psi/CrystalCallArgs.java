@@ -10,4 +10,7 @@ public interface CrystalCallArgs extends PsiElement {
   @Nullable
   CrystalArgumentList getArgumentList();
 
+  @NotNull
+  List<CrystalHeredocDeferredBody> getHeredocDeferredBodyList();
+
 }

@@ -34,9 +34,8 @@ import com.intellij.psi.TokenType;
     lastSignificantToken = null;
     stateStack.clear();
     depthStack.clear();
-    heredocId = "";
-    heredocIndented = false;
-    heredocRaw = false;
+    heredocQueue.clear();
+    syncHeredoc();
     macroHeaderSeen = false;
     macroParenDepth = 0;
     macroBodyDepth = 0;
@@ -166,6 +165,42 @@ import com.intellij.psi.TokenType;
   private String heredocId = "";
   private boolean heredocIndented = false;
   private boolean heredocRaw = false;
+  // Heredoc openers on one line get their bodies in the same order
+  // (`{<<-PRE, <<-POST}`), so pending openers form a FIFO queue and the scalar
+  // fields above mirror its head — the body being read right now. With one
+  // slot the first body swallowed the second's end marker and reported a
+  // missing delimiter.
+  private static class HeredocFrame {
+    String id;
+    boolean indented;
+    boolean raw;
+  }
+  private final java.util.ArrayDeque<HeredocFrame> heredocQueue = new java.util.ArrayDeque<>();
+
+  private void syncHeredoc() {
+    HeredocFrame head = heredocQueue.peekFirst();
+    heredocId = head == null ? "" : head.id;
+    heredocIndented = head != null && head.indented;
+    heredocRaw = head != null && head.raw;
+  }
+
+  private void openHeredoc(String id, boolean indented, boolean raw) {
+    HeredocFrame frame = new HeredocFrame();
+    frame.id = id;
+    frame.indented = indented;
+    frame.raw = raw;
+    heredocQueue.addLast(frame);
+    syncHeredoc();
+  }
+
+  // Drops the closed heredoc. Returns true when another body starts right
+  // away, so the caller must stay in the body state instead of returning to
+  // code.
+  private boolean closeHeredoc() {
+    heredocQueue.pollFirst();
+    syncHeredoc();
+    return !heredocQueue.isEmpty();
+  }
   // A heredoc opener was already lexed on the current line; the body starts
   // after the line's newline. Set when the opener's line carries more code
   // (`foo(<<-TXT)`) and we fall back to YYINITIAL for that tail.
@@ -468,17 +503,13 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // Heredoc start: <<-IDENTIFIER or <<-'IDENTIFIER'
   "<<-'" [A-Za-z_][A-Za-z0-9_]* "'"  {
                          String text = yytext().toString();
-                         heredocId = text.substring(4, text.length() - 1);
-                         heredocIndented = true;
-                         heredocRaw = true;
+                         openHeredoc(text.substring(4, text.length() - 1), true, true);
                          yybegin(HEREDOC_START_LINE);
                          return track(CrystalTypes.HEREDOC_START);
                        }
   "<<-" [A-Za-z_][A-Za-z0-9_]*       {
                          String text = yytext().toString();
-                         heredocId = text.substring(3);
-                         heredocIndented = true;
-                         heredocRaw = false;
+                         openHeredoc(text.substring(3), true, false);
                          yybegin(HEREDOC_START_LINE);
                          return track(CrystalTypes.HEREDOC_START);
                        }
@@ -968,7 +999,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // ordinary code (`f(<<-TXT, x)`, `h = {<<-PRE, x}`), so hand it back to
   // YYINITIAL and let the NEWLINE rule there enter HEREDOC_BODY.
   .                    { yypushback(yylength()); heredocBodyNext = true; yybegin(YYINITIAL); }
-  {NEWLINE}            { yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); }
+  {NEWLINE}            { heredocBodyNext = false; yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT); }
 }
 
 <HEREDOC_BODY> {
@@ -976,7 +1007,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   ^[ \t]* {CONSTANT}  {
                          String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           yybegin(YYINITIAL);
+                           if (!closeHeredoc()) { yybegin(YYINITIAL); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -984,7 +1015,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   ^[ \t]* {IDENTIFIER} {
                          String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           yybegin(YYINITIAL);
+                           if (!closeHeredoc()) { yybegin(YYINITIAL); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -1011,7 +1042,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   ^[ \t]* {CONSTANT}  {
                          String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           popState();
+                           if (!closeHeredoc()) { popState(); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -1019,7 +1050,7 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   ^[ \t]* {IDENTIFIER} {
                          String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           popState();
+                           if (!closeHeredoc()) { popState(); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -1329,17 +1360,13 @@ SYMBOL_OP = ":" ( "!" | "!=" | "!~" | "**" | "*" | "/" | "//" | "%" | "+" | "-" 
   // ident-start, so that stays LSHIFT + MINUS + INTEGER).
   "<<-'" [A-Za-z_][A-Za-z0-9_]* "'"  {
                          String text = yytext().toString();
-                         heredocId = text.substring(4, text.length() - 1);
-                         heredocIndented = true;
-                         heredocRaw = true;
+                         openHeredoc(text.substring(4, text.length() - 1), true, true);
                          macroHeredocPending = true;
                          return track(CrystalTypes.HEREDOC_START);
                        }
   "<<-" [A-Za-z_][A-Za-z0-9_]*       {
                          String text = yytext().toString();
-                         heredocId = text.substring(3);
-                         heredocIndented = true;
-                         heredocRaw = false;
+                         openHeredoc(text.substring(3), true, false);
                          macroHeredocPending = true;
                          return track(CrystalTypes.HEREDOC_START);
                        }
