@@ -1244,9 +1244,8 @@ class CrystalLexer implements FlexLexer {
     lastSignificantToken = null;
     stateStack.clear();
     depthStack.clear();
-    heredocId = "";
-    heredocIndented = false;
-    heredocRaw = false;
+    heredocQueue.clear();
+    syncHeredoc();
     macroHeaderSeen = false;
     macroParenDepth = 0;
     macroBodyDepth = 0;
@@ -1376,6 +1375,42 @@ class CrystalLexer implements FlexLexer {
   private String heredocId = "";
   private boolean heredocIndented = false;
   private boolean heredocRaw = false;
+  // Heredoc openers on one line get their bodies in the same order
+  // (`{<<-PRE, <<-POST}`), so pending openers form a FIFO queue and the scalar
+  // fields above mirror its head — the body being read right now. With one
+  // slot the first body swallowed the second's end marker and reported a
+  // missing delimiter.
+  private static class HeredocFrame {
+    String id;
+    boolean indented;
+    boolean raw;
+  }
+  private final java.util.ArrayDeque<HeredocFrame> heredocQueue = new java.util.ArrayDeque<>();
+
+  private void syncHeredoc() {
+    HeredocFrame head = heredocQueue.peekFirst();
+    heredocId = head == null ? "" : head.id;
+    heredocIndented = head != null && head.indented;
+    heredocRaw = head != null && head.raw;
+  }
+
+  private void openHeredoc(String id, boolean indented, boolean raw) {
+    HeredocFrame frame = new HeredocFrame();
+    frame.id = id;
+    frame.indented = indented;
+    frame.raw = raw;
+    heredocQueue.addLast(frame);
+    syncHeredoc();
+  }
+
+  // Drops the closed heredoc. Returns true when another body starts right
+  // away, so the caller must stay in the body state instead of returning to
+  // code.
+  private boolean closeHeredoc() {
+    heredocQueue.pollFirst();
+    syncHeredoc();
+    return !heredocQueue.isEmpty();
+  }
   // A heredoc opener was already lexed on the current line; the body starts
   // after the line's newline. Set when the opener's line carries more code
   // (`foo(<<-TXT)`) and we fall back to YYINITIAL for that tail.
@@ -2056,7 +2091,7 @@ class CrystalLexer implements FlexLexer {
           case 52:
             { String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           yybegin(YYINITIAL);
+                           if (!closeHeredoc()) { yybegin(YYINITIAL); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -2069,7 +2104,7 @@ class CrystalLexer implements FlexLexer {
           // fall through
           case 277: break;
           case 54:
-            { yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT);
+            { heredocBodyNext = false; yybegin(HEREDOC_BODY); return track(CrystalTypes.HEREDOC_CONTENT);
             }
           // fall through
           case 278: break;
@@ -2112,7 +2147,7 @@ class CrystalLexer implements FlexLexer {
           case 60:
             { String text = yytext().toString().trim();
                          if (text.equals(heredocId)) {
-                           popState();
+                           if (!closeHeredoc()) { popState(); }
                            return track(CrystalTypes.HEREDOC_END);
                          }
                          return track(CrystalTypes.HEREDOC_CONTENT);
@@ -2789,9 +2824,7 @@ class CrystalLexer implements FlexLexer {
           case 390: break;
           case 167:
             { String text = yytext().toString();
-                         heredocId = text.substring(3);
-                         heredocIndented = true;
-                         heredocRaw = false;
+                         openHeredoc(text.substring(3), true, false);
                          yybegin(HEREDOC_START_LINE);
                          return track(CrystalTypes.HEREDOC_START);
             }
@@ -2900,9 +2933,7 @@ class CrystalLexer implements FlexLexer {
           case 404: break;
           case 181:
             { String text = yytext().toString();
-                         heredocId = text.substring(3);
-                         heredocIndented = true;
-                         heredocRaw = false;
+                         openHeredoc(text.substring(3), true, false);
                          macroHeredocPending = true;
                          return track(CrystalTypes.HEREDOC_START);
             }
@@ -2980,9 +3011,7 @@ class CrystalLexer implements FlexLexer {
           case 419: break;
           case 196:
             { String text = yytext().toString();
-                         heredocId = text.substring(4, text.length() - 1);
-                         heredocIndented = true;
-                         heredocRaw = true;
+                         openHeredoc(text.substring(4, text.length() - 1), true, true);
                          yybegin(HEREDOC_START_LINE);
                          return track(CrystalTypes.HEREDOC_START);
             }
@@ -3050,9 +3079,7 @@ class CrystalLexer implements FlexLexer {
           case 432: break;
           case 209:
             { String text = yytext().toString();
-                         heredocId = text.substring(4, text.length() - 1);
-                         heredocIndented = true;
-                         heredocRaw = true;
+                         openHeredoc(text.substring(4, text.length() - 1), true, true);
                          macroHeredocPending = true;
                          return track(CrystalTypes.HEREDOC_START);
             }
