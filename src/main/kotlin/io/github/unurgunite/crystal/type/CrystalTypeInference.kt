@@ -62,22 +62,52 @@ object CrystalTypeInference {
         if (cross > MAX_INFERENCE_DEPTH) return emptyList()
         crossBridgeDepth.set(cross + 1)
         try {
-            // `@`-prefixed queries never match parameters by exact name (the
-            // shorthand strip only fires from the param side), so consult declared
-            // ivar types first; assignments still follow through the index below.
-            if (variableName.trimStart().startsWith("@")) {
-                val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
-                if (declared.isNotEmpty()) return declared
-            }
-            val paramType = CrystalTypeScope.parameterTypes(variableName, context)
-            if (paramType != null) return paramType
-            return inferFromAssignmentList(variableName, context, project, depth)
+            return inferInScope(variableName, context, project, depth)
         } finally {
             crossBridgeDepth.set(cross)
         }
     }
 
+    /** One scope-bound attempt: declared ivars, parameters, then assignments. */
+    private fun inferInScope(
+        variableName: String,
+        context: PsiElement,
+        project: Project,
+        depth: Int,
+    ): List<String> {
+        // `@`-prefixed queries never match parameters by exact name (the
+        // shorthand strip only fires from the param side), so consult declared
+        // ivar types first; assignments still follow through the index below.
+        if (variableName.trimStart().startsWith("@")) {
+            val declared = CrystalInstanceVarTypeInference.inferDeclaredType(variableName, context)
+            if (declared.isNotEmpty()) return declared
+        }
+        val paramType = CrystalTypeScope.parameterTypes(variableName, context)
+        if (paramType != null) return paramType
+        // Re-entry guard: a self-referential assignment (`x = x.copy_with ...`)
+        // resolves the whole assignment list again for `x`. Depth caps alone
+        // cannot help: every level re-resolves EVERY assignment to the name,
+        // so N such lines cost N^depth (measured: 4 lines 4s, 6 lines 27s,
+        // 10 lines 348s — a file with 17 never finishes highlighting).
+        // The re-entrant call cannot contribute a new candidate anyway, so
+        // returning empty breaks the cycle and leaves the real initializer.
+        val resolving = resolvingNames.get()
+        if (!resolving.add(variableName)) return emptyList()
+        try {
+            return inferFromAssignmentList(variableName, context, project, depth)
+        } finally {
+            resolving.remove(variableName)
+        }
+    }
+
     private val crossBridgeDepth = ThreadLocal.withInitial { 0 }
+
+    /**
+     * Variable names being inferred up the current call chain (see the re-entry
+     * guard in [inferTypeList]). ThreadLocal because inference runs on EDT and
+     * background threads concurrently.
+     */
+    private val resolvingNames = ThreadLocal.withInitial { mutableSetOf<String>() }
 
     /**
      * Search for assignments to this variable in the current scope.
