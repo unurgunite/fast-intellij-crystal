@@ -11,8 +11,8 @@ import io.github.unurgunite.crystal.psi.CrystalTypes
 
 /**
  * Squiggly heredocs (`<<-NAME`) allow the terminator to be indented to match the
- * body. The plugin reported "Heredoc end delimiter is indented too deeply" on
- * real spec files that `crystal tool format` accepts.
+ * body. Earlier versions reported the terminator as "indented too deeply" on real
+ * spec files that `crystal tool format` accepts.
  */
 class CrystalHeredocTest : ParsingTestCase("", "cr", CrystalParserDefinition()) {
     override fun getTestDataPath(): String = "src/test/testData/parser"
