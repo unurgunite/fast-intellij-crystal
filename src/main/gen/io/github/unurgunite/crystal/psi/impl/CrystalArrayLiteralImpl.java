@@ -41,6 +41,12 @@ public class CrystalArrayLiteralImpl extends ASTWrapperPsiElement implements Cry
 
   @Override
   @NotNull
+  public List<CrystalHeredocDeferredBody> getHeredocDeferredBodyList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalHeredocDeferredBody.class);
+  }
+
+  @Override
+  @NotNull
   public List<CrystalTypeReference> getTypeReferenceList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, CrystalTypeReference.class);
   }

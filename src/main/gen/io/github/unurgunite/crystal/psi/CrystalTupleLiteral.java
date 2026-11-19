@@ -10,7 +10,7 @@ public interface CrystalTupleLiteral extends PsiElement {
   @NotNull
   CrystalExpressionList getExpressionList();
 
-  @Nullable
-  CrystalHeredocDeferredBody getHeredocDeferredBody();
+  @NotNull
+  List<CrystalHeredocDeferredBody> getHeredocDeferredBodyList();
 
 }

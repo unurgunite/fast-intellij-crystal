@@ -1,6 +1,9 @@
 {
   parserClass="io.github.unurgunite.crystal.parser.CrystalParser"
 
+  // External rules and the parser base helpers live here.
+  parserUtilClass="io.github.unurgunite.crystal.parser.CrystalParserUtil"
+
   extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
 
   psiClassPrefix="Crystal"
@@ -90,6 +93,7 @@
     REGEX_LITERAL="REGEX_LITERAL"
     SYMBOL_LITERAL="SYMBOL_LITERAL"
     HEREDOC_START="HEREDOC_START"
+    HEREDOC_START_STACKED="HEREDOC_START_STACKED"
     HEREDOC_CONTENT="HEREDOC_CONTENT"
     HEREDOC_END="HEREDOC_END"
     STRING_ESCAPE="STRING_ESCAPE"
@@ -526,7 +530,7 @@ private macro_body_element ::= MACRO_BODY_CONTENT
 // push real states (balanced by their ENDs via macro_control /
 // macro_interpolation recursion). Deliberately NOT reusing
 // macro_control_content (which requires structured interpolations).
-private macro_escaped_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
+private macro_escaped_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | MACRO_BODY_CONTENT | MACRO_INTERPOLATION_BEGIN | MACRO_INTERPOLATION_END | NEWLINE | SEMICOLON
                              // Generated-code fragments the MACRO_BODY lexer
                              // leaves as structured tokens (they sit INSIDE
                              // macro text, so real crystal would reject them
@@ -593,7 +597,7 @@ escaped_macro_statement ::= BACKSLASH macro_control
 // (`new(x: {% if a %} 1 {% else %} 2 {% end %})` — status.cr) via expression.
 private macro_if_expression ::= &(MACRO_CONTROL_BEGIN (IF | UNLESS)) macro_control expression (macro_control expression)* macro_control
 
-private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
+private macro_control_content ::= macro_control_token | macro_control | macro_interpolation | macro_escaped_interpolation | macro_percent_literal | HEREDOC_START | HEREDOC_START_STACKED | HEREDOC_CONTENT | HEREDOC_END | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN | STRING_INTERPOLATION_END | BACKSLASH | fun_definition | lib_struct_definition | lib_union_definition | enum_definition | lib_external_var | lib_field | constant_assignment | type_alias_lib | lib_type_alias | annotation_usage
                               | for_statement
 
 // Escaped-nested `{{...}}` inside macro code (`\{% if Int{{n}} == X %}` —
@@ -808,7 +812,7 @@ statement ::= !WHEN (if_statement
             | method_definition
             | macro_definition
             | macro_definition_open
-            | expression_statement) heredoc_deferred_body?
+            | expression_statement) heredoc_deferred_body*
 
 expression_statement ::= expression [expression_assign_suffix [postfix_modifier] | postfix_modifier]
 
@@ -1226,7 +1230,16 @@ dot_space_statement ::= variable_reference DOT (IDENTIFIER | CONSTANT | keyword_
 // Macro-suffixed method segment (`LibLLVM.build_{{name}}2(...)` — llvm/builder.cr):
 // IDENTIFIER + interpolation + optional trailing segment. PEG first (longer than
 // bare IDENTIFIER); fails fast when no `{{` follows the identifier.
-private interpolated_method_segment ::= IDENTIFIER macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
+// External rule: the current `{{` must touch the previous token.
+external gluedInterpolation ::= parseGluedInterpolation
+
+// The interpolation must be GLUED to the name: Crystal splices a macro name only
+// when the tokens touch (`build_{{name}}2`). A spaced `{{...}}` is an ordinary
+// argument, and whitespace is skipped between rules, so adjacency is checked on
+// the raw token stream (`parseGluedInterpolation`). Without it `obj.new {{x}}, 1`
+// read `new {{x}}` as one name, left the call with no argument list and reported
+// the remaining comma as a parse error.
+private interpolated_method_segment ::= IDENTIFIER gluedInterpolation macro_interpolation (IDENTIFIER | CONSTANT | INTEGER_LITERAL)?
 
 // (REMOVED dot_space_call/space_paren_scan/for_like_tail_arg — replaced by
 // dot_space_statement above. Trap record: (1) a COMMA-inside-parens scan
@@ -1529,7 +1542,7 @@ private expression_start_lookahead ::= (IDENTIFIER | CONSTANT | STRING_LITERAL |
                                | INSTANCE_VAR | CLASS_VAR | GLOBAL_VAR
                                | LPAREN | LBRACKET | LBRACE
                                | PERCENT_LITERAL_BEGIN | PERCENT_SYMBOL_BEGIN
-                               | HEREDOC_START | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN)
+                               | HEREDOC_START | HEREDOC_START_STACKED | COMMAND_BEGIN | REGEX_BEGIN | MACRO_INTERPOLATION_BEGIN)
 
 // Implicit object call: .method, .method(args), or .[index] (used in &.foo shorthand and case/when patterns).
 // `&.` may also carry bare-style trailing arguments (`each &.to_www_form builder, name`),
@@ -1564,8 +1577,8 @@ implicit_object_call ::= DOT (AS | AS_QUESTION | IS_A) LPAREN NLS type_reference
                        | DOT (IDENTIFIER | CONSTANT | keyword_as_method | macro_interpolation | INSTANCE_VAR | CLASS_VAR | CASE_EQ | operator_method_name | BANG) [call_args] (LBRACKET NLS [range_argument_list] RBRACKET [QUESTION])* [bare_argument_list] [block]
                        | DOT LBRACKET NLS [range_argument_list] RBRACKET [QUESTION] [assign_op expression]
 
-call_args ::= LPAREN NLS argument_list NLS RPAREN
-            | LPAREN NLS RPAREN
+call_args ::= LPAREN NLS argument_list NLS heredoc_deferred_body* NLS RPAREN
+            | LPAREN NLS heredoc_deferred_body* NLS RPAREN
 
 argument_list ::= (macro_arg_splice | argument | macro_control) (NLS COMMA NLS (macro_arg_splice | argument | macro_control))* [NLS COMMA]
 
@@ -1825,10 +1838,22 @@ private bare_arg_name ::= IDENTIFIER | keyword_as_record_field
 private decl_bare_type_value ::= decl_bare_complex_scan type_reference &decl_bare_end
 // Same no-NLS discipline as decl_paren_end above (the `&(NLS MARKER)` trap
 // bites here hardest: bare values END at newlines by definition).
+// An assign op terminates a bare typed value too: `named_bare_argument` carries
+// an `[ASSIGN bare_expression]` default tail, so a typed label with a default
+// (`routes rules, path : Regex? = nil` — macro DSL call sites) must hand
+// control back on `=` instead of falling through the type arm.
 private decl_bare_end ::= COMMA | NEWLINE | SEMICOLON | DO | LBRACE | IF | UNLESS | WHILE | UNTIL | RESCUE | RPAREN | END
+                        | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                        | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                        | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN | DOUBLE_SLASH_ASSIGN
 // Same concrete-token discipline as decl_complex_scan above (loop tokens +
-// markers, `&(...)` wrapper, caller references the scan BARE).
-private decl_bare_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION))
+// markers, `&(...)` wrapper, caller references the scan BARE). The assign ops
+// are markers here for the same reason as in decl_complex_scan: they prove a
+// default value follows.
+private decl_bare_complex_scan ::= &((IDENTIFIER | CONSTANT | DOUBLE_COLON | DOT | LBRACKET | RBRACKET | INTEGER_LITERAL | FLOAT_LITERAL)+ (LPAREN | STAR | DOUBLE_STAR | ARROW | QUESTION
+                                | ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN
+                                | OR_OR_ASSIGN | AND_AND_ASSIGN | CARET_ASSIGN | PERCENT_ASSIGN
+                                | AMPERSAND_ASSIGN | PIPE_ASSIGN | DOUBLE_STAR_ASSIGN | DOUBLE_SLASH_ASSIGN))
 
 // Bare expression: same as expression but does not consume blocks or assignments
 // This prevents the bare argument from eating the 'do' that belongs to the outer method call
@@ -2006,7 +2031,19 @@ command_expression ::= COMMAND_BEGIN (COMMAND_LITERAL | STRING_ESCAPE | STRING_I
 // body (`foo(<<-TXT)`), so START and the body are NOT contiguous: the lexer
 // emits the tail line normally and opens the body after its newline. The
 // trailing heredoc_body arm accepts that deferred shape.
+// A heredoc opener line ends before its body, so the deferred body shows up
+// wherever the opener's line ends: after the whole statement (`x = <<-TXT`),
+// after the closing bracket when that bracket shares the opener's line
+// (`foo(<<-TXT)`), and BEFORE the closing bracket when the bracket is on a
+// later line (`eq({<<-A, <<-B` ... `})`). Every list rule that can end after a
+// heredoc therefore accepts bodies on both sides of its closer, and `*`
+// because one line can open several heredocs with one body each.
+// Only the EARLIEST opener on the line can own a body contiguously: when
+// another opener is still queued (`{<<-A, <<-B`), the tokens that follow belong
+// to that earlier heredoc, so the lexer marks this opener STACKED and it stays
+// an empty literal while both bodies are deferred to the enclosing list.
 heredoc_literal ::= HEREDOC_START (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END?
+                  | HEREDOC_START_STACKED
 heredoc_deferred_body ::= (HEREDOC_CONTENT | STRING_ESCAPE | STRING_INTERPOLATION_BEGIN expression STRING_INTERPOLATION_END)* HEREDOC_END
 
 percent_literal ::= PERCENT_LITERAL_BEGIN percent_literal_content* PERCENT_LITERAL_END
@@ -2045,7 +2082,7 @@ symbol_string_expression ::= SYMBOL_COLON (STRING_LITERAL | STRING_ESCAPE | STRI
 // brackets; the rest are plain `name : Type` pairs (real shape). No new PSI
 // type: label leaves sit directly in ARRAY_LITERAL; getExpressionList() is
 // empty for label arrays (the resolver already returns null on empty).
-array_literal ::= LBRACKET NLS [expression_list] NLS RBRACKET [OF type_reference array_of_tail?]
+array_literal ::= LBRACKET NLS [expression_list] NLS heredoc_deferred_body* NLS RBRACKET [OF type_reference array_of_tail?] heredoc_deferred_body*
                 | LBRACKET NLS bare_arg_name COLON type_reference (NLS COMMA NLS bare_arg_name COLON type_reference)* [NLS COMMA] NLS RBRACKET
 array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 
@@ -2066,7 +2103,7 @@ array_of_tail ::= (COMMA NLS type_union)+ ARROW [type_reference]
 // to the choice point, so keywords/operators still fall through to tokens.
 macro_array_tail ::= LBRACKET NLS &MACRO_CONTROL_BEGIN (!RBRACKET (yield_bare_multiarg | yield_paren_expression | macro_control | macro_interpolation | expression | macro_control_token | COMMA | NEWLINE))+ NLS RBRACKET [OF type_reference array_of_tail?]
 
-hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body?
+hash_literal ::= LBRACE NLS [hash_entry_list] NLS heredoc_deferred_body* NLS RBRACE [OF type_reference DOUBLE_ARROW type_reference] heredoc_deferred_body*
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens.
@@ -2074,7 +2111,7 @@ hash_literal ::= LBRACE NLS [hash_entry_list] NLS RBRACE [OF type_reference DOUB
 // covered by the `{% begin %}`-macro_control_in_expression path — no dedicated
 // tuple alternative (an inline flat alternative makes GrammarKit emit a
 // duplicate getExpressionList() overload pair that breaks javac — verified).
-tuple_literal ::= LBRACE NLS expression_list NLS RBRACE heredoc_deferred_body?
+tuple_literal ::= LBRACE NLS expression_list NLS heredoc_deferred_body* NLS RBRACE heredoc_deferred_body*
 
 // Macro-generated hash/tuple bodies (`{% for %} k => v, {% end %}` —
 // tuple.cr): the generated entries carry their own commas as flat tokens, so

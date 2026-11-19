@@ -14,6 +14,9 @@ public interface CrystalArrayLiteral extends PsiElement {
   CrystalExpressionList getExpressionList();
 
   @NotNull
+  List<CrystalHeredocDeferredBody> getHeredocDeferredBodyList();
+
+  @NotNull
   List<CrystalTypeReference> getTypeReferenceList();
 
 }

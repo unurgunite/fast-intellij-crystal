@@ -2,7 +2,25 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.3.1] — Unreleased
+## [1.4.0] — Unreleased
+
+### Fixed
+
+- **Two heredocs sharing one delimiter were satisfied by a single end marker.** `{<<-ONE, <<-ONE` needs one `ONE` line per opener, but the check accepted any later marker with that name, so the second heredoc was never reported as unclosed although the code does not compile. Only the oldest open heredoc can be closed by a marker, and one whose name does not match it stays body text, so the pairing now follows the order the lexer uses and every remaining opener is reported.
+
+- **A heredoc body shallower than its own closing line went unchecked.** `<<-` strips exactly the indentation of the closing line, so a body line that starts further left than that does not compile — but the check only ran when the parsed literal happened to own both the closing line and the body. A heredoc whose body arrives after the caller's closer (`foo(<<-TXT)` … `)`), inside a brace literal, or as the second of two openers on one line was never measured. Heredocs are now paired with their closing lines in document order and every body line is checked, and the report names the offending line the way the compiler does. Blank lines stay exempt, and a tab counts as one character, both matching the compiler.
+
+- **The later of two heredocs opened on one line claimed the earlier one's body.** The text after `{<<-PRE, <<-POST` belongs to `PRE`, but nothing inside it says so, so the last literal absorbed that body together with its end marker and `POST`'s own body was left hanging off the enclosing list. The lexer now marks an opener that still has another body pending before it, and such a literal stays empty while both bodies settle in the list, each with its own end marker.
+
+- **Two heredocs opened on one line shared a single end marker, and a heredoc argument mis-parsed when its caller closed on a later line.** `{<<-PRE.lines, <<-POST.lines` … `}` kept one delimiter for both openers, so the first body ran on until the second marker and the first heredoc was reported as missing its end. The body also attached only after the closing bracket, which is right only when that bracket shares the opener's line: with the body in between (`eq(<<-TXT.lines` … `)`), the closing bracket was reported missing on the body's last line. Pending openers are now queued so each body ends at its own marker, and every list that can close below a heredoc accepts bodies on both sides of its closer.
+
+- **A self-referential assignment froze highlighting.** `m = m.copy_with id: 1` asks for the type of `m` in order to compute the type of `m`, and one such line re-resolves every assignment to that name, so each additional line multiplied the work — four lines took 4 s, six 27 s, ten 348 s, and a file with seventeen never finished highlighting while the analysis thread sat at 100% CPU. The depth caps could not help, because the fan-out regrows at every level. A name that is already being resolved no longer re-enters, which also stops two variables referring to each other; ordinary reassignment still collects every candidate type.
+
+- **A macro interpolation after a dot-call name was read as part of the name.** `SizedBuffer.new {{flag?(:windows) ? 4 : 2}}, out.verbosity, false` reported a parse error at the comma and the call lost its arguments: a method name may be glued to an interpolation (`build_{{name}}2`), but that reading was accepted at any distance, so `new {{...}}` became one callee name and the remaining arguments were left dangling. The glued reading now requires the `{{` to touch the name, so a spaced interpolation stays an argument while glued names keep working.
+- **A typed label with a default ended the call early in a bare call.** `routes rules, path : Regex? = nil` broke: the `?` belongs to the type, so the `=` after it marks the start of the default value, but the type-only arm treated `=` as "not a type" and handed the label's value to the expression arm, which stopped after the type name and left the `?` dangling. Every following argument then mis-parsed and the call was reported with the wrong arity. A bare typed label now ends on any assign operator, mirroring what the parenthesized form already did.
+- **A brace literal followed by a call was treated as a block body.** `JSON.parse({...}.to_json)` passed an argument that the inspection did not count: the leading `{` made it look like a `do ... end` block, so arity accounting skipped it and the call was reported as missing a required argument. A trailing dot-call makes the braces the receiver of that call, so the argument is now counted as positional. `File.write(path, {...})` spanning several lines keeps working.
+
+## [1.3.1] — 2026-11-15
 
 ### Changed
 
