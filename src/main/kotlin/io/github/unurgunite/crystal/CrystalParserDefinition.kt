@@ -28,8 +28,11 @@ class CrystalParserDefinition : ParserDefinition {
                 // fail live-index reconciliation with
                 // `UpToDateStubIndexMismatch: Stub count (7) doesn't match
                 // stubbed node length (12)` (e.g. io/delimited.cr, 2026-09).
-                // Version 3 forces a full stdlib reindex with the current parser.
-                override fun getStubVersion(): Int = 4
+                // 5: the stub tree shape changed after 4 — 1.4.0 rewrote heredocs,
+                // bare-call arguments and `record(` lexing, which moves and
+                // drops methods inside a mis-parsed file, so stubs built by
+                // 1.3.x/1.4.0-alpha no longer match the current parse.
+                override fun getStubVersion(): Int = 5
             }
     }
 

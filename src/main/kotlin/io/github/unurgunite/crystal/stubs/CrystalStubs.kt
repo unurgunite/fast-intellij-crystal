@@ -63,10 +63,25 @@ class CrystalEnumDefinitionStub(
 
 // ==================== Method Stub ====================
 
+/**
+ * The method's header facts are stubbed, not just its name: a StubIndex hit
+ * must answer `getEnclosingClassName` / `isStaticMethod` / signatures without
+ * loading the AST. Touching the AST of a stub-backed method throws
+ * `UpToDateStubIndexMismatch` whenever the stored stub tree disagrees with the
+ * current text (stale index), which is exactly when analysis runs.
+ */
 class CrystalMethodDefinitionStub(
     parent: StubElement<*>?,
     elementType: IStubElementType<*, *>,
     override val name: String?,
+    /** Header type path of a reopening (`Nil` for `def Nil.new`), null for a plain method. */
+    val typePath: String? = null,
+    /** `def self.name` */
+    val isStatic: Boolean = false,
+    /** Parameter names and types, e.g. "(a : Int32, b)". */
+    val parameterSignature: String? = null,
+    /** Return type annotation text, null when absent. */
+    val returnType: String? = null,
 ) : StubBase<CrystalMethodDefinition>(parent, elementType),
     CrystalNamedStub
 
