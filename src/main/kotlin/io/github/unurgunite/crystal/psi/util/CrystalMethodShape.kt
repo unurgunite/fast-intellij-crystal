@@ -1,7 +1,9 @@
 package io.github.unurgunite.crystal.psi.util
 
+import com.intellij.psi.StubBasedPsiElement
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalTypes
+import io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub
 
 /**
  * Formats the parameter list of a method as a string like "(a : Int32, b)".
@@ -26,3 +28,7 @@ fun extractParameterSignature(method: CrystalMethodDefinition): String {
 
 /** `def self.name` — the method is defined on the type, not on an instance. */
 fun hasSelfReceiver(method: CrystalMethodDefinition): Boolean = method.node.findChildByType(CrystalTypes.SELF) != null
+
+/** The method's stub when it came from the index, null for AST-backed PSI. */
+val CrystalMethodDefinition.methodStub: CrystalMethodDefinitionStub?
+    get() = (this as? StubBasedPsiElement<*>)?.stub as? CrystalMethodDefinitionStub

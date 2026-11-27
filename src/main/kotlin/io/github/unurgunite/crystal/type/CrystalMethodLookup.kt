@@ -13,8 +13,8 @@ import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
 import io.github.unurgunite.crystal.psi.util.extractParameterSignature
 import io.github.unurgunite.crystal.psi.util.hasSelfReceiver
+import io.github.unurgunite.crystal.psi.util.methodStub
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
-import io.github.unurgunite.crystal.stubs.CrystalMethodDefinitionStub
 
 /**
  * Method-shape and index queries over the type system: constructor lookup,
@@ -164,7 +164,7 @@ object CrystalMethodLookup {
      * throws AssertionError out of inspections. Stub-only walk instead.
      */
     fun getEnclosingClassName(method: CrystalMethodDefinition): String? {
-        val stub = methodStubOf(method)
+        val stub = method.methodStub
         if (stub != null) return stub.typePath ?: enclosingNameFromStub(stub)
         // AST-backed element (current file, in-memory test PSI).
         // `def Nil.new(pull : JSON::PullParser)` / `def Time::Location.new(pull)`: the
@@ -177,10 +177,6 @@ object CrystalMethodLookup {
             ?.let { return it }
         return enclosingNameFromPsi(method)
     }
-
-    /** Stub of a stub-backed method, or null for AST-only elements. */
-    private fun methodStubOf(method: CrystalMethodDefinition): CrystalMethodDefinitionStub? =
-        (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub as? CrystalMethodDefinitionStub
 
     /** Stub-tree walk: enclosing named stub (class/module/struct/enum). */
     private fun enclosingNameFromStub(stub: com.intellij.psi.stubs.StubElement<*>): String? {
@@ -211,7 +207,7 @@ object CrystalMethodLookup {
      * Stubbed at index time, so an index hit never loads the AST.
      */
     fun getParameterSignature(method: CrystalMethodDefinition): String {
-        val stub = methodStubOf(method)
+        val stub = method.methodStub
         if (stub != null) return stub.parameterSignature ?: "()"
         return extractParameterSignature(method)
     }
@@ -220,7 +216,7 @@ object CrystalMethodLookup {
      * Returns the return type annotation of a method, or null.
      */
     fun getReturnType(method: CrystalMethodDefinition): String? {
-        val stub = methodStubOf(method)
+        val stub = method.methodStub
         if (stub != null) return stub.returnType
         return method.typeReference?.text
     }
@@ -229,7 +225,7 @@ object CrystalMethodLookup {
      * Checks whether a method is a class method (def self.xxx).
      */
     fun isStaticMethod(method: CrystalMethodDefinition): Boolean {
-        val stub = methodStubOf(method)
+        val stub = method.methodStub
         if (stub != null) return stub.isStatic
         return hasSelfReceiver(method)
     }
