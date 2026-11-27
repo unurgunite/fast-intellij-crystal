@@ -11,8 +11,9 @@ import io.github.unurgunite.crystal.psi.CrystalEnumDefinition
 import io.github.unurgunite.crystal.psi.CrystalMethodDefinition
 import io.github.unurgunite.crystal.psi.CrystalModuleDefinition
 import io.github.unurgunite.crystal.psi.CrystalStructDefinition
-import io.github.unurgunite.crystal.psi.CrystalTypes
-import io.github.unurgunite.crystal.psi.util.extractParameterName
+import io.github.unurgunite.crystal.psi.util.extractParameterSignature
+import io.github.unurgunite.crystal.psi.util.hasSelfReceiver
+import io.github.unurgunite.crystal.psi.util.methodStub
 import io.github.unurgunite.crystal.stubs.CrystalMethodByClassIndex
 
 /**
@@ -163,6 +164,9 @@ object CrystalMethodLookup {
      * throws AssertionError out of inspections. Stub-only walk instead.
      */
     fun getEnclosingClassName(method: CrystalMethodDefinition): String? {
+        val stub = method.methodStub
+        if (stub != null) return stub.typePath ?: enclosingNameFromStub(stub)
+        // AST-backed element (current file, in-memory test PSI).
         // `def Nil.new(pull : JSON::PullParser)` / `def Time::Location.new(pull)`: the
         // declaring type is the TYPE_PATH in the header, not an enclosing definition.
         // Without this every stdlib `def X.new` reopening looks like a top-level method
@@ -171,8 +175,6 @@ object CrystalMethodLookup {
             ?.text
             ?.trim()
             ?.let { return it }
-        val stub = (method as? com.intellij.psi.StubBasedPsiElement<*>)?.stub
-        if (stub != null) return enclosingNameFromStub(stub)
         return enclosingNameFromPsi(method)
     }
 
@@ -202,28 +204,29 @@ object CrystalMethodLookup {
 
     /**
      * Formats the parameter list of a method as a string like "(a, b, c)".
+     * Stubbed at index time, so an index hit never loads the AST.
      */
     fun getParameterSignature(method: CrystalMethodDefinition): String {
-        val paramList = method.parameterList ?: return "()"
-        val params = paramList.parameterList
-        if (params.isEmpty()) return "()"
-
-        val paramStrings =
-            params.map { param ->
-                val name = extractParameterName(param) ?: "?"
-                val typeRef = param.typeReference
-                if (typeRef != null) "$name : ${typeRef.text}" else name
-            }
-        return "(${paramStrings.joinToString(", ")})"
+        val stub = method.methodStub
+        if (stub != null) return stub.parameterSignature ?: "()"
+        return extractParameterSignature(method)
     }
 
     /**
      * Returns the return type annotation of a method, or null.
      */
-    fun getReturnType(method: CrystalMethodDefinition): String? = method.typeReference?.text
+    fun getReturnType(method: CrystalMethodDefinition): String? {
+        val stub = method.methodStub
+        if (stub != null) return stub.returnType
+        return method.typeReference?.text
+    }
 
     /**
      * Checks whether a method is a class method (def self.xxx).
      */
-    fun isStaticMethod(method: CrystalMethodDefinition): Boolean = method.node.findChildByType(CrystalTypes.SELF) != null
+    fun isStaticMethod(method: CrystalMethodDefinition): Boolean {
+        val stub = method.methodStub
+        if (stub != null) return stub.isStatic
+        return hasSelfReceiver(method)
+    }
 }

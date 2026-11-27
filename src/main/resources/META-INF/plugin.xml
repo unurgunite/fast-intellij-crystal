@@ -105,6 +105,11 @@
 ]]></description>
 
     <change-notes><![CDATA[
+<h3>1.5.0</h3>
+<ul>
+  <li><b>Type checking no longer crashes the analysis on a stale index</b> — a <code>.cr</code> file indexed by an older build of the plugin made the inspection read a method's AST off a stub that no longer matched, ending the highlighting pass with <code>UpToDateStubIndexMismatch: Stub count (14) doesn't match stubbed node length (25)</code></li>
+  <li><b>Method stubs carry the signature, return type, receiver and header type</b> — analysis and completion answer from the stub instead of parsing the file, so a cross-file candidate costs no parse</li>
+</ul>
 <h3>1.4.0</h3>
 <ul>
   <li><b>A brace literal with a trailing call is an argument again</b> — <code>JSON.parse({...}.to_json)</code> was read as a block body, so the call looked like it was missing a required argument</li>
