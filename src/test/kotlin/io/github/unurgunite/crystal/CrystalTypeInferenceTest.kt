@@ -517,6 +517,7 @@ puts a
             com.intellij.psi.util.PsiTreeUtil
                 .findChildrenOfType(myFixture.file, io.github.unurgunite.crystal.psi.CrystalExpression::class.java)
                 .first { it.text == text }
-        return io.github.unurgunite.crystal.type.CrystalLiteralTypeInference.inferFromLiteral(expr)
+        return io.github.unurgunite.crystal.type.CrystalLiteralTypeInference
+            .inferFromLiteral(expr)
     }
 }

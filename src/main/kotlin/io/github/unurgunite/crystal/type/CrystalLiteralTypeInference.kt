@@ -64,8 +64,11 @@ object CrystalLiteralTypeInference {
             // call whose argument carried a suffix as a float literal, so
             // `Array(Float32).new(n, 0.0_f32)` was typed Float64.
             text.matches(FLOAT_SUFFIX_LITERAL) -> resolveFloatLiteralType(text)
+
             text.matches(Regex("""-?\d[\d_]*\.\d[\d_]*([eE][+-]?\d+)?""")) -> resolveFloatLiteralType(text)
+
             text.matches(Regex("""-?\d[\d_]*(?:_?[iu](?:8|16|32|64|128))?""")) -> resolveIntegerLiteralType(text)
+
             else -> null
         }
 
