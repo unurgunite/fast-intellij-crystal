@@ -325,9 +325,10 @@ internal object CrystalReceiverNames {
         // uppercase, so the branch below would miss it entirely).
         if (refText.startsWith("::")) return qualifyWithBase(receiver, refText)
         // Uppercase single-token reference (`URI` parses as VARIABLE_REFERENCE,
-        // not a CONSTANT token — same meaning for scoping).
+        // not a CONSTANT token — same meaning for scoping). A generic tail is
+        // kept intact: `Set(NS::Thing)` must not collapse to `Thing)`.
         if (refText.isNotEmpty() && refText[0].isUpperCase() && refText.none { it.isWhitespace() }) {
-            return refText.substringAfterLast("::")
+            return shortClassNameOf(refText)
         }
         return null
     }
@@ -348,6 +349,18 @@ internal object CrystalReceiverNames {
         val base = sibling?.text?.trim()?.takeIf { it.isNotEmpty() } ?: return refText.substringAfterLast("::")
         return base + refText
     }
+}
+
+/**
+ * Short class name of a rendered type TEXT, keeping any generic tail:
+ * `Set(NS::Thing)` → `Set(NS::Thing)`, `NS::Thing` → `Thing`. Only the head
+ * before the first `(` is `::`-trimmed, so generic arguments (which may
+ * themselves be qualified) survive. Plain `substringAfterLast("::")` on the
+ * whole type cut `Set(NS::Thing)` down to `Thing)`.
+ */
+internal fun shortClassNameOf(typeText: String): String {
+    val head = typeText.substringBefore('(')
+    return head.substringAfterLast("::") + typeText.substring(head.length)
 }
 
 /**
