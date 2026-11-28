@@ -163,7 +163,8 @@ object CrystalCallReturnTypeResolver {
                     CrystalMethodIndex.KEY,
                     methodName,
                     project,
-                    com.intellij.psi.search.GlobalSearchScope.fileScope(file),
+                    com.intellij.psi.search.GlobalSearchScope
+                        .fileScope(file),
                     CrystalMethodDefinition::class.java,
                 ).firstNotNullOfOrNull { firstAnnotatedReturnType(it) }
         indexes.byFile[key] = resolved
@@ -285,21 +286,24 @@ object CrystalCallReturnTypeResolver {
             .buildQualifiedNameFromStub(parent)
             ?.takeIf { it.contains("::") || it.isNotEmpty() }
     }
+}
 
-    /** First union branch of a method's return annotation, generics kept. */
-    private fun firstAnnotatedReturnType(method: CrystalMethodDefinition): String? {
-        val returnType = method.typeReference?.text ?: return null
-        // Full annotation text, generics included (`Hash(String, String)`):
-        // typeReference holds only the return annotation (never parameter
-        // lists), so parens are generic args, not noise. Stripping them
-        // collapsed `Hash(String, String)` to bare `Hash` and broke
-        // generic-argument compatibility downstream. Union split is
-        // depth-aware: naive split("|") cut `Hash(K | L, V | W)` (stdlib
-        // `Hash#merge`) inside its parens into `Hash(K`, poisoning every
-        // downstream check with a truncated type. Crystal resolves
-        // left-to-right, so the first whole branch wins.
-        return CrystalMethodReturnTypeInference.splitTypeNames(returnType).firstOrNull()?.trim()
-    }
+/**
+ * First union branch of a method's return annotation, generics kept.
+ * File-level: keeps the resolver object under the per-object function budget.
+ */
+private fun firstAnnotatedReturnType(method: CrystalMethodDefinition): String? {
+    val returnType = method.typeReference?.text ?: return null
+    // Full annotation text, generics included (`Hash(String, String)`):
+    // typeReference holds only the return annotation (never parameter
+    // lists), so parens are generic args, not noise. Stripping them
+    // collapsed `Hash(String, String)` to bare `Hash` and broke
+    // generic-argument compatibility downstream. Union split is
+    // depth-aware: naive split("|") cut `Hash(K | L, V | W)` (stdlib
+    // `Hash#merge`) inside its parens into `Hash(K`, poisoning every
+    // downstream check with a truncated type. Crystal resolves
+    // left-to-right, so the first whole branch wins.
+    return CrystalMethodReturnTypeInference.splitTypeNames(returnType).firstOrNull()?.trim()
 }
 
 /**
