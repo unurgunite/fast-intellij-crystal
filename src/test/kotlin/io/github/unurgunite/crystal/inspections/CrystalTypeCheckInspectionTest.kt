@@ -458,4 +458,44 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Unresolved DOT-call keeps unknown ====================
+
+    fun testUnknownDotCallIsNotTypedAsItsReceiver() {
+        // `cookies.keys` has no annotated return type in the index; the compound
+        // fallback used to descend to the receiver and report the whole Hash.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(names : Array(String))
+            end
+
+            def run(cookies : Hash(String, String))
+              take(cookies.keys)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testKnownDotCallMembersStillResolve() {
+        // Guards the suppression above: fixed-shape members (Int32) and fixed
+        // conversions (String) must keep their types.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def takeCount(n : Int32)
+            end
+
+            def takeText(s : String)
+            end
+
+            def run(cookies : Hash(String, String))
+              takeCount(cookies.size)
+              takeText(cookies.to_s)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }
