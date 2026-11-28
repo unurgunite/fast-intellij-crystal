@@ -92,19 +92,15 @@ object CrystalExpressionTypeResolver {
 
         if (expr !is CrystalExpression) return null
 
-        // Expression wrapper — ternary, operators, then first meaningful child.
-        // NOTE: a DOT-call fragment nested anywhere inside (`{...}.to_json`
-        // as an argument value) resolves FIRST: firstChild descent below
-        // would take the bare receiver (`{...}` → Hash) and lose the call.
-        // An UNRESOLVED dot-call stops here too: the compound fallback descends
-        // to the first child, which is the receiver, so `hash.keys` was typed as
-        // the whole `Hash(String, String)` and mismatched every Array(String)
-        // parameter it was passed to. Unknown must stay unknown.
-        findDotCallDeep(expr)?.let { dotCall ->
-            resolveDotCallFragmentOf(dotCall)?.let { return it }
-            return null
-        }
-        return CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
+        // A DOT-call fragment nested anywhere inside (`{...}.to_json` as an
+        // argument value) resolves FIRST: firstChild descent would take the bare
+        // receiver (`{...}` → Hash) and lose the call. An UNRESOLVED dot-call
+        // stops here too: the compound fallback descends to the first child,
+        // which is the receiver, so `hash.keys` was typed as the whole
+        // `Hash(String, String)` and mismatched every Array(String) parameter it
+        // was passed to. Unknown must stay unknown.
+        val dotCall = findDotCallDeep(expr) ?: return CrystalControlFlowTypeResolver.resolveCompoundExpression(expr)
+        return resolveDotCallFragmentOf(dotCall)
     }
 
     /**
