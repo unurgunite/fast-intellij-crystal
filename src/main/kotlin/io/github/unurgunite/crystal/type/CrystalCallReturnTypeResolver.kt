@@ -2,6 +2,7 @@ package io.github.unurgunite.crystal.type
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.stubs.StubIndex
@@ -40,12 +41,12 @@ object CrystalCallReturnTypeResolver {
         resolveToJsonReturnType(expr)?.let { return it }
 
         // Pattern: Klasse.method(...) → look up return type
-        resolveClassMethodReturnType(text, expr.project)?.let { return it }
+        resolveClassMethodReturnType(text, expr.project, expr.containingFile)?.let { return it }
 
         // Pattern: method_name(...) → look up return type
         val methodName = extractMethodName(expr)
         if (methodName != null && methodName[0].isLowerCase()) {
-            val returnType = lookupReturnType(methodName, expr.project)
+            val returnType = lookupReturnType(methodName, expr.project, expr.containingFile)
             if (returnType != null) return ResolvedType(returnType)
         }
 
@@ -81,10 +82,13 @@ object CrystalCallReturnTypeResolver {
         return null
     }
 
-    /** `Klasse.method(...)` return type, or null when the text is not a class-method call. */
+    /**
+     * `Klasse.method(...)` return type, or null when the text is not a class-method call.
+     */
     private fun resolveClassMethodReturnType(
         text: String,
         project: Project,
+        contextFile: PsiFile?,
     ): ResolvedType? {
         val classMethodPattern = Regex("""^([A-Z]\w*(?:::\w+)*)\.(\w+)(?:\(.*\))?$""", RegexOption.DOT_MATCHES_ALL)
         val classMethodMatch = classMethodPattern.find(text) ?: return null
@@ -97,7 +101,7 @@ object CrystalCallReturnTypeResolver {
         lookupReturnTypeInClass(methodName, className.substringAfterLast("::"), project)?.let {
             return ResolvedType(it)
         }
-        val returnType = lookupReturnType(methodName, project) ?: return null
+        val returnType = lookupReturnType(methodName, project, contextFile) ?: return null
         return ResolvedType(returnType)
     }
 
@@ -111,12 +115,20 @@ object CrystalCallReturnTypeResolver {
     fun lookupReturnType(
         methodName: String,
         project: Project,
+        contextFile: PsiFile? = null,
     ): String? {
         // Fixed-yield conversions, same family as `to_s → String`: the index
         // walk below would otherwise return the receiver's own type from the
         // first unannotated overload it meets (`ENV.fetch(...).to_i` typed
         // as String instead of Int32).
         FIXED_RETURN_TYPES[methodName]?.let { return it }
+        // A definition in the call's own file shadows every same-named
+        // definition elsewhere: without this, `x = collect(...)` picked the
+        // first annotated `collect` in the whole project (often an unrelated
+        // `: Nil` from another crate) and typed `x` as Nil.
+        if (contextFile != null) {
+            sameFileReturnType(methodName, project, contextFile)?.let { return it }
+        }
         val indexes = projectReturnTypes(project)
         if (indexes.byName.containsKey(methodName)) return indexes.byName[methodName]
         val computed =
@@ -130,6 +142,32 @@ object CrystalCallReturnTypeResolver {
                 ).firstNotNullOfOrNull { firstAnnotatedReturnType(it) }
         indexes.byName[methodName] = computed
         return computed
+    }
+
+    /**
+     * First annotated return type for [methodName] declared in [file] alone.
+     * Memoised per `file#name` on the project cache: a negative (no such method
+     * in the file) is the common case and must not re-query the index per call.
+     */
+    private fun sameFileReturnType(
+        methodName: String,
+        project: Project,
+        file: PsiFile,
+    ): String? {
+        val indexes = projectReturnTypes(project)
+        val key = "${file.virtualFile?.path ?: file.name}#$methodName"
+        if (indexes.byFile.containsKey(key)) return indexes.byFile[key]
+        val resolved =
+            StubIndex
+                .getElements(
+                    CrystalMethodIndex.KEY,
+                    methodName,
+                    project,
+                    com.intellij.psi.search.GlobalSearchScope.fileScope(file),
+                    CrystalMethodDefinition::class.java,
+                ).firstNotNullOfOrNull { firstAnnotatedReturnType(it) }
+        indexes.byFile[key] = resolved
+        return resolved
     }
 
     /**
@@ -154,7 +192,7 @@ object CrystalCallReturnTypeResolver {
             RETURN_TYPE_INDEXES_KEY,
             {
                 CachedValueProvider.Result.create(
-                    ReturnTypeIndexes(HashMap(), HashMap()),
+                    ReturnTypeIndexes(HashMap(), HashMap(), HashMap()),
                     PsiModificationTracker.MODIFICATION_COUNT,
                 )
             },
@@ -166,6 +204,8 @@ object CrystalCallReturnTypeResolver {
         val byName: MutableMap<String, String?>,
         /** `ClassName#methodName` → annotated return type in that class. */
         val byClass: MutableMap<String, String?>,
+        /** `file#methodName` → annotated return type in that one file. */
+        val byFile: MutableMap<String, String?>,
     )
 
     private val RETURN_TYPE_INDEXES_KEY =
@@ -365,7 +405,7 @@ internal fun resolveScopedOrFallback(
         }
     }
     if (receiver != null) return null
-    CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project)?.let {
+    CrystalCallReturnTypeResolver.lookupReturnType(methodName, expr.project, expr.containingFile)?.let {
         return ResolvedType(it)
     }
     return null
