@@ -74,6 +74,41 @@ class CrystalCallReturnTypeTest : BasePlatformTestCase() {
         assertEquals("Tuple(Int64, String)", typeOf("db.query_one?(\"select 1\", nil, as: {Int64, String})", file))
     }
 
+    fun testSameFileReturnTypeWinsOverSameNamedDefinitionElsewhere() {
+        myFixture.addFileToProject(
+            "lib/util.cr",
+            "def write(dir : String, content : String) : Nil\nend\n",
+        )
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def write(dir : String, content : String) : String
+                  content
+                end
+
+                def run
+                  path = write("d", "c")
+                  puts path
+                end
+                """.trimIndent(),
+            )
+        assertEquals("String", typeOf("write(\"d\", \"c\")", file))
+    }
+
+    fun testCrossFileReturnTypeStillResolves() {
+        myFixture.addFileToProject(
+            "lib/helper.cr",
+            "def compute(x : Int32) : String\n  \"\"\nend\n",
+        )
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                "def run\n  value = compute(1)\n  puts value\nend\n",
+            )
+        assertEquals("String", typeOf("compute(1)", file))
+    }
+
     private fun typeOf(
         text: String,
         file: com.intellij.psi.PsiFile,

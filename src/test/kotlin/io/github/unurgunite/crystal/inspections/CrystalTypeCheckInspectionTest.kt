@@ -458,4 +458,78 @@ class CrystalTypeCheckInspectionTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
+
+    // ==================== Unresolved DOT-call keeps unknown ====================
+
+    fun testUnknownDotCallIsNotTypedAsItsReceiver() {
+        // `cookies.keys` has no annotated return type in the index; the compound
+        // fallback used to descend to the receiver and report the whole Hash.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(names : Array(String))
+            end
+
+            def run(cookies : Hash(String, String))
+              take(cookies.keys)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testKnownDotCallMembersStillResolve() {
+        // Guards the suppression above: fixed-shape members (Int32) and fixed
+        // conversions (String) must keep their types.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def takeCount(n : Int32)
+            end
+
+            def takeText(s : String)
+            end
+
+            def run(cookies : Hash(String, String))
+              takeCount(cookies.size)
+              takeText(cookies.to_s)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    // ==================== NamedTuple element access ====================
+
+    fun testNamedTupleSymbolIndexYieldsTheMemberType() {
+        // `target[:attempt]` is an Int32; the access used to yield the whole
+        // `NamedTuple(...)` and mismatch the Int32 parameter.
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(n : Int32)
+            end
+
+            def run(target : NamedTuple(attempt: Int32, label: String))
+              take(target[:attempt])
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testNamedTupleSymbolIndexMismatchStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(s : String)
+            end
+
+            def run(target : NamedTuple(attempt: Int32))
+              take(<error descr="Type mismatch: expected 'String', got 'Int32'">target[:attempt]</error>)
+            end
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
+    }
 }

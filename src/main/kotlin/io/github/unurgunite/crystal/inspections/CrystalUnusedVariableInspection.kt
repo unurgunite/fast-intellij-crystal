@@ -52,9 +52,10 @@ class CrystalUnusedVariableInspection : LocalInspectionTool() {
         // survives it: writes made OUTSIDE the block stay live past it.
         addBlockExitReads(scope, assignments, references)
         val repeatReads = mutableListOf<ReferenceInfo>()
-        // The mirror rule for writes: a block runs once per iteration, so a
-        // value written near its end is read again at the top of the next one.
-        addBlockRepeatReads(scope, assignments, references, repeatReads)
+        // The mirror rule for writes: a block or loop body runs once per
+        // iteration, so a value written in it is read again at the top of the
+        // next one (from the body, or from the loop condition).
+        addRepeatReads(scope, assignments, references, repeatReads)
         references.addAll(repeatReads)
 
         val shadowed = CrystalUnusedVarCollect.collectShadowRanges(scope)

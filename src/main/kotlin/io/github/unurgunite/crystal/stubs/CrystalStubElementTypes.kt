@@ -26,6 +26,8 @@ import io.github.unurgunite.crystal.psi.impl.CrystalMacroDefinitionImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalMethodDefinitionImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalModuleDefinitionImpl
 import io.github.unurgunite.crystal.psi.impl.CrystalStructDefinitionImpl
+import io.github.unurgunite.crystal.psi.util.extractParameterSignature
+import io.github.unurgunite.crystal.psi.util.hasSelfReceiver
 
 class CrystalClassDefinitionElementType(
     debugName: String,
@@ -207,6 +209,10 @@ class CrystalMethodDefinitionElementType(
         dataStream: StubOutputStream,
     ) {
         dataStream.writeName(stub.name)
+        dataStream.writeName(stub.typePath)
+        dataStream.writeBoolean(stub.isStatic)
+        dataStream.writeName(stub.parameterSignature)
+        dataStream.writeName(stub.returnType)
     }
 
     override fun deserialize(
@@ -214,13 +220,26 @@ class CrystalMethodDefinitionElementType(
         parentStub: StubElement<*>?,
     ): CrystalMethodDefinitionStub {
         val name = dataStream.readNameString()
-        return CrystalMethodDefinitionStub(parentStub, this, name)
+        val typePath = dataStream.readNameString()
+        val isStatic = dataStream.readBoolean()
+        val parameterSignature = dataStream.readNameString()
+        val returnType = dataStream.readNameString()
+        return CrystalMethodDefinitionStub(parentStub, this, name, typePath, isStatic, parameterSignature, returnType)
     }
 
     override fun createStub(
         psi: CrystalMethodDefinition,
         parentStub: StubElement<out PsiElement>?,
-    ): CrystalMethodDefinitionStub = CrystalMethodDefinitionStub(parentStub, this, psi.name)
+    ): CrystalMethodDefinitionStub =
+        CrystalMethodDefinitionStub(
+            parentStub,
+            this,
+            psi.name,
+            typePath = psi.typePath?.text?.trim(),
+            isStatic = hasSelfReceiver(psi),
+            parameterSignature = extractParameterSignature(psi),
+            returnType = psi.typeReference?.text,
+        )
 
     override fun createPsi(stub: CrystalMethodDefinitionStub): CrystalMethodDefinition = CrystalMethodDefinitionImpl(stub, this)
 

@@ -479,4 +479,45 @@ puts a
         val useOffset = file.text.indexOf("value", file.text.indexOf("puts"))
         assertNull(CrystalTypeInference.inferType("value", file.findElementAt(useOffset)!!, project))
     }
+
+    fun testSuffixedFloatArgumentDoesNotTypeTheWholeCall() {
+        // `Array(Float32).new(n, 0.0_f32)` is an Array, not a float literal: a
+        // substring test on "_f32" typed the whole call Float64.
+        val file =
+            myFixture.configureByText(
+                "test.cr",
+                """
+                def take(a : Array(Float32))
+                end
+
+                def run(w : Int32) : Nil
+                  gx = Array(Float32).new(w, 0.0_f32)
+                  take(gx)
+                end
+                """.trimIndent(),
+            )
+        val ref =
+            com.intellij.psi.util.PsiTreeUtil
+                .findChildrenOfType(file, io.github.unurgunite.crystal.psi.CrystalExpression::class.java)
+                .first { it.text == "gx" }
+        assertEquals("Array(Float32)", CrystalTypeInference.inferType("gx", ref, project))
+    }
+
+    fun testSuffixedFloatLiteralsKeepTheirOwnType() {
+        assertEquals("Float32", literalTypeOf("0.0_f32"))
+        assertEquals("Float32", literalTypeOf("1_f32"))
+        assertEquals("Float64", literalTypeOf("0.0_f64"))
+        assertEquals("Float64", literalTypeOf("1.5"))
+        assertEquals("Int32", literalTypeOf("42"))
+    }
+
+    private fun literalTypeOf(text: String): String? {
+        myFixture.configureByText("test.cr", "value = $text\n")
+        val expr =
+            com.intellij.psi.util.PsiTreeUtil
+                .findChildrenOfType(myFixture.file, io.github.unurgunite.crystal.psi.CrystalExpression::class.java)
+                .first { it.text == text }
+        return io.github.unurgunite.crystal.type.CrystalLiteralTypeInference
+            .inferFromLiteral(expr)
+    }
 }

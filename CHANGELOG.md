@@ -2,7 +2,15 @@
 
 All notable changes to Fast Crystal for JetBrains IDEs will be documented in this file.
 
-## [1.4.0] — Unreleased
+## [1.5.0] — Unreleased
+
+### Fixed
+
+- **A stale stub index crashed type checking with `UpToDateStubIndexMismatch`.** The inspection read a method's header off the PSI (`getTypePath()` goes through `PsiTreeUtil.getChildOfType`), which forces IntelliJ to build the AST of a stub-backed element. When the stored stub tree had been built by an older parser, that reconciliation failed and the whole highlighting pass ended with `Stub count (14) doesn't match stubbed node length (25)` — reported on `spec/support/fake_api_server.cr` of a real project. Two things were wrong: the 1.4.0 grammar rewrites (heredoc pairing, bare-call arguments, `record(` lexing) move or drop methods inside a mis-parsed file, and the stub version stayed at 4, so indexes built by those builds were never discarded; and the lookups had drifted away from their own rule of never touching the AST for a StubIndex hit (`getEnclosingClassName` was stub-only, then the `def Type.new` reopening fix read `typePath` off the AST again). The stub version is now 5, which discards stale stub trees and rebuilds them with the current parser.
+
+- **A method's signature, return type, receiver and header type now live in its stub.** `getParameterSignature`, `getReturnType` and `isStaticMethod` each loaded the method's AST, so any `StubIndex` hit on a file whose stub tree disagreed with its text threw the same assertion from a different frame — fixing only the reported one left the inspection reproducible. All four facts are written at index time and read back from the stub, which also removes a parse from the cross-file path: checking `.new` arguments and completing a project method no longer materializes the candidate's tree.
+
+## [1.4.0] — 2026-11-19
 
 ### Fixed
 

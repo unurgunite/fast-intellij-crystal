@@ -29,8 +29,12 @@ object CrystalControlFlowTypeResolver {
         resolveIndexAccessOf(astChildren)?.let { return it }
 
         // Ternary expression: or_expression QUESTION expression COLON expression
-        // Check FIRST — QUESTION always indicates ternary, takes priority over operators
-        resolveTernary(astChildren)?.let { return it }
+        // Check FIRST — QUESTION always indicates ternary, takes priority over operators.
+        // A ternary is never typed as its condition: when neither branch
+        // resolves the answer is unknown, not `Bool` (a `flag(p) ? A : TABLE[i]`
+        // with an unresolved collection index used to type Bool and mismatch
+        // the String parameter it was passed to).
+        if (findTernaryBranches(astChildren) != null) return resolveTernary(astChildren)
 
         // Operator detection — binary operators like ==, +, etc.
         val opResult = resolveOperatorType(astChildren)

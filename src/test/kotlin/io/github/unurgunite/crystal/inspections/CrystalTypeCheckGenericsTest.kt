@@ -152,4 +152,47 @@ class CrystalTypeCheckGenericsTest : BasePlatformTestCase() {
             )
         assertEquals("an Int32 for an Array(String) is still a mismatch", 1, found.size)
     }
+
+    /**
+     * A bare `Set(NS::Thing).new` (no call parens) is a DOT-call fragment whose
+     * instance type is the receiver's type. Trimming the last `::` segment of
+     * the whole rendered type cut it to `Thing)`, so a valid argument was
+     * reported as a mismatch. The generic tail must survive the trim.
+     */
+    fun testQualifiedGenericNewKeepsGenericArguments() {
+        val found =
+            mismatches(
+                """
+                module NS
+                  class Thing
+                  end
+                end
+
+                def collect(items : Set(NS::Thing))
+                end
+
+                collect(Set(NS::Thing).new)
+                """,
+            )
+        assertEquals("a qualified generic .new keeps its arguments: $found", emptyList<String>(), found)
+    }
+
+    /** A plain, non-collection argument is still a real mismatch (trim stays honest). */
+    fun testQualifiedGenericNewWithWrongArgumentIsStillReported() {
+        val found =
+            mismatches(
+                """
+                module NS
+                  class Thing
+                  end
+                end
+
+                def collect(items : Set(NS::Thing))
+                end
+
+                collect("nope")
+                """,
+            )
+        assertEquals("a String for Set(NS::Thing) is still a mismatch: $found", 1, found.size)
+    }
 }

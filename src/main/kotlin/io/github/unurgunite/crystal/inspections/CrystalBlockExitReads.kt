@@ -6,6 +6,8 @@ import io.github.unurgunite.crystal.inspections.CrystalUnusedVarCollect.Assignme
 import io.github.unurgunite.crystal.inspections.CrystalUnusedVarCollect.ReferenceInfo
 import io.github.unurgunite.crystal.psi.CrystalBlock
 import io.github.unurgunite.crystal.psi.CrystalProcLiteral
+import io.github.unurgunite.crystal.psi.CrystalUntilStatement
+import io.github.unurgunite.crystal.psi.CrystalWhileStatement
 
 /**
  * A block or proc may run zero times, so the value a variable holds on entry
@@ -48,17 +50,23 @@ internal fun addBlockExitReads(
  * anywhere in that block. Location matters only for ordering, so the read is
  * placed at the block's start — before the write, which is where the next
  * iteration reads it.
+ *
+ * `while` / `until` loop bodies repeat the same way, but the read that closes
+ * the cycle sits in the loop *condition*, not in the body: `cursor = 0` then
+ * `while start = script.index(needle, cursor)` re-reads the `cursor` written by
+ * the body on the next iteration. Only the block list was walked, so that write
+ * looked dead and was reported as unused.
  */
-internal fun addBlockRepeatReads(
+internal fun addRepeatReads(
     scope: PsiElement,
     assignments: List<AssignmentInfo>,
     references: List<ReferenceInfo>,
     sink: MutableList<ReferenceInfo>,
 ) {
-    val blocks = mutableListOf<PsiElement>()
-    blocks.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalBlock::class.java))
-    blocks.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalProcLiteral::class.java))
-    blocks
+    val holders = mutableListOf<PsiElement>()
+    holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalBlock::class.java))
+    holders.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalProcLiteral::class.java))
+    holders
         .filter { it !== scope }
         .forEach { holder ->
             val start = holder.textRange.startOffset
@@ -70,6 +78,30 @@ internal fun addBlockRepeatReads(
             assignments
                 .filter { it.offset in start until end }
                 .filter { a -> reads.any { it.name == a.name && it.offset <= a.offset } }
+                .forEach { sink.add(ReferenceInfo(it.name, it.offset + 1)) }
+        }
+
+    val loops = mutableListOf<PsiElement>()
+    loops.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalWhileStatement::class.java))
+    loops.addAll(PsiTreeUtil.findChildrenOfType(scope, CrystalUntilStatement::class.java))
+    loops
+        .filter { it !== scope }
+        .forEach { loop ->
+            val condition =
+                (loop as? CrystalWhileStatement)?.condition
+                    ?: (loop as? CrystalUntilStatement)?.condition
+                    ?: return@forEach
+            val body =
+                (loop as? CrystalWhileStatement)?.statementList
+                    ?: (loop as? CrystalUntilStatement)?.statementList
+                    ?: return@forEach
+            val condStart = condition.textRange.startOffset
+            val condEnd = condition.textRange.endOffset
+            // The condition is evaluated again after the body runs, so any name
+            // it reads outlives a write of that name inside the body.
+            val condNames = references.filter { it.offset in condStart until condEnd }.map { it.name }.toSet()
+            assignments
+                .filter { it.name in condNames && it.offset in body.textRange.startOffset until body.textRange.endOffset }
                 .forEach { sink.add(ReferenceInfo(it.name, it.offset + 1)) }
         }
 }
