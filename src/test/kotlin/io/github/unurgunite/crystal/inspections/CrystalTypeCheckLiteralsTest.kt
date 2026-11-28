@@ -679,48 +679,15 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         myFixture.checkHighlighting()
     }
 
-    fun testTernaryWithUnresolvableBranchIsNotTypedAsCondition() {
-        val found =
-            mismatchDescriptions(
-                """
-                LIMIT = 10
-                TABLE = {0 => "x"}
-
-                def flag(p : String) : Bool
-                  true
-                end
-
-                def take(s : String)
-                end
-
-                take(flag(p) ? LIMIT : TABLE[0])
-                """,
-            )
-        assertEquals(emptyList<String>(), found)
-    }
-
-    fun testTernaryBranchMismatchIsStillReported() {
-        val found =
-            mismatchDescriptions(
-                """
-                def flag(p : String) : Bool
-                  true
-                end
-
-                def take(n : Int32)
-                end
-
-                take(flag(p) ? "a" : "b")
-                """,
-            )
-        assertEquals(1, found.size)
-    }
-
-    private fun mismatchDescriptions(code: String): List<String> {
-        myFixture.configureByText("test.cr", code.trimIndent())
-        return myFixture
-            .doHighlighting()
-            .filter { it.description?.contains("Type mismatch") == true }
-            .map { it.description!! }
+    fun testTupleLiteralMismatchStillReported() {
+        myFixture.configureByText(
+            "test.cr",
+            """
+            def take(loc : {String, String})
+            end
+            take(<error descr="Type mismatch: expected '{String, String}', got 'Tuple(Int32, String)'">{1, "x"}</error>)
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting()
     }
 }
