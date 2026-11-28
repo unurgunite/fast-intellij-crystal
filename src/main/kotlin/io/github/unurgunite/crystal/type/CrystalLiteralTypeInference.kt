@@ -60,11 +60,17 @@ object CrystalLiteralTypeInference {
     /** Integer and float literals, including `_suffix` variants. */
     private fun inferNumericLiteralType(text: String): String? =
         when {
-            text.contains("_f32") || text.contains("_f64") -> resolveFloatLiteralType(text)
+            // Full match only: a substring test (`contains("_f32")`) read any
+            // call whose argument carried a suffix as a float literal, so
+            // `Array(Float32).new(n, 0.0_f32)` was typed Float64.
+            text.matches(FLOAT_SUFFIX_LITERAL) -> resolveFloatLiteralType(text)
             text.matches(Regex("""-?\d[\d_]*\.\d[\d_]*([eE][+-]?\d+)?""")) -> resolveFloatLiteralType(text)
             text.matches(Regex("""-?\d[\d_]*(?:_?[iu](?:8|16|32|64|128))?""")) -> resolveIntegerLiteralType(text)
             else -> null
         }
+
+    /** `0.0_f32`, `1_f64`, `1e3_f32` — a number whose suffix is the whole tail. */
+    private val FLOAT_SUFFIX_LITERAL = Regex("""-?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?_f(?:32|64)""")
 
     /** Hash/tuple shapes from a `CrystalExpression` wrapper's literal lists. */
     private fun inferFromCrystalExpressionShape(expr: CrystalExpression): List<String>? {
