@@ -310,8 +310,10 @@ internal fun receiverClassNameOf(receiver: PsiElement?): String? {
         .firstOrNull()
         ?.trim()
         ?.removeSuffix("?")
-        ?.let { io.github.unurgunite.crystal.type.shortClassNameOf(it) }
-        ?.takeIf { it.isNotEmpty() }
+        ?.let {
+            io.github.unurgunite.crystal.type
+                .shortClassNameOf(it)
+        }?.takeIf { it.isNotEmpty() }
 }
 
 /** Value inside an ARGUMENT shell, re-resolved (file-level: detekt budget). */

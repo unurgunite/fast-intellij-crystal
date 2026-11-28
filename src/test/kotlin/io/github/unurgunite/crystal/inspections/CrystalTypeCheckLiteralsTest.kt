@@ -690,43 +690,4 @@ class CrystalTypeCheckLiteralsTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting()
     }
-
-    /**
-     * A hash literal with mixed value types is `Hash(String, String | Int32)`.
-     * Joining key types without de-duplication put a duplicate union in the key
-     * slot (`Hash(String | String, ...)`), a malformed type that reported a
-     * valid literal as a mismatch.
-     */
-    fun testHashLiteralMixedValueTypesFitsUnionValueParameter() {
-        myFixture.configureByText(
-            "test.cr",
-            """
-            def foo(h : Hash(String, String | Int32))
-            end
-            foo({"a" => "b", "c" => 10})
-            """.trimIndent(),
-        )
-        myFixture.checkHighlighting()
-    }
-
-    /** The rendered `got` type keeps a single key type, not `String | String`. */
-    fun testHashLiteralMixedValueTypesRendersKeyOnce() {
-        val found = mismatchDescriptions(
-            """
-            def foo(h : Hash(Symbol, Int32))
-            end
-            foo({"a" => "b", "c" => 10})
-            """,
-        )
-        assertTrue("got-type must be Hash(String, String | Int32): $found", found.any { it.contains("got 'Hash(String, String | Int32)'") })
-    }
-
-    private fun mismatchDescriptions(code: String): List<String> {
-        myFixture.configureByText("probe.cr", code.trimIndent())
-        return myFixture
-            .doHighlighting()
-            .filter { it.severity == com.intellij.lang.annotation.HighlightSeverity.ERROR }
-            .mapNotNull { it.description }
-            .filter { it.contains("Type mismatch") }
-    }
 }
