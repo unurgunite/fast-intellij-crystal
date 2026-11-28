@@ -118,6 +118,19 @@ object CrystalCollectionTypeResolver {
             val resolved = if (index < 0) members.getOrNull(members.size + index) else members.getOrNull(index)
             return resolved?.let { ResolvedType(it) }
         }
+        if (receiverType.startsWith(NAMED_TUPLE_PREFIX)) {
+            // `recv[:name]` on `NamedTuple(name: T, ...)` yields T. Without this
+            // the access fell back to the receiver, so `target[:attempt]` was
+            // reported as the whole `NamedTuple(...)` versus the Int32 parameter.
+            // shortcut: only a symbol literal selects a member (NamedTuple also
+            // accepts an Int index); upgrade when an Int-indexed record is reported.
+            val key = indexText.trim()
+            if (!key.startsWith(":")) return null
+            return namedTupleMembers(receiverType)
+                .firstOrNull { it.first == key.removePrefix(":") }
+                ?.second
+                ?.let { ResolvedType(it) }
+        }
         val generic = receiverType.removeSuffix("?").substringBefore('(')
         if (generic !in INDEXABLE_GENERICS) return null
         return io.github.unurgunite.crystal.type.CrystalMethodReturnTypeInference
@@ -126,6 +139,14 @@ object CrystalCollectionTypeResolver {
             ?.trim()
             ?.let { ResolvedType(it) }
     }
+
+    private const val NAMED_TUPLE_PREFIX = "NamedTuple("
+
+    /** `name to Type` pairs of `NamedTuple(name: Type, ...)`, in declaration order. */
+    private fun namedTupleMembers(typeName: String): List<Pair<String, String>> =
+        tupleMembers(typeName.replaceFirst(NAMED_TUPLE_PREFIX, "Tuple("))
+            .map { it.substringBefore(':').trim() to it.substringAfter(':', "").trim() }
+            .filter { it.first.isNotEmpty() && it.second.isNotEmpty() }
 
     /** Containers whose `[]` yields their single element type. */
     private val INDEXABLE_GENERICS = setOf("Array", "Set", "Slice", "Deque", "Enumerable", "Iterator")
