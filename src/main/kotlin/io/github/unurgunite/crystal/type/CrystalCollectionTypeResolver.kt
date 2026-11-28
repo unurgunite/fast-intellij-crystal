@@ -79,8 +79,8 @@ object CrystalCollectionTypeResolver {
         return if (keyTypes.all { it.typeName == keyType } && valueTypes.all { it.typeName == valueType }) {
             ResolvedType("Hash($keyType, $valueType)")
         } else {
-            val keyUnion = keyTypes.joinToString(" | ") { it.typeName }
-            val valueUnion = valueTypes.joinToString(" | ") { it.typeName }
+            val keyUnion = keyTypes.distinctBy { it.typeName }.joinToString(" | ") { it.typeName }
+            val valueUnion = valueTypes.distinctBy { it.typeName }.joinToString(" | ") { it.typeName }
             ResolvedType("Hash($keyUnion, $valueUnion)")
         }
     }

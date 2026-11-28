@@ -310,7 +310,7 @@ internal fun receiverClassNameOf(receiver: PsiElement?): String? {
         .firstOrNull()
         ?.trim()
         ?.removeSuffix("?")
-        ?.substringAfterLast("::")
+        ?.let { io.github.unurgunite.crystal.type.shortClassNameOf(it) }
         ?.takeIf { it.isNotEmpty() }
 }
 
